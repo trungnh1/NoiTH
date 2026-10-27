@@ -15,8 +15,10 @@ import {
 } from 'firebase/firestore';
 import { Patient, SeverityLevel, VitalSign } from '../types/patient';
 
+import firebaseAppletConfig from '../../firebase-applet-config.json';
+
 // Target Firebase Project configuration
-// Supports manual user config in localStorage, Vercel env vars, or defaults
+// Supports manual user config in localStorage, Vercel env vars, or applet config
 export function getActiveFirebaseConfig() {
   const localProject = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_FIREBASE_PROJECT_ID') : null;
   const localDb = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_FIREBASE_DATABASE_ID') : null;
@@ -24,11 +26,13 @@ export function getActiveFirebaseConfig() {
   const localAppId = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_FIREBASE_APP_ID') : null;
   const localAuthDomain = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_FIREBASE_AUTH_DOMAIN') : null;
 
-  const projectId = localProject || import.meta.env.VITE_FIREBASE_PROJECT_ID || "iron-foundation-kbcxw";
-  const apiKey = localApiKey || import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyC9FUny98eUFmOW2v06hpezo37F_Rg4o9Q";
-  const appId = localAppId || import.meta.env.VITE_FIREBASE_APP_ID || "1:692966572750:web:5e06d6560890da7676469f";
-  const authDomain = localAuthDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`;
-  const databaseId = localDb || import.meta.env.VITE_FIREBASE_DATABASE_ID || "(default)";
+  const appletConfig = (firebaseAppletConfig || {}) as Record<string, string>;
+
+  const projectId = localProject || import.meta.env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId || "crucial-kayak-481415-h1";
+  const apiKey = localApiKey || import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey || "AIzaSyDMS-VQIRC9BL0aIjJPtqHfQFRO4sfSQ1E";
+  const appId = localAppId || import.meta.env.VITE_FIREBASE_APP_ID || appletConfig.appId || "1:936936305554:web:7d0283e9fbbaf37566c74b";
+  const authDomain = localAuthDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain || `${projectId}.firebaseapp.com`;
+  const databaseId = localDb || import.meta.env.VITE_FIREBASE_DATABASE_ID || appletConfig.firestoreDatabaseId || "(default)";
 
   return {
     projectId,
@@ -344,6 +348,98 @@ export function subscribeToEmergencyRecords(
         errorMessage: err.message || 'Không thể tạo kết nối',
       });
     }
+    return () => {};
+  }
+}
+
+/**
+ * Real-time continuous 2-way sync for department patients.
+ * Listens to collection 'department_patients'.
+ * Any change from any browser or device immediately updates the application state.
+ * If Firestore is empty on first run, it automatically boots up by saving initial fallback patients.
+ */
+export function subscribeToDepartmentPatients(
+  onPatientsChange: (patients: Patient[]) => void,
+  onStatusChange?: (status: SyncStatus) => void,
+  initialFallbackPatients?: Patient[]
+): () => void {
+  if (!dbInstance) {
+    dbInstance = initializeFirebaseFirestore();
+  }
+  if (!dbInstance) {
+    if (onStatusChange) {
+      onStatusChange({
+        connected: false,
+        lastSyncTime: null,
+        receivedCount: 0,
+        errorMessage: 'Firestore chưa được kết nối',
+      });
+    }
+    return () => {};
+  }
+
+  try {
+    const colRef = collection(dbInstance, 'department_patients');
+
+    const unsubscribe = onSnapshot(
+      colRef,
+      (snapshot) => {
+        if (snapshot.empty) {
+          if (initialFallbackPatients && initialFallbackPatients.length > 0) {
+            console.log('Tự động khởi tạo dữ liệu ban đầu lên Cloud Firestore...');
+            syncAllPatientsToCloud(initialFallbackPatients);
+          }
+          if (onStatusChange) {
+            onStatusChange({
+              connected: true,
+              lastSyncTime: new Date().toLocaleTimeString('vi-VN'),
+              receivedCount: 0,
+              errorMessage: null,
+            });
+          }
+          return;
+        }
+
+        const patientsList: Patient[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          patientsList.push(mapFirestoreRecordToPatient(docSnap.id, data));
+        });
+
+        // Natural sort by Room and Bed Number
+        patientsList.sort((a, b) => {
+          const roomComp = a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true });
+          if (roomComp !== 0) return roomComp;
+          return a.bedNumber.localeCompare(b.bedNumber, undefined, { numeric: true });
+        });
+
+        onPatientsChange(patientsList);
+
+        if (onStatusChange) {
+          onStatusChange({
+            connected: true,
+            lastSyncTime: new Date().toLocaleTimeString('vi-VN'),
+            receivedCount: patientsList.length,
+            errorMessage: null,
+          });
+        }
+      },
+      (error) => {
+        console.warn('Lỗi lắng nghe dữ liệu department_patients:', error);
+        if (onStatusChange) {
+          onStatusChange({
+            connected: false,
+            lastSyncTime: null,
+            receivedCount: 0,
+            errorMessage: error.message || 'Lỗi kết nối Firestore',
+          });
+        }
+      }
+    );
+
+    return unsubscribe;
+  } catch (err: any) {
+    console.error('Lỗi onSnapshot department_patients:', err);
     return () => {};
   }
 }

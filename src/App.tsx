@@ -28,7 +28,14 @@ import { BedTransferModal } from './components/BedTransferModal';
 import { ShiftHandoverModal } from './components/ShiftHandoverModal';
 import { ClinicalWatchlistModal } from './components/ClinicalWatchlistModal';
 import { DutyRosterModal } from './components/DutyRosterModal';
-import { subscribeToEmergencyRecords, testCloudWrite, syncAllPatientsToCloud, SyncStatus } from './services/firebaseSync';
+import { 
+  subscribeToEmergencyRecords, 
+  subscribeToDepartmentPatients,
+  syncPatientToCloud,
+  testCloudWrite, 
+  syncAllPatientsToCloud, 
+  SyncStatus 
+} from './services/firebaseSync';
 
 export default function App() {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -36,13 +43,15 @@ export default function App() {
   const [rooms, setRooms] = useState<DepartmentRoom[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Firestore Sync State
+  // Firestore Sync State & Auto-save status
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
     connected: false,
     lastSyncTime: null,
     receivedCount: 0,
     errorMessage: null,
   });
+  const [isAutoSyncing, setIsAutoSyncing] = useState(false);
+  const [lastAutoSyncTime, setLastAutoSyncTime] = useState<string | null>(null);
   const [emergencyAlert, setEmergencyAlert] = useState<{ message: string; patient: Patient } | null>(null);
 
   // Main active view: 'detailed_list' (Default and primary screen)
@@ -83,15 +92,34 @@ export default function App() {
     }
   };
 
-  // Initial load
+  // Initial load & Realtime 2-way Cloud Firestore Sync
   useEffect(() => {
-    setPatients(loadPatients());
+    const initialPatients = loadPatients();
+    setPatients(initialPatients);
     setDoctors(loadDoctors());
     setRooms(loadRooms());
     setIsLoaded(true);
 
-    // Subscribe to Khoa Cấp Cứu Firestore clinical_records
-    const unsubscribe = subscribeToEmergencyRecords(
+    // 1. Automatic continuous 2-way sync for Inpatients in Khoa Nội Tổng Hợp
+    const unsubDept = subscribeToDepartmentPatients(
+      (cloudPatients) => {
+        if (cloudPatients && cloudPatients.length > 0) {
+          setPatients(cloudPatients);
+          savePatients(cloudPatients);
+          setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+        }
+      },
+      (status) => {
+        setSyncStatus(status);
+        if (status.connected && status.lastSyncTime) {
+          setLastAutoSyncTime(status.lastSyncTime);
+        }
+      },
+      initialPatients
+    );
+
+    // 2. Subscribe to Khoa Cấp Cứu Firestore clinical_records
+    const unsubEmergency = subscribeToEmergencyRecords(
       (newEmrPatient) => {
         setPatients((prev) => {
           const exists = prev.some((p) => p.id === newEmrPatient.id);
@@ -99,6 +127,7 @@ export default function App() {
             ? prev.map((p) => (p.id === newEmrPatient.id ? newEmrPatient : p))
             : [newEmrPatient, ...prev];
           savePatients(updated);
+          syncPatientToCloud(newEmrPatient);
           return updated;
         });
 
@@ -106,39 +135,65 @@ export default function App() {
           message: `Tiếp nhận ca mới từ Cấp Cứu: ${newEmrPatient.fullName} • ${newEmrPatient.primaryDiagnosis}`,
           patient: newEmrPatient,
         });
-      },
-      (status) => {
-        setSyncStatus(status);
       }
     );
 
     return () => {
-      unsubscribe();
+      unsubDept();
+      unsubEmergency();
     };
   }, []);
 
-  // Sync patients changes to storage and cloud
-  const updatePatientsList = (newPatients: Patient[]) => {
+  // Sync patients changes to storage and cloud automatically in real-time
+  const updatePatientsList = async (newPatients: Patient[]) => {
     setPatients(newPatients);
     savePatients(newPatients);
-    syncAllPatientsToCloud(newPatients);
-  };
-
-  // Handle single patient update
-  const handleUpdatePatient = (updatedPatient: Patient) => {
-    const updated = patients.map((p) =>
-      p.id === updatedPatient.id ? updatedPatient : p
-    );
-    updatePatientsList(updated);
-    if (selectedPatient?.id === updatedPatient.id) {
-      setSelectedPatient(updatedPatient);
+    setIsAutoSyncing(true);
+    try {
+      await syncAllPatientsToCloud(newPatients);
+      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+    } catch (err) {
+      console.warn('Auto sync cloud error:', err);
+    } finally {
+      setIsAutoSyncing(false);
     }
   };
 
-  // Handle new patient admission
-  const handleAddPatient = (newPatient: Patient) => {
+  // Handle single patient update (evolution, notes, vital signs)
+  const handleUpdatePatient = async (updatedPatient: Patient) => {
+    const updated = patients.map((p) =>
+      p.id === updatedPatient.id ? updatedPatient : p
+    );
+    setPatients(updated);
+    savePatients(updated);
+    if (selectedPatient?.id === updatedPatient.id) {
+      setSelectedPatient(updatedPatient);
+    }
+    setIsAutoSyncing(true);
+    try {
+      await syncPatientToCloud(updatedPatient);
+      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+    } catch (err) {
+      console.warn('Auto sync single patient error:', err);
+    } finally {
+      setIsAutoSyncing(false);
+    }
+  };
+
+  // Handle new patient admission (automatic upload to Firestore)
+  const handleAddPatient = async (newPatient: Patient) => {
     const updated = [newPatient, ...patients];
-    updatePatientsList(updated);
+    setPatients(updated);
+    savePatients(updated);
+    setIsAutoSyncing(true);
+    try {
+      await syncPatientToCloud(newPatient);
+      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+    } catch (err) {
+      console.warn('Auto sync new patient error:', err);
+    } finally {
+      setIsAutoSyncing(false);
+    }
   };
 
   // Handle bed transfer
@@ -242,6 +297,8 @@ export default function App() {
         onOpenCloudSync={() => setIsCloudSyncModalOpen(true)}
         onOpenDutySchedule={() => setIsDutyModalOpen(true)}
         onResetData={handleResetData}
+        isAutoSyncing={isAutoSyncing}
+        lastAutoSyncTime={lastAutoSyncTime}
       />
 
       {/* Real-time Emergency Ingestion Notification Banner */}

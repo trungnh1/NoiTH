@@ -280,6 +280,19 @@ VITE_FIREBASE_DATABASE_ID=${customDbId || "(default)"}`;
         {/* Content Body */}
         <div className="p-5 overflow-y-auto space-y-4 flex-1">
           
+          {/* Automatic Sync Banner */}
+          <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 flex items-start gap-3 text-xs text-emerald-900 shadow-2xs">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <h4 className="font-black text-emerald-950 text-sm">
+                Tính Năng Tự Động Lưu Trữ Đám Mây Đang Hoạt Động (Không Cần Bấm Thủ Công)
+              </h4>
+              <p className="text-emerald-800 leading-relaxed font-medium">
+                Mọi thao tác <strong>Nhập Mới Bệnh Nhân</strong>, <strong>Ghi Diễn Tiến Hàng Ngày</strong>, <strong>Kế Hoạch Điều Trị</strong> hay <strong>Đổi Trạng Thái Ra Viện</strong> đều được hệ thống <strong>TỰ ĐỘNG ĐẨY LÊN CLOUD FIRESTORE NGAY LẬP TỨC</strong> theo thời gian thực. Bác sĩ và điều dưỡng chỉ cần thao tác nhập liệu như bình thường, dữ liệu sẽ tự động an toàn trên đám mây!
+              </p>
+            </div>
+          </div>
+          
           {/* Action Notification Message */}
           {actionMessage && (
             <div className={`p-3 rounded-xl border flex items-start gap-2.5 text-xs font-semibold animate-in fade-in ${
