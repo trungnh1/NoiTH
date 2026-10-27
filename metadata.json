@@ -1,0 +1,8 @@
+{
+  "name": "Khoa Nội Tổng Hợp - BV Hùng Vương Gia Lai",
+  "description": "Hệ thống quản lý bệnh nhân nội trú Khoa Nội Tổng Hợp - Bệnh viện Hùng Vương Gia Lai",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
