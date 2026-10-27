@@ -6,7 +6,8 @@ import {
   Eye, 
   UserPlus, 
   Cloud,
-  CheckCircle2
+  CheckCircle2,
+  Printer
 } from 'lucide-react';
 import { Patient } from '../types/patient';
 
@@ -18,6 +19,7 @@ interface HeaderProps {
   onOpenHandover?: () => void;
   onOpenWatchlist?: () => void;
   onOpenCloudSync: () => void;
+  onOpenPrintModal?: () => void;
   onManualPushToCloud?: () => void;
   onResetData?: () => void;
   onOpenDutySchedule?: () => void;
@@ -29,6 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
   patients,
   onOpenNewPatient,
   onOpenCloudSync,
+  onOpenPrintModal,
   onManualPushToCloud,
   isAutoSyncing = false,
   lastAutoSyncTime,
@@ -119,6 +122,19 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Cloud className="w-3.5 h-3.5 text-blue-200 animate-pulse" />
                 <span>⚡ Đẩy Dữ Liệu Cloud</span>
+              </button>
+            )}
+
+            {/* Print Patient List Button */}
+            {onOpenPrintModal && (
+              <button
+                type="button"
+                onClick={onOpenPrintModal}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-black rounded-xl bg-purple-700 hover:bg-purple-800 text-white shadow-2xs transition-all cursor-pointer active:scale-95"
+                title="In danh sách bệnh nhân nội trú theo tùy chọn (Tất cả, Theo phòng, Theo bác sĩ)"
+              >
+                <Printer className="w-3.5 h-3.5 text-purple-200" />
+                <span>🖨️ In Danh Sách</span>
               </button>
             )}
 

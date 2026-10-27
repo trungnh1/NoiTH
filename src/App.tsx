@@ -18,6 +18,7 @@ import { DetailedPatientListView } from './components/DetailedPatientListView';
 import { SimplifiedNewPatientModal } from './components/SimplifiedNewPatientModal';
 import { QuickEvolutionModal } from './components/QuickEvolutionModal';
 import { CloudSyncModal } from './components/CloudSyncModal';
+import { PatientPrintModal } from './components/PatientPrintModal';
 
 // Preserve existing feature components (kept in codebase, not deleted)
 import { WardRoomMap } from './components/WardRoomMap';
@@ -73,6 +74,7 @@ export default function App() {
   const [evolutionPatient, setEvolutionPatient] = useState<Patient | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isCloudSyncModalOpen, setIsCloudSyncModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Legacy modal states preserved in codebase
   const [transferringPatient, setTransferringPatient] = useState<Patient | null>(null);
@@ -467,6 +469,7 @@ export default function App() {
         onOpenHandover={() => setIsHandoverModalOpen(true)}
         onOpenWatchlist={() => setIsWatchlistModalOpen(true)}
         onOpenCloudSync={() => setIsCloudSyncModalOpen(true)}
+        onOpenPrintModal={() => setIsPrintModalOpen(true)}
         onManualPushToCloud={handleManualPushCloud}
         onOpenDutySchedule={() => setIsDutyModalOpen(true)}
         onResetData={handleResetData}
@@ -541,6 +544,7 @@ export default function App() {
           onTransferPatient={(patient) => setTransferringPatient(patient)}
           onDischargePatient={handleDischargePatient}
           onDeletePatient={handleDeletePatient}
+          onOpenPrintModal={() => setIsPrintModalOpen(true)}
         />
       </main>
 
@@ -699,6 +703,16 @@ export default function App() {
             setPatients(loaded);
             savePatients(loaded);
           }}
+        />
+      )}
+
+      {/* 5. Printable Patient List Modal */}
+      {isPrintModalOpen && (
+        <PatientPrintModal
+          patients={patients}
+          doctors={doctors}
+          rooms={rooms}
+          onClose={() => setIsPrintModalOpen(false)}
         />
       )}
 

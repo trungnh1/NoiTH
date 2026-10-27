@@ -21,19 +21,13 @@ import firebaseAppletConfig from '../../firebase-applet-config.json';
 // Target Firebase Project configuration
 // Supports manual user config in localStorage, Vercel env vars, or applet config
 export function getActiveFirebaseConfig() {
-  const localProject = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_FIREBASE_PROJECT_ID') : null;
-  const localDb = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_FIREBASE_DATABASE_ID') : null;
-  const localApiKey = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_FIREBASE_API_KEY') : null;
-  const localAppId = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_FIREBASE_APP_ID') : null;
-  const localAuthDomain = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_FIREBASE_AUTH_DOMAIN') : null;
-
   const appletConfig = (firebaseAppletConfig || {}) as Record<string, string>;
 
-  const projectId = localProject || import.meta.env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId || "crucial-kayak-481415-h1";
-  const apiKey = localApiKey || import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey || "AIzaSyDMS-VQIRC9BL0aIjJPtqHfQFRO4sfSQ1E";
-  const appId = localAppId || import.meta.env.VITE_FIREBASE_APP_ID || appletConfig.appId || "1:936936305554:web:7d0283e9fbbaf37566c74b";
-  const authDomain = localAuthDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain || `${projectId}.firebaseapp.com`;
-  const databaseId = localDb || import.meta.env.VITE_FIREBASE_DATABASE_ID || appletConfig.firestoreDatabaseId || "(default)";
+  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId || "crucial-kayak-481415-h1";
+  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey || "AIzaSyDMS-VQIRC9BL0aIjJPtqHfQFRO4sfSQ1E";
+  const appId = import.meta.env.VITE_FIREBASE_APP_ID || appletConfig.appId || "1:936936305554:web:7d0283e9fbbaf37566c74b";
+  const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain || `${projectId}.firebaseapp.com`;
+  const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || appletConfig.firestoreDatabaseId || "(default)";
 
   return {
     projectId,

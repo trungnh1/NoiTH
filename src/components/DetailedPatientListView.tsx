@@ -20,7 +20,8 @@ import {
   Users,
   ArrowRightLeft,
   LogOut,
-  Trash2
+  Trash2,
+  Printer
 } from 'lucide-react';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
@@ -51,6 +52,7 @@ interface DetailedPatientListViewProps {
   onTransferPatient?: (patient: Patient) => void;
   onDischargePatient?: (patient: Patient) => void;
   onDeletePatient?: (patient: Patient) => void;
+  onOpenPrintModal?: () => void;
 }
 
 /**
@@ -158,6 +160,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   onTransferPatient,
   onDischargePatient,
   onDeletePatient,
+  onOpenPrintModal,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | SeverityLevel | 'DISCHARGE_TODAY' | 'DISCHARGE_TOMORROW'>('ALL');
@@ -434,8 +437,20 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
             </div>
           </div>
 
-          {/* Right: + Nhập mới BN & Toggle xem tất cả phòng */}
+          {/* Right: In Danh Sách, + Nhập mới BN & Toggle xem tất cả phòng */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {onOpenPrintModal && (
+              <button
+                type="button"
+                onClick={onOpenPrintModal}
+                className="px-3.5 py-2 rounded-xl text-xs font-black bg-purple-700 hover:bg-purple-800 text-white shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                title="In danh sách bệnh nhân nội trú theo tùy chọn (Tất cả, Theo phòng, Theo bác sĩ)"
+              >
+                <Printer className="w-4 h-4 text-purple-200" />
+                <span>🖨️ In Danh Sách</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setShowAllGroup1Rooms(!showAllGroup1Rooms)}
