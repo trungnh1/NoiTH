@@ -381,100 +381,110 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         </div>
       )}
 
-      {/* Top Action Bar & Quick Filters */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3 sm:p-4">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      {/* Top Action Bar & Quick Filters (Ultra-Compact) */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs px-3 py-2 space-y-2">
+        
+        {/* Row 1: Title, Nhóm 1 Scope & Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           
-          {/* Left: Title + Nhóm 1 Scope Badge + Dynamic ABC Doctor List */}
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-                Danh Sách Bệnh Nhân - Buồng Phòng Nhóm 1
-              </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-600 text-white font-extrabold shadow-2xs">
-                Nhóm 1 (703-731 & 733)
-              </span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-900 text-white font-extrabold">
-                {group1ActivePatients.length} bệnh nhân
-              </span>
-            </div>
-
-            {/* Doctors treating patients sorted ABC: Tên BS (số BN) */}
-            <div className="flex flex-wrap items-center gap-1.5 mt-2">
-              {activeDoctorsWithCounts.length === 0 ? (
-                <span className="text-xs text-slate-400 italic">Hiện chưa có bệnh nhân nào được phân công bác sĩ.</span>
-              ) : (
-                activeDoctorsWithCounts.map((docItem) => {
-                  const isSelected = doctorFilter === docItem.id;
-                  // Display short name: BS. [Tên]
-                  const parts = docItem.name.trim().split(/\s+/);
-                  const shortName = parts.length > 2 && /bình chi/i.test(docItem.name) 
-                    ? 'Bình Chi' 
-                    : parts[parts.length - 1];
-
-                  return (
-                    <button
-                      key={docItem.id}
-                      type="button"
-                      onClick={() => setDoctorFilter(isSelected ? 'ALL' : docItem.id)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                        isSelected 
-                          ? 'bg-rose-600 text-white border-rose-600 shadow-2xs' 
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200'
-                      }`}
-                      title={`Nhấn để ${isSelected ? 'bỏ lọc' : 'lọc'} bệnh nhân do BS. ${docItem.name} điều trị`}
-                    >
-                      <span>BS. {shortName}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                        isSelected ? 'bg-white text-rose-700' : 'bg-slate-900 text-white'
-                      }`}>
-                        {docItem.count}
-                      </span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-sm font-black text-slate-900 tracking-tight">
+              Danh Sách Bệnh Nhân - Buồng Phòng Nhóm 1
+            </h2>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-600 text-white font-extrabold">
+              Nhóm 1 (703-731 & 733) • {group1ActivePatients.length} BN
+            </span>
           </div>
 
-          {/* Right: In Danh Sách, + Nhập mới BN & Toggle xem tất cả phòng */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
             {onOpenPrintModal && (
               <button
                 type="button"
                 onClick={onOpenPrintModal}
-                className="px-3.5 py-2 rounded-xl text-xs font-black bg-purple-700 hover:bg-purple-800 text-white shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-                title="In danh sách bệnh nhân nội trú theo tùy chọn (Tất cả, Theo phòng, Theo bác sĩ)"
+                className="px-2.5 py-1 rounded-lg text-xs font-black bg-purple-700 hover:bg-purple-800 text-white shadow-2xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                title="In danh sách bệnh nhân"
               >
-                <Printer className="w-4 h-4 text-purple-200" />
-                <span>🖨️ In Danh Sách</span>
+                <Printer className="w-3 h-3 text-purple-200" />
+                <span>In DS</span>
               </button>
             )}
 
             <button
               type="button"
               onClick={() => setShowAllGroup1Rooms(!showAllGroup1Rooms)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
                 showAllGroup1Rooms 
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs' 
+                  ? 'bg-slate-900 text-white border-slate-900' 
                   : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
               }`}
-              title="Xem tất cả 15 buồng phòng của Nhóm 1 (bao gồm cả phòng trống) để gán bác sĩ"
             >
-              <Users className="w-3.5 h-3.5" />
-              <span>{showAllGroup1Rooms ? 'Ẩn phòng trống' : 'Hiện cả phòng trống (15 phòng)'}</span>
+              <Users className="w-3 h-3" />
+              <span>{showAllGroup1Rooms ? 'Ẩn phòng trống' : 'Phòng trống (15)'}</span>
             </button>
 
             <button
               type="button"
               onClick={onOpenNewPatient}
-              className="px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-black text-xs sm:text-sm rounded-xl shadow-xs shadow-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+              className="px-3 py-1 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-black text-xs rounded-lg shadow-xs transition-all flex items-center gap-1 cursor-pointer active:scale-98"
             >
-              <UserPlus className="w-4 h-4" />
-              <span>+ Nhập Mới Bệnh Nhân</span>
+              <UserPlus className="w-3 h-3" />
+              <span>+ Nhập BN</span>
             </button>
           </div>
+        </div>
 
+        {/* Row 2: Doctor Chips (Compact) & Search */}
+        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+          
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-[10px] font-black text-slate-400 uppercase">BS:</span>
+            {activeDoctorsWithCounts.map((docItem) => {
+              const isSelected = doctorFilter === docItem.id;
+              const parts = docItem.name.trim().split(/\s+/);
+              const shortName = parts.length > 2 && /bình chi/i.test(docItem.name) 
+                ? 'Bình Chi' 
+                : parts[parts.length - 1];
+
+              return (
+                <button
+                  key={docItem.id}
+                  type="button"
+                  onClick={() => setDoctorFilter(isSelected ? 'ALL' : docItem.id)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer border ${
+                    isSelected 
+                      ? 'bg-rose-600 text-white border-rose-600' 
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                  }`}
+                >
+                  <span>{shortName}</span>
+                  <span className={`px-1 py-0.2 rounded-full text-[9px] font-black ${
+                    isSelected ? 'bg-white text-rose-700' : 'bg-slate-900 text-white'
+                  }`}>
+                    {docItem.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="relative flex-1 min-w-[160px] max-w-xs">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm tên, phòng, chẩn đoán..."
+              className="w-full pl-8 pr-7 py-1 bg-slate-50 hover:bg-slate-100/60 focus:bg-white text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-rose-500 font-medium transition-all"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Filter Bar */}

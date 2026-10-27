@@ -345,20 +345,20 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
       </div>
 
       {/* TABLE VIEW */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-slate-100/90 text-slate-700 text-xs font-black uppercase tracking-wider border-b border-slate-200">
+          <thead className="bg-slate-900 text-white text-xs font-black uppercase tracking-wider sticky top-0 z-20 shadow-md">
             <tr>
               <th className="py-3 px-4">Buồng / Giường</th>
               <th className="py-3 px-4">Bệnh nhân</th>
-              <th className="py-3 px-4">Chẩn đoán ban đầu</th>
-              <th className="py-3 px-4">Tình trạng & Nhãn đặc biệt</th>
-              <th className="py-3 px-4">Bác sĩ điều trị phụ trách</th>
+              <th className="py-3 px-4">Chẩn đoán</th>
+              <th className="py-3 px-4">Tình trạng & Nhãn</th>
+              <th className="py-3 px-4">Bác sĩ điều trị</th>
               <th className="py-3 px-4">Ghi chú & Sinh hiệu</th>
               <th className="py-3 px-4 text-right">Thao tác</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 bg-white">
             {filteredPatients.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-14 text-center text-slate-400">

@@ -33,6 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCloudSync,
   onOpenPrintModal,
   onManualPushToCloud,
+  onResetData, // Add this
   isAutoSyncing = false,
   lastAutoSyncTime,
 }) => {
@@ -122,7 +123,14 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Action Area (Cleaned as requested) */}
           <div className="flex items-center gap-2">
-            {/* 3 buttons removed as requested */}
+            <button
+              type="button"
+              onClick={onResetData}
+              className="px-2 py-1 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-700 text-[10px] font-black rounded-lg transition-all"
+              title="CẢNH BÁO: Xóa sạch dữ liệu bệnh nhân"
+            >
+              Xóa sạch dữ liệu
+            </button>
           </div>
 
         </div>

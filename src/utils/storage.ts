@@ -16,11 +16,16 @@ export function shortenPatientName(fullName: string): string {
 export function loadPatients(): Patient[] {
   try {
     const saved = localStorage.getItem(PATIENTS_KEY);
-    let list: Patient[] = INITIAL_PATIENTS;
+    // If nothing saved, default to empty list instead of INITIAL_PATIENTS to allow clearing
+    let list: Patient[] = saved ? [] : INITIAL_PATIENTS;
     if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length >= 10) {
-        list = parsed;
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          list = parsed;
+        }
+      } catch (e) {
+        console.error("Error parsing saved patients", e);
       }
     }
 
@@ -139,8 +144,13 @@ export function resetAllData(): { patients: Patient[]; doctors: Doctor[]; rooms:
   localStorage.removeItem('hvg_internal_med_doctors_v4');
   localStorage.removeItem(ROOMS_KEY);
   return {
-    patients: INITIAL_PATIENTS,
+    patients: [], // Changed to empty to clear all
     doctors: INITIAL_DOCTORS,
     rooms: INITIAL_ROOMS,
   };
 }
+
+export function clearAllPatients(): void {
+  localStorage.removeItem(PATIENTS_KEY);
+}
+

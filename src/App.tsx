@@ -441,12 +441,14 @@ export default function App() {
   };
 
   // Reset demo data
-  const handleResetData = () => {
+  const handleResetData = async () => {
     const data = resetAllData();
     setPatients(data.patients);
     setDoctors(data.doctors);
     setRooms(data.rooms);
     setSelectedPatient(null);
+    // Force sync empty list to cloud
+    await syncAllPatientsToCloud([]);
   };
 
   if (!isLoaded) {
