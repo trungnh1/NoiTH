@@ -59,10 +59,21 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="text-[11px] font-black text-rose-800 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 uppercase tracking-wide">
                   BV HÙNG VƯƠNG GIA LAI
                 </span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-300">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Trực tuyến 24/7
-                </span>
+                <button
+                  type="button"
+                  onClick={onOpenCloudSync}
+                  className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                    isAutoSyncing
+                      ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 shadow-2xs'
+                  }`}
+                  title="Trạng thái đồng bộ Cloud Firestore (Bấm để quản lý)"
+                >
+                  <Cloud className={`w-3 h-3 ${isAutoSyncing ? 'text-amber-600 animate-spin' : 'text-emerald-600 animate-pulse'}`} />
+                  <span>
+                    {isAutoSyncing ? 'Đang úp dữ liệu...' : 'Cloud trực tuyến'}
+                  </span>
+                </button>
               </div>
               <h1 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
                 Khoa Nội Tổng Hợp - Tim Mạch
@@ -109,48 +120,9 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Right Action Buttons: In Danh Sách, Dynamic Sync Status Icon, & + Tiếp Nhận BN */}
+          {/* Right Action Area (Cleaned as requested) */}
           <div className="flex items-center gap-2">
-            
-            {/* Print Patient List Button */}
-            {onOpenPrintModal && (
-              <button
-                type="button"
-                onClick={onOpenPrintModal}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-black rounded-xl bg-purple-700 hover:bg-purple-800 text-white shadow-2xs transition-all cursor-pointer active:scale-95"
-                title="In danh sách bệnh nhân nội trú"
-              >
-                <Printer className="w-3.5 h-3.5 text-purple-200" />
-                <span>🖨️ In Danh Sách</span>
-              </button>
-            )}
-
-            {/* Dynamic Sync Status Button/Icon */}
-            <button
-              type="button"
-              onClick={onOpenCloudSync}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                isAutoSyncing
-                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
-                  : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 shadow-2xs'
-              }`}
-              title="Trạng thái đồng bộ Cloud Firestore (Bấm để quản lý)"
-            >
-              <Cloud className={`w-3.5 h-3.5 ${isAutoSyncing ? 'text-amber-600 animate-spin' : 'text-emerald-600 animate-pulse'}`} />
-              <span className="hidden sm:inline font-black text-[11px]">
-                {isAutoSyncing ? 'Đang đồng bộ Cloud...' : 'Cloud hoạt động 24/7'}
-              </span>
-            </button>
-
-            {/* + Tiếp Nhận BN */}
-            <button
-              type="button"
-              onClick={onOpenNewPatient}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white shadow-sm shadow-rose-200 transition-all cursor-pointer active:scale-98"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>+ Tiếp Nhận BN</span>
-            </button>
+            {/* 3 buttons removed as requested */}
           </div>
 
         </div>
