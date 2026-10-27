@@ -48,6 +48,19 @@ interface DetailedPatientListViewProps {
 }
 
 /**
+ * Formats doctor name to short name without surname and middle names (e.g. "Trần Hữu Ngọc" -> "Ngọc")
+ */
+export function formatDoctorShortName(fullName: string): string {
+  if (!fullName) return '';
+  const clean = fullName.replace(/^BS(\.|\s+)/i, '').trim();
+  if (!clean) return fullName;
+  if (/bình chi/i.test(clean)) return 'Bình Chi';
+  if (/như ý/i.test(clean)) return 'Như Ý';
+  const parts = clean.split(/\s+/);
+  return parts[parts.length - 1];
+}
+
+/**
  * Formats all diagnoses into a unified text string without splitting into main and secondary.
  */
 export function formatCombinedDiagnosis(patient: { primaryDiagnosis: string; secondaryDiagnosis?: string }): string {
@@ -543,7 +556,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 <optgroup label="Bác sĩ Nhóm 1">
                   {group1Doctors.map((d) => (
                     <option key={d.id} value={d.id}>
-                      BS. {d.name}
+                      BS. {formatDoctorShortName(d.name)}
                     </option>
                   ))}
                 </optgroup>
@@ -551,7 +564,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                   <optgroup label="Bác sĩ khác">
                     {otherDoctors.map((d) => (
                       <option key={d.id} value={d.id}>
-                        BS. {d.name}
+                        BS. {formatDoctorShortName(d.name)}
                       </option>
                     ))}
                   </optgroup>
@@ -622,7 +635,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                         <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)" className="text-slate-900 bg-white font-bold">
                           {group1Doctors.map((doc) => (
                             <option key={doc.id} value={doc.id}>
-                              BS. {doc.name}
+                              BS. {formatDoctorShortName(doc.name)}
                             </option>
                           ))}
                         </optgroup>
@@ -630,7 +643,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           <optgroup label="Bác sĩ khác" className="text-slate-900 bg-white">
                             {otherDoctors.map((doc) => (
                               <option key={doc.id} value={doc.id}>
-                                BS. {doc.name}
+                                BS. {formatDoctorShortName(doc.name)}
                               </option>
                             ))}
                           </optgroup>

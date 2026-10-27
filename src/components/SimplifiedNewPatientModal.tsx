@@ -10,6 +10,7 @@ import {
   ClinicalEvolution
 } from '../types/patient';
 import { GROUP_1_ROOM_NUMBERS, GROUP_1_DOCTOR_IDS } from '../data/mockData';
+import { formatDoctorShortName } from './DetailedPatientListView';
 import { 
   X, 
   UserPlus, 
@@ -383,7 +384,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
                       .filter((d) => GROUP_1_DOCTOR_IDS.includes(d.id) || d.id === 'DOC-NGOC' || /ngọc|trung|huyền|thiên|ánh|bình chi/i.test(d.name))
                       .map((d) => (
                         <option key={d.id} value={d.id}>
-                          BS. {d.name}
+                          BS. {formatDoctorShortName(d.name)}
                         </option>
                       ))}
                   </optgroup>
@@ -392,7 +393,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
                       .filter((d) => !GROUP_1_DOCTOR_IDS.includes(d.id) && d.id !== 'DOC-NGOC' && !/ngọc|trung|huyền|thiên|ánh|bình chi/i.test(d.name))
                       .map((d) => (
                         <option key={d.id} value={d.id}>
-                          BS. {d.name}
+                          BS. {formatDoctorShortName(d.name)}
                         </option>
                       ))}
                   </optgroup>

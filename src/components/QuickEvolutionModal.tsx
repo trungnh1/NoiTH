@@ -20,7 +20,7 @@ import {
   ChevronDown,
   History
 } from 'lucide-react';
-import { calculateTreatmentDays } from './DetailedPatientListView';
+import { calculateTreatmentDays, formatDoctorShortName } from './DetailedPatientListView';
 
 interface QuickEvolutionModalProps {
   patient: Patient;
@@ -215,7 +215,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
               >
                 {doctors.map((d) => (
                   <option key={d.id} value={d.name}>
-                    BS. {d.name}
+                    BS. {formatDoctorShortName(d.name)}
                   </option>
                 ))}
               </select>

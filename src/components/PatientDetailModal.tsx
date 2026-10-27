@@ -11,6 +11,7 @@ import {
   Medication,
   AdmissionDischargeStatus
 } from '../types/patient';
+import { formatDoctorShortName } from './DetailedPatientListView';
 import { 
   X, 
   Sparkles, 
@@ -458,7 +459,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
               >
                 {doctors.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.name}
+                    BS. {formatDoctorShortName(d.name)}
                   </option>
                 ))}
               </select>

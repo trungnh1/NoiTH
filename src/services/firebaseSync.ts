@@ -444,6 +444,29 @@ export function subscribeToDepartmentPatients(
   }
 }
 
+/**
+ * Recursively strips 'undefined' values from an object/array so Firestore setDoc does not fail.
+ */
+export function sanitizeObjectForFirestore<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return null as any;
+  }
+  if (typeof obj !== 'object') {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => sanitizeObjectForFirestore(item)) as any;
+  }
+  
+  const cleanObj: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj as Record<string, any>)) {
+    if (value !== undefined) {
+      cleanObj[key] = sanitizeObjectForFirestore(value);
+    }
+  }
+  return cleanObj as T;
+}
+
 // Sync single patient to Cloud Firestore collection 'department_patients'
 export async function syncPatientToCloud(patient: Patient): Promise<{ success: boolean; error?: string }> {
   if (!dbInstance) {
@@ -454,11 +477,12 @@ export async function syncPatientToCloud(patient: Patient): Promise<{ success: b
   }
   try {
     const docRef = doc(dbInstance, 'department_patients', patient.id);
-    await setDoc(docRef, {
+    const payload = sanitizeObjectForFirestore({
       ...patient,
       cloudSyncedAt: serverTimestamp(),
       updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    });
+    await setDoc(docRef, payload, { merge: true });
     return { success: true };
   } catch (e: any) {
     console.warn('Lỗi lưu bệnh nhân lên Cloud Firestore:', e);
@@ -478,11 +502,12 @@ export async function syncAllPatientsToCloud(patients: Patient[]): Promise<{ suc
     let synced = 0;
     for (const p of patients) {
       const docRef = doc(dbInstance, 'department_patients', p.id);
-      await setDoc(docRef, {
+      const payload = sanitizeObjectForFirestore({
         ...p,
         cloudSyncedAt: serverTimestamp(),
         updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      });
+      await setDoc(docRef, payload, { merge: true });
       synced++;
     }
     return { success: true, count: synced };
