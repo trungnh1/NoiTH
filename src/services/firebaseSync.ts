@@ -467,118 +467,166 @@ export function sanitizeObjectForFirestore<T>(obj: T): T {
   return cleanObj as T;
 }
 
-// Sync single patient to Cloud Firestore collection 'department_patients'
-export async function syncPatientToCloud(patient: Patient): Promise<{ success: boolean; error?: string }> {
-  if (!dbInstance) {
-    dbInstance = initializeFirebaseFirestore();
-  }
-  if (!dbInstance) {
-    return { success: false, error: 'Firestore chưa được khởi tạo' };
+/**
+ * Executes a Firestore operation with automatic fallback to standard (default) database
+ * if a custom named database ID encounters connection or permission issues.
+ */
+async function executeFirestoreOp<T>(op: (db: Firestore) => Promise<T>): Promise<T> {
+  let db = initializeFirebaseFirestore();
+  if (!db) {
+    throw new Error('Không thể khởi tạo Firebase Firestore SDK.');
   }
   try {
-    const docRef = doc(dbInstance, 'department_patients', patient.id);
-    const payload = sanitizeObjectForFirestore({
-      ...patient,
-      cloudSyncedAt: serverTimestamp(),
-      updatedAt: new Date().toISOString(),
-    });
-    await setDoc(docRef, payload, { merge: true });
-    return { success: true };
-  } catch (e: any) {
-    console.warn('Lỗi lưu bệnh nhân lên Cloud Firestore:', e);
-    return { success: false, error: e.message || 'Lỗi ghi Firestore' };
+    return await op(db);
+  } catch (err: any) {
+    const config = getActiveFirebaseConfig();
+    if (config.databaseId && config.databaseId !== '(default)' && appInstance) {
+      console.warn(`[Firestore Sync] Thử lại thao tác trên (default) DB do lỗi với database [${config.databaseId}]:`, err);
+      try {
+        const defaultDb = getFirestore(appInstance);
+        return await op(defaultDb);
+      } catch (fallbackErr: any) {
+        throw fallbackErr;
+      }
+    }
+    throw err;
   }
 }
 
-// Sync all patients to Cloud Firestore collection 'department_patients'
-export async function syncAllPatientsToCloud(patients: Patient[]): Promise<{ success: boolean; count: number; error?: string }> {
-  if (!dbInstance) {
-    dbInstance = initializeFirebaseFirestore();
-  }
-  if (!dbInstance || !patients || patients.length === 0) {
-    return { success: false, count: 0, error: 'Không có dữ liệu hoặc Firestore chưa kết nối' };
-  }
+// Sync single patient to Cloud Firestore collection 'department_patients'
+export async function syncPatientToCloud(patient: Patient): Promise<{ success: boolean; error?: string; details?: string }> {
+  const config = getActiveFirebaseConfig();
   try {
-    let synced = 0;
-    for (const p of patients) {
-      const docRef = doc(dbInstance, 'department_patients', p.id);
+    await executeFirestoreOp(async (db) => {
+      const docRef = doc(db, 'department_patients', patient.id);
       const payload = sanitizeObjectForFirestore({
-        ...p,
+        ...patient,
         cloudSyncedAt: serverTimestamp(),
         updatedAt: new Date().toISOString(),
       });
       await setDoc(docRef, payload, { merge: true });
-      synced++;
-    }
+    });
+    return { success: true };
+  } catch (e: any) {
+    console.warn('Lỗi lưu bệnh nhân lên Cloud Firestore:', e);
+    const code = e?.code ? `[Mã lỗi: ${e.code}] ` : '';
+    const msg = e?.message || String(e);
+    return { 
+      success: false, 
+      error: `${code}${msg}`,
+      details: `Project: ${config.projectId} | Database: ${config.databaseId}`
+    };
+  }
+}
+
+// Sync all patients to Cloud Firestore collection 'department_patients'
+export async function syncAllPatientsToCloud(patients: Patient[]): Promise<{ success: boolean; count: number; error?: string; details?: string }> {
+  const config = getActiveFirebaseConfig();
+  if (!patients || patients.length === 0) {
+    return { success: false, count: 0, error: 'Danh sách bệnh nhân rỗng, không có dữ liệu để đẩy lên Cloud' };
+  }
+  try {
+    let synced = 0;
+    await executeFirestoreOp(async (db) => {
+      for (const p of patients) {
+        const docRef = doc(db, 'department_patients', p.id);
+        const payload = sanitizeObjectForFirestore({
+          ...p,
+          cloudSyncedAt: serverTimestamp(),
+          updatedAt: new Date().toISOString(),
+        });
+        await setDoc(docRef, payload, { merge: true });
+        synced++;
+      }
+    });
     return { success: true, count: synced };
   } catch (e: any) {
     console.warn('Lỗi lưu danh sách bệnh nhân lên Cloud Firestore:', e);
-    return { success: false, count: 0, error: e.message || 'Lỗi ghi Firestore' };
+    const code = e?.code ? `[Mã lỗi: ${e.code}] ` : '';
+    const msg = e?.message || String(e);
+    return { 
+      success: false, 
+      count: 0, 
+      error: `${code}${msg}`,
+      details: `Project: ${config.projectId} | Database: ${config.databaseId}`
+    };
   }
 }
 
-// Fetch all patients stored in Cloud Firestore project iron-foundation-kbcxw
-export async function fetchPatientsFromCloud(): Promise<{ success: boolean; patients?: Patient[]; error?: string }> {
-  if (!dbInstance) {
-    dbInstance = initializeFirebaseFirestore();
-  }
-  if (!dbInstance) {
-    return { success: false, error: 'Firestore chưa được khởi tạo' };
-  }
+// Fetch all patients stored in Cloud Firestore
+export async function fetchPatientsFromCloud(): Promise<{ success: boolean; patients?: Patient[]; error?: string; details?: string }> {
+  const config = getActiveFirebaseConfig();
   try {
-    const colRef = collection(dbInstance, 'department_patients');
-    const snapshot = await getDocs(colRef);
-    if (snapshot.empty) {
-      // Also check clinical_records
-      const emrCol = collection(dbInstance, 'clinical_records');
-      const emrSnap = await getDocs(emrCol);
-      if (emrSnap.empty) {
-        return { success: true, patients: [] };
+    const fetchedPatients = await executeFirestoreOp(async (db) => {
+      const colRef = collection(db, 'department_patients');
+      const snapshot = await getDocs(colRef);
+      if (snapshot.empty) {
+        const emrCol = collection(db, 'clinical_records');
+        const emrSnap = await getDocs(emrCol);
+        if (emrSnap.empty) {
+          return [];
+        }
+        const fetched: Patient[] = [];
+        emrSnap.forEach((d) => {
+          fetched.push(mapFirestoreRecordToPatient(d.id, d.data()));
+        });
+        return fetched;
       }
+
       const fetched: Patient[] = [];
-      emrSnap.forEach((d) => {
+      snapshot.forEach((d) => {
         fetched.push(mapFirestoreRecordToPatient(d.id, d.data()));
       });
-      return { success: true, patients: fetched };
-    }
-
-    const fetched: Patient[] = [];
-    snapshot.forEach((d) => {
-      fetched.push(mapFirestoreRecordToPatient(d.id, d.data()));
+      return fetched;
     });
-    return { success: true, patients: fetched };
+
+    return { success: true, patients: fetchedPatients };
   } catch (e: any) {
     console.error('Lỗi tải dữ liệu bệnh nhân từ Cloud:', e);
-    return { success: false, error: e.message || 'Không thể lấy dữ liệu từ Cloud Firestore' };
+    const code = e?.code ? `[Mã lỗi: ${e.code}] ` : '';
+    const msg = e?.message || String(e);
+    return { 
+      success: false, 
+      error: `${code}${msg}`,
+      details: `Project: ${config.projectId} | Database: ${config.databaseId}`
+    };
   }
 }
 
-// Test writing data online to Firestore
-export async function testCloudWrite(): Promise<{ success: boolean; id?: string; error?: string }> {
-  if (!dbInstance) {
-    dbInstance = initializeFirebaseFirestore();
-  }
-  if (!dbInstance) {
-    return { success: false, error: 'Firestore chưa được khởi tạo' };
-  }
+// Test writing data online to Firestore with full diagnostic details
+export async function testCloudWrite(): Promise<{ success: boolean; id?: string; error?: string; details?: string }> {
+  const config = getActiveFirebaseConfig();
   try {
-    const config = getActiveFirebaseConfig();
-    const docRef = await addDoc(collection(dbInstance, 'clinical_records'), {
-      deptCode: 'KHOA_CAP_CUU',
-      patientName: 'BN Kiểm Tra Kết Nối Cloud (Gia Lai)',
-      age: 58,
-      gender: 'Nam',
-      diagnosis: `Kết nối thành công tới Firebase Project [${config.projectId}]`,
-      roomNumber: '733',
-      bedNumber: 'Giường 01',
-      severity: 'STABLE',
-      createdAt: serverTimestamp(),
-      testCheck: true,
-      timestamp: new Date().toISOString()
+    const docId = await executeFirestoreOp(async (db) => {
+      const docRef = await addDoc(collection(db, 'clinical_records'), {
+        deptCode: 'KHOA_CAP_CUU',
+        patientName: 'BN Kiểm Tra Kết Nối Cloud (Gia Lai)',
+        age: 58,
+        gender: 'Nam',
+        diagnosis: `Thử nghiệm ghi thành công vào Firestore [Project: ${config.projectId}]`,
+        roomNumber: '733',
+        bedNumber: 'Giường 01',
+        severity: 'STABLE',
+        createdAt: serverTimestamp(),
+        testCheck: true,
+        timestamp: new Date().toISOString()
+      });
+      return docRef.id;
     });
-    return { success: true, id: docRef.id };
+
+    return { 
+      success: true, 
+      id: docId,
+      details: `Đã kết nối & ghi probe thành công [ID: ${docId}] vào Project: "${config.projectId}", DB: "${config.databaseId}"!`
+    };
   } catch (err: any) {
     console.error('Lỗi test ghi dữ liệu online:', err);
-    return { success: false, error: err.message || 'Không thể ghi dữ liệu lên Cloud' };
+    const code = err?.code ? `[Mã lỗi: ${err.code}] ` : '';
+    const msg = err?.message || String(err);
+    return { 
+      success: false, 
+      error: `${code}${msg}`,
+      details: `Thông số thử nghiệm: Project [${config.projectId}], Database [${config.databaseId}], AuthDomain [${config.authDomain}].`
+    };
   }
 }

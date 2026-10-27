@@ -158,15 +158,35 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
   // Group 1 doctors (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)
   const group1Doctors = useMemo(() => {
-    return doctors.filter((d) => 
+    const raw = doctors.filter((d) => 
       GROUP_1_DOCTOR_IDS.includes(d.id) || 
       d.id === 'DOC-NGOC' ||
       /ngọc|trung|huyền|thiên|ánh|bình chi/i.test(d.name)
     );
+    const seenNames = new Set<string>();
+    const uniqueList: Doctor[] = [];
+    for (const d of raw) {
+      const norm = d.name.trim().toLowerCase();
+      if (!seenNames.has(norm)) {
+        seenNames.add(norm);
+        uniqueList.push(d);
+      }
+    }
+    return uniqueList;
   }, [doctors]);
 
   const otherDoctors = useMemo(() => {
-    return doctors.filter((d) => !group1Doctors.some((g) => g.id === d.id));
+    const raw = doctors.filter((d) => !group1Doctors.some((g) => g.id === d.id || g.name.trim().toLowerCase() === d.name.trim().toLowerCase()));
+    const seenNames = new Set<string>();
+    const uniqueList: Doctor[] = [];
+    for (const d of raw) {
+      const norm = d.name.trim().toLowerCase();
+      if (!seenNames.has(norm)) {
+        seenNames.add(norm);
+        uniqueList.push(d);
+      }
+    }
+    return uniqueList;
   }, [doctors, group1Doctors]);
 
   const doctorMap = useMemo(() => {

@@ -96,18 +96,18 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
 
   const handleUploadAll = async () => {
     setIsUploading(true);
-    setActionMessage({ type: 'info', text: 'Đang đẩy toàn bộ danh sách bệnh nhân lên Firebase Cloud...' });
+    setActionMessage({ type: 'info', text: `Đang kết nối & đẩy toàn bộ ${patients.length} bệnh nhân lên Cloud Firestore...` });
     const res = await syncAllPatientsToCloud(patients);
     setIsUploading(false);
     if (res.success) {
       setActionMessage({
         type: 'success',
-        text: `Đã lưu thành công ${res.count} hồ sơ bệnh nhân lên Cloud Firestore (${currentConfig.projectId})! Dữ liệu đã an toàn trên đám mây.`,
+        text: `✅ ĐÃ LƯU THÀNH CÔNG ${res.count} BỆNH NHÂN LÊN CLOUD FIRESTORE!\nDữ liệu bệnh nhân đã an toàn trên đám mây (Project: ${currentConfig.projectId}).`,
       });
     } else {
       setActionMessage({
         type: 'error',
-        text: `Lỗi đồng bộ lên Cloud: ${res.error}. Vui lòng kiểm tra Firestore Security Rules (Tab Hướng Dẫn).`,
+        text: `❌ LỖI ĐỒNG BỘ CLOUD:\n${res.error}\n${res.details ? `\nChi tiết kết nối: ${res.details}` : ''}`,
       });
     }
   };
@@ -122,36 +122,36 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
         onPatientsLoadedFromCloud(res.patients);
         setActionMessage({
           type: 'success',
-          text: `Đã tải về thành công ${res.patients.length} bệnh nhân từ Cloud Firestore (${currentConfig.projectId})!`,
+          text: `✅ Đã tải về thành công ${res.patients.length} bệnh nhân từ Cloud Firestore (${currentConfig.projectId})!`,
         });
       } else {
         setActionMessage({
           type: 'info',
-          text: `Cloud Firestore (${currentConfig.projectId}) chưa có hồ sơ nào. Bạn có thể nhấn 'Lưu Toàn Bộ Lên Cloud' để khởi tạo dữ liệu.`,
+          text: `Cloud Firestore (${currentConfig.projectId}) chưa có hồ sơ nào. Bạn có thể nhấn 'Lưu Tất Cả Lên Cloud' để khởi tạo dữ liệu.`,
         });
       }
     } else {
       setActionMessage({
         type: 'error',
-        text: `Lỗi tải dữ liệu: ${res.error}. Kiểm tra lại quyền đọc trong Firestore Rules.`,
+        text: `❌ LỖI TẢI DỮ LIỆU:\n${res.error}\n${res.details ? `\nChi tiết: ${res.details}` : ''}`,
       });
     }
   };
 
   const handleTestConnection = async () => {
     setIsTesting(true);
-    setActionMessage({ type: 'info', text: 'Đang gửi bản ghi thử nghiệm lên Cloud Firestore...' });
+    setActionMessage({ type: 'info', text: 'Đang gửi bản ghi probe thử nghiệm lên Cloud Firestore...' });
     const res = await testCloudWrite();
     setIsTesting(false);
     if (res.success) {
       setActionMessage({
         type: 'success',
-        text: `Kết nối thành công! Đã ghi thử nghiệm bản ghi ID: ${res.id} lên Firestore [${currentConfig.projectId}]. Quyền đọc/ghi hoạt động hoàn hảo!`,
+        text: `✅ KẾT NỐI & GHI THỦ THÀNH CÔNG!\n${res.details || ''}`,
       });
     } else {
       setActionMessage({
         type: 'error',
-        text: `Kiểm tra thất bại: ${res.error}. Hãy xem tab "Hướng Dẫn Cài Đặt" để mở Rules hoặc kiểm tra API Key.`,
+        text: `❌ KIỂM TRA KẾT NỐI THẤT BẠI:\n${res.error}\n${res.details ? `\nChi tiết kỹ thuật: ${res.details}` : ''}`,
       });
     }
   };
@@ -285,7 +285,7 @@ VITE_FIREBASE_DATABASE_ID=${customDbId || "(default)"}`;
               ) : (
                 <RefreshCw className="w-4 h-4 text-blue-600 shrink-0 mt-0.5 animate-spin" />
               )}
-              <div className="flex-1 leading-relaxed">
+              <div className="flex-1 leading-relaxed whitespace-pre-line font-medium text-xs">
                 {actionMessage.text}
               </div>
             </div>

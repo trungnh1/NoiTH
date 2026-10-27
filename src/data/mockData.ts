@@ -315,14 +315,6 @@ export const INITIAL_DOCTORS: Doctor[] = [
     shiftStatus: 'Trực chính',
   },
   {
-    id: 'DOC-NGOC',
-    name: 'Trần Hữu Ngọc',
-    title: '',
-    role: '',
-    avatarColor: 'bg-rose-700',
-    shiftStatus: 'Trực chính',
-  },
-  {
     id: '00161',
     name: 'Thái Thị Thùy Linh',
     title: '',

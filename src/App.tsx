@@ -210,20 +210,21 @@ export default function App() {
 
   const handleManualPushCloud = async () => {
     setIsAutoSyncing(true);
-    setManualPushMessage('Đang đẩy toàn bộ danh sách bệnh nhân lên Cloud Firestore...');
+    setManualPushMessage('Đang kết nối & đẩy toàn bộ danh sách bệnh nhân lên Cloud Firestore...');
     try {
       const res = await syncAllPatientsToCloud(patients);
       if (res.success) {
         setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
-        setManualPushMessage(`Đã đẩy thành công ${res.count} bệnh nhân lên Cloud Firestore (${new Date().toLocaleTimeString('vi-VN')})!`);
-        setTimeout(() => setManualPushMessage(null), 4500);
-      } else {
-        setManualPushMessage(`Lỗi đẩy dữ liệu Cloud: ${res.error}`);
+        setManualPushMessage(`✅ Đã đẩy thành công ${res.count} bệnh nhân lên Cloud Firestore (${new Date().toLocaleTimeString('vi-VN')})!`);
         setTimeout(() => setManualPushMessage(null), 5000);
+      } else {
+        const detailStr = res.details ? ` [${res.details}]` : '';
+        setManualPushMessage(`❌ Lỗi đẩy Cloud: ${res.error}${detailStr}`);
+        setTimeout(() => setManualPushMessage(null), 12000);
       }
-    } catch (err) {
-      setManualPushMessage('Lỗi kết nối khi đẩy dữ liệu lên Cloud Firestore.');
-      setTimeout(() => setManualPushMessage(null), 5000);
+    } catch (err: any) {
+      setManualPushMessage(`❌ Lỗi kết nối Cloud: ${err.message || String(err)}`);
+      setTimeout(() => setManualPushMessage(null), 12000);
     } finally {
       setIsAutoSyncing(false);
     }
