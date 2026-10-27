@@ -7,9 +7,11 @@ import {
   UserPlus, 
   Cloud,
   CheckCircle2,
-  Printer
+  Printer,
+  AlertCircle
 } from 'lucide-react';
 import { Patient } from '../types/patient';
+import { SyncStatus } from '../services/firebaseSync';
 
 interface HeaderProps {
   patients: Patient[];
@@ -18,24 +20,20 @@ interface HeaderProps {
   onOpenNewPatient: () => void;
   onOpenHandover?: () => void;
   onOpenWatchlist?: () => void;
-  onOpenCloudSync: () => void;
   onOpenPrintModal?: () => void;
   onManualPushToCloud?: () => void;
   onResetData?: () => void;
   onOpenDutySchedule?: () => void;
-  isAutoSyncing?: boolean;
-  lastAutoSyncTime?: string | null;
+  syncStatus: SyncStatus;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   patients,
   onOpenNewPatient,
-  onOpenCloudSync,
   onOpenPrintModal,
   onManualPushToCloud,
-  onResetData, // Add this
-  isAutoSyncing = false,
-  lastAutoSyncTime,
+  onResetData,
+  syncStatus,
 }) => {
   const activePatients = patients.filter((p) => p.status === 'ACTIVE');
   const criticalCount = activePatients.filter((p) => p.severity === 'CRITICAL').length;
@@ -60,21 +58,24 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="text-[11px] font-black text-rose-800 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 uppercase tracking-wide">
                   BV HÙNG VƯƠNG GIA LAI
                 </span>
-                <button
-                  type="button"
-                  onClick={onOpenCloudSync}
-                  className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
-                    isAutoSyncing
-                      ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
-                      : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 shadow-2xs'
-                  }`}
-                  title="Trạng thái đồng bộ Cloud Firestore (Bấm để quản lý)"
-                >
-                  <Cloud className={`w-3 h-3 ${isAutoSyncing ? 'text-amber-600 animate-spin' : 'text-emerald-600 animate-pulse'}`} />
+                <div className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                  syncStatus.errorMessage 
+                    ? 'bg-rose-50 text-rose-800 border-rose-300'
+                    : syncStatus.connected 
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-slate-50 text-slate-600 border-slate-200'
+                }`}>
+                  <Cloud className={`w-3 h-3 ${syncStatus.errorMessage ? 'text-rose-600' : syncStatus.connected ? 'text-emerald-600' : 'text-slate-400'}`} />
                   <span>
-                    {isAutoSyncing ? 'Đang úp dữ liệu...' : 'Cloud trực tuyến'}
+                    {syncStatus.errorMessage ? 'Lỗi Cloud' : syncStatus.connected ? 'Cloud trực tuyến' : 'Đang kết nối Cloud...'}
                   </span>
-                </button>
+                </div>
+                {syncStatus.errorMessage && (
+                  <div className="text-[10px] text-rose-700 font-medium bg-rose-100 px-2 py-0.5 rounded flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {syncStatus.errorMessage}
+                  </div>
+                )}
               </div>
               <h1 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
                 Khoa Nội Tổng Hợp - Tim Mạch
@@ -121,7 +122,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Right Action Area (Cleaned as requested) */}
+          {/* Right Action Area */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -138,3 +139,4 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+

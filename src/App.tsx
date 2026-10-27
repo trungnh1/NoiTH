@@ -17,7 +17,6 @@ import { Header } from './components/Header';
 import { DetailedPatientListView } from './components/DetailedPatientListView';
 import { SimplifiedNewPatientModal } from './components/SimplifiedNewPatientModal';
 import { QuickEvolutionModal } from './components/QuickEvolutionModal';
-import { CloudSyncModal } from './components/CloudSyncModal';
 import { PatientPrintModal } from './components/PatientPrintModal';
 
 // Preserve existing feature components (kept in codebase, not deleted)
@@ -73,7 +72,6 @@ export default function App() {
   const [isSimplifiedNewPatientOpen, setIsSimplifiedNewPatientOpen] = useState(false);
   const [evolutionPatient, setEvolutionPatient] = useState<Patient | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [isCloudSyncModalOpen, setIsCloudSyncModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Legacy modal states preserved in codebase
@@ -476,8 +474,8 @@ export default function App() {
         }}
         onOpenHandover={() => setIsHandoverModalOpen(true)}
         onOpenWatchlist={() => setIsWatchlistModalOpen(true)}
-        onOpenCloudSync={() => setIsCloudSyncModalOpen(true)}
         onOpenPrintModal={() => setIsPrintModalOpen(true)}
+        syncStatus={syncStatus}
         onManualPushToCloud={handleManualPushCloud}
         onOpenDutySchedule={() => setIsDutyModalOpen(true)}
         onResetData={handleResetData}
@@ -684,19 +682,6 @@ export default function App() {
           doctors={doctors}
           onClose={() => setSelectedPatient(null)}
           onUpdatePatient={handleUpdatePatient}
-        />
-      )}
-
-      {/* 4. Cloud Sync Modal */}
-      {isCloudSyncModalOpen && (
-        <CloudSyncModal
-          patients={patients}
-          syncStatus={syncStatus}
-          onClose={() => setIsCloudSyncModalOpen(false)}
-          onPatientsLoadedFromCloud={(loaded) => {
-            setPatients(loaded);
-            savePatients(loaded);
-          }}
         />
       )}
 

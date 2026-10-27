@@ -16,8 +16,8 @@ export function shortenPatientName(fullName: string): string {
 export function loadPatients(): Patient[] {
   try {
     const saved = localStorage.getItem(PATIENTS_KEY);
-    // If nothing saved, default to empty list instead of INITIAL_PATIENTS to allow clearing
-    let list: Patient[] = saved ? [] : INITIAL_PATIENTS;
+    let list: Patient[] = [];
+    
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -79,7 +79,7 @@ export function loadPatients(): Patient[] {
   } catch (e) {
     console.error('Error loading patients from storage:', e);
   }
-  return INITIAL_PATIENTS;
+  return [];
 }
 
 export function savePatients(patients: Patient[]): void {
