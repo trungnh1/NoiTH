@@ -310,6 +310,7 @@ export interface Patient {
   admissionStatus?: AdmissionDischargeStatus; // Mới nhập hôm nay, hôm qua, ra viện hôm nay, ngày mai
   tags: ClinicalTag[]; // Nhãn đặc biệt: Thở Oxy, Dùng vận mạch, Cần theo dõi sát...
   importantNotes?: string; // Ghi chú quan trọng
+  treatmentPlan?: string; // Kế hoạch điều trị
   vitals: VitalSign[];
   evolutions: ClinicalEvolution[]; // Diễn tiến bệnh (với ngày cập nhật)
   labs: LabResult[]; // Kết quả xét nghiệm (tên, kết quả, ngày thực hiện)
