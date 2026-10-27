@@ -4,6 +4,7 @@ import {
   collection, 
   doc, 
   setDoc, 
+  deleteDoc,
   query, 
   where, 
   onSnapshot, 
@@ -532,6 +533,20 @@ export async function syncPatientToCloud(patient: Patient): Promise<{ success: b
       error: `${code}${msg}`,
       details: `Project: ${config.projectId} | Database: ${config.databaseId}`
     };
+  }
+}
+
+// Delete single patient document from Cloud Firestore collection 'department_patients'
+export async function deletePatientFromCloud(patientId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    await executeFirestoreOp(async (db) => {
+      const docRef = doc(db, 'department_patients', patientId);
+      await deleteDoc(docRef);
+    });
+    return { success: true };
+  } catch (e: any) {
+    console.warn('Lỗi xóa bệnh nhân khỏi Cloud Firestore:', e);
+    return { success: false, error: e?.message || String(e) };
   }
 }
 

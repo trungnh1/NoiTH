@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DepartmentRoom, Patient } from '../types/patient';
-import { X, ArrowRightLeft, CheckCircle2 } from 'lucide-react';
+import { X, ArrowRightLeft } from 'lucide-react';
+import { GROUP_1_ROOM_NUMBERS } from './DetailedPatientListView';
 
 interface BedTransferModalProps {
   patient: Patient;
@@ -17,29 +18,18 @@ export const BedTransferModal: React.FC<BedTransferModalProps> = ({
   onClose,
   onTransfer,
 }) => {
-  const [selectedRoomNumber, setSelectedRoomNumber] = useState(patient.roomNumber);
-  const [selectedBedNumber, setSelectedBedNumber] = useState(patient.bedNumber);
+  const currentRoomClean = patient.roomNumber ? patient.roomNumber.replace(/^(phòng|p\.?)\s*/i, '').trim() : '703';
+  const [selectedRoomNumber, setSelectedRoomNumber] = useState(currentRoomClean);
 
-  const targetRoom = rooms.find((r) => r.number === selectedRoomNumber);
-  const beds = Array.from({ length: targetRoom?.totalBeds || 4 }, (_, i) => {
-    const num = i + 1;
-    return `Giường ${num < 10 ? '0' + num : num}`;
-  });
-
-  // Check if a bed in selected room is occupied by someone else
-  const isBedOccupiedByOther = (roomNum: string, bedNum: string) => {
-    return patients.some(
-      (p) =>
-        p.status === 'ACTIVE' &&
-        p.id !== patient.id &&
-        p.roomNumber === roomNum &&
-        p.bedNumber === bedNum
-    );
-  };
+  // Group 1 room numbers vs Other room numbers
+  const group1Rooms = GROUP_1_ROOM_NUMBERS;
+  const otherRooms = rooms
+    .map((r) => (r.number || '').replace(/^(phòng|p\.?)\s*/i, '').trim())
+    .filter((num) => num && !group1Rooms.includes(num));
 
   const handleConfirm = (e: React.FormEvent) => {
     e.preventDefault();
-    onTransfer(patient.id, selectedRoomNumber, selectedBedNumber);
+    onTransfer(patient.id, selectedRoomNumber, patient.bedNumber || 'Giường 01');
     onClose();
   };
 
@@ -52,12 +42,13 @@ export const BedTransferModal: React.FC<BedTransferModalProps> = ({
           <div className="flex items-center gap-2">
             <ArrowRightLeft className="w-5 h-5 text-rose-400" />
             <h3 className="text-base font-extrabold tracking-tight">
-              Điều Chuyển Buồng / Giường Bệnh
+              Chuyển Buồng Phòng Bệnh
             </h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors"
+            className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -70,83 +61,55 @@ export const BedTransferModal: React.FC<BedTransferModalProps> = ({
               Bệnh nhân
             </span>
             <div className="font-extrabold text-slate-900 text-sm mt-0.5">
-              {patient.fullName} ({patient.medicalRecordNumber})
+              {patient.fullName} ({patient.medicalRecordNumber || patient.patientCode})
             </div>
-            <div className="text-slate-500 mt-0.5">
-              Vị trí hiện tại: <b className="text-rose-700">{patient.roomNumber} - {patient.bedNumber}</b>
+            <div className="text-slate-600 mt-0.5">
+              Vị trí hiện tại: <b className="text-rose-700">Phòng {currentRoomClean}</b>
             </div>
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">
-              Chọn buồng bệnh đích
+            <label className="font-extrabold text-slate-800 block mb-1.5 text-xs">
+              Chọn buồng phòng bệnh mới
             </label>
             <select
               value={selectedRoomNumber}
-              onChange={(e) => {
-                setSelectedRoomNumber(e.target.value);
-                setSelectedBedNumber('Giường 01');
-              }}
-              className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              onChange={(e) => setSelectedRoomNumber(e.target.value)}
+              className="w-full p-3 bg-white border border-slate-300 rounded-xl font-extrabold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500 cursor-pointer text-sm"
             >
-              {rooms.map((room) => (
-                <option key={room.id} value={room.number}>
-                  {room.number} - {room.name} ({room.description})
-                </option>
-              ))}
+              <optgroup label="Nhóm 1 (Khoa Nội TH)" className="font-bold text-slate-900 bg-white">
+                {group1Rooms.map((roomNum) => (
+                  <option key={roomNum} value={roomNum}>
+                    Phòng {roomNum}
+                  </option>
+                ))}
+              </optgroup>
+              {otherRooms.length > 0 && (
+                <optgroup label="Nhóm phòng khác" className="font-bold text-slate-900 bg-white">
+                  {otherRooms.map((roomNum) => (
+                    <option key={roomNum} value={roomNum}>
+                      Phòng {roomNum}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 
-          <div>
-            <label className="font-bold text-slate-700 block mb-1">
-              Chọn số giường tại {selectedRoomNumber}
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {beds.map((b) => {
-                const occupied = isBedOccupiedByOther(selectedRoomNumber, b);
-                const isSelected = selectedBedNumber === b;
-
-                return (
-                  <button
-                    type="button"
-                    key={b}
-                    disabled={occupied}
-                    onClick={() => setSelectedBedNumber(b)}
-                    className={`p-2.5 rounded-xl border font-bold text-left transition-all ${
-                      isSelected
-                        ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                        : occupied
-                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
-                        : 'bg-white text-slate-700 border-slate-200 hover:border-rose-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>{b}</span>
-                      {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    </div>
-                    <span className="block text-[10px] font-normal mt-0.5">
-                      {occupied ? 'Đã có người nằm' : 'Giường trống'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+              className="px-4 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer transition-colors"
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="px-5 py-2 font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md transition-all flex items-center gap-1.5"
+              className="px-5 py-2.5 font-extrabold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowRightLeft className="w-4 h-4" />
-              <span>Xác Nhận Chuyển</span>
+              <span>Xác Nhận Chuyển Phòng</span>
             </button>
           </div>
         </form>

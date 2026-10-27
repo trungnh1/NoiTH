@@ -17,7 +17,10 @@ import {
   Activity,
   Plus,
   CheckCircle2,
-  Users
+  Users,
+  ArrowRightLeft,
+  LogOut,
+  Trash2
 } from 'lucide-react';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
@@ -45,6 +48,9 @@ interface DetailedPatientListViewProps {
   onOpenNewPatientForRoom?: (roomNumber: string) => void;
   onOpenEvolution: (patient: Patient) => void;
   onSelectPatient: (patient: Patient) => void;
+  onTransferPatient?: (patient: Patient) => void;
+  onDischargePatient?: (patient: Patient) => void;
+  onDeletePatient?: (patient: Patient) => void;
 }
 
 /**
@@ -149,6 +155,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   onOpenNewPatientForRoom,
   onOpenEvolution,
   onSelectPatient,
+  onTransferPatient,
+  onDischargePatient,
+  onDeletePatient,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | SeverityLevel | 'DISCHARGE_TODAY' | 'DISCHARGE_TOMORROW'>('ALL');
@@ -749,11 +758,11 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           {/* Top Content */}
                           <div>
                             
-                            {/* Row 1: Tên Bệnh Nhân (màu theo mức độ nặng/vừa/ổn định) - Tuổi - Giới */}
-                            <div className="pb-2 border-b border-slate-100 flex items-start justify-between gap-2">
+                            {/* Row 1: Tên Bệnh Nhân + 3 Nút Thao Tác Nhanh (Chuyển phòng, Ra viện, Xóa BN) */}
+                            <div className="pb-2 border-b border-slate-100 flex flex-wrap items-start justify-between gap-1.5">
                               <div 
                                 onClick={() => onSelectPatient(patient)}
-                                className="cursor-pointer group flex-1"
+                                className="cursor-pointer group flex-1 min-w-[120px]"
                               >
                                 <h4 className={`font-black text-sm tracking-tight transition-colors uppercase leading-snug ${
                                   isCritical 
@@ -771,6 +780,48 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     {patient.gender}
                                   </span>
                                 </div>
+                              </div>
+
+                              {/* Quick Actions Beside Name: Chuyển phòng, Đã ra viện, Xóa */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onTransferPatient) onTransferPatient(patient);
+                                  }}
+                                  className="p-1 px-1.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                  title="Chuyển bệnh nhân sang buồng phòng khác"
+                                >
+                                  <ArrowRightLeft className="w-3 h-3 text-blue-600" />
+                                  <span>Chuyển</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onDischargePatient) onDischargePatient(patient);
+                                  }}
+                                  className="p-1 px-1.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                  title="Bấm đã ra viện (rời khỏi buồng phòng)"
+                                >
+                                  <LogOut className="w-3 h-3 text-emerald-600" />
+                                  <span>Ra viện</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onDeletePatient) onDeletePatient(patient);
+                                  }}
+                                  className="p-1 px-1.5 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                  title="Xóa bệnh nhân khỏi hệ thống"
+                                >
+                                  <Trash2 className="w-3 h-3 text-rose-600" />
+                                  <span>Xóa</span>
+                                </button>
                               </div>
                             </div>
 

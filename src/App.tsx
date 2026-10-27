@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Trash2, LogOut } from 'lucide-react';
 import { 
   Patient, 
   Doctor, 
@@ -32,6 +33,7 @@ import {
   subscribeToEmergencyRecords, 
   subscribeToDepartmentPatients,
   syncPatientToCloud,
+  deletePatientFromCloud,
   testCloudWrite, 
   syncAllPatientsToCloud, 
   SyncStatus 
@@ -250,6 +252,94 @@ export default function App() {
     updatePatientsList(updated);
   };
 
+  // Action Confirm Modal state for Delete and Discharge
+  const [actionConfirmModal, setActionConfirmModal] = useState<{
+    type: 'DELETE' | 'DISCHARGE';
+    patient: Patient;
+  } | null>(null);
+
+  // Trigger delete modal
+  const handleDeletePatient = (patient: Patient) => {
+    setActionConfirmModal({ type: 'DELETE', patient });
+  };
+
+  // Trigger discharge modal
+  const handleDischargePatient = (patient: Patient) => {
+    setActionConfirmModal({ type: 'DISCHARGE', patient });
+  };
+
+  // Confirm execution of patient deletion
+  const confirmDeletePatient = async (patient: Patient) => {
+    const pId = patient.id;
+    const pName = patient.fullName;
+    setActionConfirmModal(null);
+
+    // 1. Immediate local state update
+    const updated = patients.filter((p) => p.id !== pId);
+    setPatients(updated);
+    savePatients(updated);
+    if (selectedPatient?.id === pId) {
+      setSelectedPatient(null);
+    }
+
+    // 2. Clear visual banner feedback
+    setManualPushMessage(`✅ Đã xóa bệnh nhân ${pName} thành công khỏi hệ thống!`);
+    setTimeout(() => setManualPushMessage(null), 5000);
+
+    // 3. Delete from Cloud Firestore
+    setIsAutoSyncing(true);
+    try {
+      const res = await deletePatientFromCloud(pId);
+      if (!res.success) {
+        console.warn('Lỗi xóa cloud:', res.error);
+      }
+      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+    } catch (err) {
+      console.warn('Lỗi xóa patient cloud:', err);
+    } finally {
+      setIsAutoSyncing(false);
+    }
+  };
+
+  // Confirm execution of patient discharge (xóa khỏi buồng phòng)
+  const confirmDischargePatient = async (patient: Patient) => {
+    const pId = patient.id;
+    const pName = patient.fullName;
+    setActionConfirmModal(null);
+
+    // 1. Immediately mark as DISCHARGED
+    const updatedPat: Patient = {
+      ...patient,
+      status: 'DISCHARGED' as const,
+      admissionStatus: 'DISCHARGE_TODAY' as const,
+    };
+
+    const updatedList = patients.map((p) => (p.id === pId ? updatedPat : p));
+    setPatients(updatedList);
+    savePatients(updatedList);
+    if (selectedPatient?.id === pId) {
+      setSelectedPatient(null);
+    }
+
+    // 2. Visual banner feedback
+    setManualPushMessage(`✅ Bệnh nhân ${pName} đã ra viện (rời khỏi danh sách buồng phòng hiện tại)!`);
+    setTimeout(() => setManualPushMessage(null), 5000);
+
+    // 3. Sync update to Cloud Firestore
+    setIsAutoSyncing(true);
+    try {
+      const res = await syncPatientToCloud(updatedPat);
+      if (!res.success) {
+        console.warn('Lỗi sync discharge cloud:', res.error);
+      }
+      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+    } catch (err) {
+      console.warn('Lỗi sync discharge cloud:', err);
+    } finally {
+      setIsAutoSyncing(false);
+    }
+  };
+
   // Handle doctor reassignment
   const handleReassignDoctor = (patientId: string, newDoctorId: string) => {
     const newDoc = doctors.find((d) => d.id === newDoctorId);
@@ -448,6 +538,9 @@ export default function App() {
           }}
           onOpenEvolution={(patient) => setEvolutionPatient(patient)}
           onSelectPatient={(patient) => setSelectedPatient(patient)}
+          onTransferPatient={(patient) => setTransferringPatient(patient)}
+          onDischargePatient={handleDischargePatient}
+          onDeletePatient={handleDeletePatient}
         />
       </main>
 
@@ -477,6 +570,85 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Action Confirm Modal for Delete and Discharge */}
+      {actionConfirmModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200 overflow-hidden p-5 space-y-4 animate-in fade-in">
+            {actionConfirmModal.type === 'DELETE' ? (
+              <>
+                <div className="flex items-center gap-3 text-rose-600">
+                  <div className="p-2.5 rounded-full bg-rose-100 shrink-0">
+                    <Trash2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-base">Xóa Bệnh Nhân</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Không thể hoàn tác thao tác này</p>
+                  </div>
+                </div>
+                <div className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                  <p className="font-semibold">Bạn có chắc chắn muốn xóa vĩnh viễn bệnh nhân:</p>
+                  <p className="font-black text-rose-700 text-sm uppercase">{actionConfirmModal.patient.fullName}</p>
+                  <p className="text-[11px] text-slate-500 font-semibold">
+                    Phòng {actionConfirmModal.patient.roomNumber} - {actionConfirmModal.patient.bedNumber}
+                  </p>
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setActionConfirmModal(null)}
+                    className="px-4 py-2 font-bold text-slate-600 hover:bg-slate-100 rounded-xl text-xs cursor-pointer transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => confirmDeletePatient(actionConfirmModal.patient)}
+                    className="px-4 py-2 font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md text-xs cursor-pointer transition-colors"
+                  >
+                    Xóa Ngay
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 text-emerald-600">
+                  <div className="p-2.5 rounded-full bg-emerald-100 shrink-0">
+                    <LogOut className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-base">Xác Nhận Ra Viện</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Rời khỏi danh sách buồng phòng hiện tại</p>
+                  </div>
+                </div>
+                <div className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                  <p className="font-semibold">Xác nhận ghi nhận ra viện cho bệnh nhân:</p>
+                  <p className="font-black text-emerald-800 text-sm uppercase">{actionConfirmModal.patient.fullName}</p>
+                  <p className="text-[11px] text-slate-500 font-semibold">
+                    Phòng {actionConfirmModal.patient.roomNumber} - {actionConfirmModal.patient.bedNumber}
+                  </p>
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setActionConfirmModal(null)}
+                    className="px-4 py-2 font-bold text-slate-600 hover:bg-slate-100 rounded-xl text-xs cursor-pointer transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => confirmDischargePatient(actionConfirmModal.patient)}
+                    className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md text-xs cursor-pointer transition-colors"
+                  >
+                    Xác Nhận Ra Viện
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 1. Simplified New Patient Admission Modal */}
       {isSimplifiedNewPatientOpen && (
