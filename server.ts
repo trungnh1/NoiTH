@@ -380,6 +380,44 @@ Trình bày định dạng Markdown sạch sẽ, rõ ràng, phân mục mạch l
   }
 });
 
+// AI Rapid Patient Data Extraction
+app.post('/api/ai/extract-patient', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: 'Thiếu dữ liệu nhập' });
+    }
+
+    const prompt = `
+    Trích xuất dữ liệu bệnh nhân từ câu nhập liệu sau đây thành JSON.
+    Câu nhập liệu: "${text}"
+    
+    Các trường cần trích xuất (nếu không có hãy đặt là 'Chưa xác định'):
+    - fullName (String)
+    - age (Number)
+    - gender (String: 'Nam' hoặc 'Nữ')
+    - roomNumber (String)
+    - bedNumber (String)
+    - primaryDiagnosis (String)
+    - severity (String: 'STABLE', 'MODERATE', hoặc 'CRITICAL')
+    - importantNotes (String)
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const result = JSON.parse(response.text || '{}');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Setup Vite or static serving
 async function startServer() {
   if (!isProduction) {

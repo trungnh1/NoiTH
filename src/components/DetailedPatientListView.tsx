@@ -23,6 +23,7 @@ import {
   Trash2,
   Printer
 } from 'lucide-react';
+import { QuickPatientEntry } from './QuickPatientEntry';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
 export const GROUP_1_ROOM_NUMBERS = [
@@ -365,6 +366,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   return (
     <div className="space-y-4 animate-in fade-in">
       
+      <QuickPatientEntry onAddPatient={onOpenNewPatient} />
+
       {/* Quick feedback notification banner */}
       {notification && (
         <div className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-md flex items-center justify-between text-xs font-bold animate-in fade-in slide-in-from-top-2">
