@@ -127,25 +127,9 @@ export default function App() {
       initialPatients
     );
 
-    // 2. Subscribe to Khoa Cấp Cứu Firestore clinical_records
-    const unsubEmergency = subscribeToEmergencyRecords(
-      (newEmrPatient) => {
-        setPatients((prev) => {
-          const exists = prev.some((p) => p.id === newEmrPatient.id);
-          const updated = exists
-            ? prev.map((p) => (p.id === newEmrPatient.id ? newEmrPatient : p))
-            : [newEmrPatient, ...prev];
-          savePatients(updated);
-          syncPatientToCloud(newEmrPatient);
-          return updated;
-        });
-
-        setEmergencyAlert({
-          message: `Tiếp nhận ca mới từ Cấp Cứu: ${newEmrPatient.fullName} • ${newEmrPatient.primaryDiagnosis}`,
-          patient: newEmrPatient,
-        });
-      }
-    );
+    // 2. Subscribe to Khoa Cấp Cứu Firestore clinical_records (Tạm thời tắt theo yêu cầu)
+    // const unsubEmergency = subscribeToEmergencyRecords(...);
+    const unsubEmergency = () => {};
 
     return () => {
       unsubDept();

@@ -272,11 +272,27 @@ export function mapFirestoreRecordToPatient(docId: string, record: DocumentData)
   };
 }
 
+// Tạm thời tắt tính năng nhận dữ liệu từ Khoa Cấp Cứu theo yêu cầu của Admin
+const ENABLE_EMERGENCY_SYNC = false;
+
 // Subscribe to real-time additions from Khoa Cấp Cứu
 export function subscribeToEmergencyRecords(
   onPatientAdded: (patient: Patient) => void,
   onStatusChange?: (status: SyncStatus) => void
 ): () => void {
+  if (!ENABLE_EMERGENCY_SYNC) {
+    console.info('Tính năng nhận dữ liệu tự động từ Khoa Cấp Cứu đang được tạm thời tắt.');
+    if (onStatusChange) {
+      onStatusChange({
+        connected: false,
+        lastSyncTime: null,
+        receivedCount: 0,
+        errorMessage: 'Tạm thời tắt tính năng nhận dữ liệu từ Khoa Cấp Cứu',
+      });
+    }
+    return () => {};
+  }
+
   if (!dbInstance) {
     dbInstance = initializeFirebaseFirestore();
   }
