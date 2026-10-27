@@ -109,36 +109,23 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Right Action Buttons: Manual Cloud Push, Cloud Sync Details, & + Tiếp nhận BN */}
+          {/* Right Action Buttons: In Danh Sách, Dynamic Sync Status Icon, & + Tiếp Nhận BN */}
           <div className="flex items-center gap-2">
             
-            {/* Manual Push Button */}
-            {onManualPushToCloud && (
-              <button
-                type="button"
-                onClick={onManualPushToCloud}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-black rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition-all cursor-pointer active:scale-95"
-                title="Đẩy toàn bộ danh sách bệnh nhân hiện tại lên Cloud Firestore ngay lập tức"
-              >
-                <Cloud className="w-3.5 h-3.5 text-blue-200 animate-pulse" />
-                <span>⚡ Đẩy Dữ Liệu Cloud</span>
-              </button>
-            )}
-
             {/* Print Patient List Button */}
             {onOpenPrintModal && (
               <button
                 type="button"
                 onClick={onOpenPrintModal}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-black rounded-xl bg-purple-700 hover:bg-purple-800 text-white shadow-2xs transition-all cursor-pointer active:scale-95"
-                title="In danh sách bệnh nhân nội trú theo tùy chọn (Tất cả, Theo phòng, Theo bác sĩ)"
+                title="In danh sách bệnh nhân nội trú"
               >
                 <Printer className="w-3.5 h-3.5 text-purple-200" />
                 <span>🖨️ In Danh Sách</span>
               </button>
             )}
 
-            {/* Cloud Status Pill */}
+            {/* Dynamic Sync Status Button/Icon */}
             <button
               type="button"
               onClick={onOpenCloudSync}
@@ -147,22 +134,15 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
                   : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 shadow-2xs'
               }`}
-              title="Xem chi tiết & Quản lý lưu trữ Cloud Firestore"
+              title="Trạng thái đồng bộ Cloud Firestore (Bấm để quản lý)"
             >
-              <Cloud className={`w-3.5 h-3.5 ${isAutoSyncing ? 'text-amber-600 animate-bounce' : 'text-emerald-600'}`} />
-              {isAutoSyncing ? (
-                <span className="flex items-center gap-1 text-[11px] font-black text-amber-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-                  Đang tự động lưu...
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-[11px] font-extrabold text-emerald-800">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span className="hidden sm:inline">Tự động Cloud:</span> {lastAutoSyncTime || 'Đã đồng bộ'}
-                </span>
-              )}
+              <Cloud className={`w-3.5 h-3.5 ${isAutoSyncing ? 'text-amber-600 animate-spin' : 'text-emerald-600 animate-pulse'}`} />
+              <span className="hidden sm:inline font-black text-[11px]">
+                {isAutoSyncing ? 'Đang đồng bộ Cloud...' : 'Cloud hoạt động 24/7'}
+              </span>
             </button>
 
+            {/* + Tiếp Nhận BN */}
             <button
               type="button"
               onClick={onOpenNewPatient}
