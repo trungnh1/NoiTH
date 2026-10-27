@@ -147,10 +147,9 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
         {/* Current Clinical Summary Card */}
         <div className="bg-slate-50 px-5 py-2.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div>
-            <span className="text-slate-400 font-bold uppercase text-[10px] block">Chẩn đoán hiện tại:</span>
+            <span className="text-slate-400 font-bold uppercase text-[10px] block">Chẩn đoán:</span>
             <span className="font-extrabold text-slate-800">
-              {patient.primaryDiagnosis}
-              {patient.secondaryDiagnosis && <span className="font-normal text-slate-600"> (Kèm: {patient.secondaryDiagnosis})</span>}
+              {[patient.primaryDiagnosis, patient.secondaryDiagnosis].filter(Boolean).join(' - ')}
             </span>
           </div>
           <div className="flex items-center gap-2">

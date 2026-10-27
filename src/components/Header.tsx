@@ -18,6 +18,7 @@ interface HeaderProps {
   onOpenHandover?: () => void;
   onOpenWatchlist?: () => void;
   onOpenCloudSync: () => void;
+  onManualPushToCloud?: () => void;
   onResetData?: () => void;
   onOpenDutySchedule?: () => void;
   isAutoSyncing?: boolean;
@@ -28,6 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   patients,
   onOpenNewPatient,
   onOpenCloudSync,
+  onManualPushToCloud,
   isAutoSyncing = false,
   lastAutoSyncTime,
 }) => {
@@ -104,8 +106,23 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Right Action Buttons: Auto Cloud Sync Status & + Tiếp nhận BN */}
+          {/* Right Action Buttons: Manual Cloud Push, Cloud Sync Details, & + Tiếp nhận BN */}
           <div className="flex items-center gap-2">
+            
+            {/* Manual Push Button */}
+            {onManualPushToCloud && (
+              <button
+                type="button"
+                onClick={onManualPushToCloud}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-black rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition-all cursor-pointer active:scale-95"
+                title="Đẩy toàn bộ danh sách bệnh nhân hiện tại lên Cloud Firestore ngay lập tức"
+              >
+                <Cloud className="w-3.5 h-3.5 text-blue-200 animate-pulse" />
+                <span>⚡ Đẩy Dữ Liệu Cloud</span>
+              </button>
+            )}
+
+            {/* Cloud Status Pill */}
             <button
               type="button"
               onClick={onOpenCloudSync}
@@ -114,7 +131,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
                   : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 shadow-2xs'
               }`}
-              title="Bấm để xem chi tiết lưu trữ Cloud Firestore"
+              title="Xem chi tiết & Quản lý lưu trữ Cloud Firestore"
             >
               <Cloud className={`w-3.5 h-3.5 ${isAutoSyncing ? 'text-amber-600 animate-bounce' : 'text-emerald-600'}`} />
               {isAutoSyncing ? (

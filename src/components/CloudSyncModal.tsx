@@ -45,7 +45,7 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
   onPatientsLoadedFromCloud,
 }) => {
   const currentConfig = getActiveFirebaseConfig();
-  const [activeTab, setActiveTab] = useState<'sync' | 'guide_firestore' | 'config' | 'guide_vercel'>('guide_firestore');
+  const [activeTab, setActiveTab] = useState<'sync' | 'config'>('sync');
 
   // Sync actions state
   const [isUploading, setIsUploading] = useState(false);
@@ -229,51 +229,27 @@ VITE_FIREBASE_DATABASE_ID=${customDbId || "(default)"}`;
         {/* Navigation Tabs */}
         <div className="flex border-b border-slate-200 bg-slate-50 px-4 text-xs font-bold gap-2 overflow-x-auto">
           <button
-            onClick={() => setActiveTab('guide_firestore')}
-            className={`py-3 px-3.5 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
-              activeTab === 'guide_firestore'
-                ? 'border-blue-600 text-blue-700 bg-white'
+            onClick={() => setActiveTab('sync')}
+            className={`py-3 px-4 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
+              activeTab === 'sync'
+                ? 'border-blue-600 text-blue-700 bg-white font-black'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Database className="w-4 h-4 text-emerald-600" />
-            <span>📖 Hướng Dẫn Cài Đặt Thủ Công (6 Bước)</span>
+            <UploadCloud className="w-4 h-4 text-rose-600" />
+            <span>⚡ Đẩy & Đồng Bộ Dữ Liệu Cloud</span>
           </button>
 
           <button
             onClick={() => setActiveTab('config')}
-            className={`py-3 px-3.5 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
+            className={`py-3 px-4 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
               activeTab === 'config'
-                ? 'border-blue-600 text-blue-700 bg-white'
+                ? 'border-blue-600 text-blue-700 bg-white font-black'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
             <Settings className="w-4 h-4 text-blue-600" />
-            <span>⚙️ Cài Đặt Cấu Hình & Dán Mã</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('sync')}
-            className={`py-3 px-3.5 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
-              activeTab === 'sync'
-                ? 'border-blue-600 text-blue-700 bg-white'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <RefreshCw className="w-4 h-4 text-indigo-600" />
-            <span>🔄 Đồng Bộ & Sao Lưu</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('guide_vercel')}
-            className={`py-3 px-3.5 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
-              activeTab === 'guide_vercel'
-                ? 'border-blue-600 text-blue-700 bg-white'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Server className="w-4 h-4 text-purple-600" />
-            <span>🚀 Cài Đặt Vercel Deploy (.env)</span>
+            <span>⚙️ Cài Đặt Cấu Hình Firebase (Admin)</span>
           </button>
         </div>
 
@@ -315,8 +291,8 @@ VITE_FIREBASE_DATABASE_ID=${customDbId || "(default)"}`;
             </div>
           )}
 
-          {/* TAB: FIRESTORE SETUP GUIDE (6 BƯỚC THỦ CÔNG) */}
-          {activeTab === 'guide_firestore' && (
+          {/* TAB: FIRESTORE SETUP GUIDE (Hidden as admin manages cloud setup) */}
+          {false && (
             <div className="space-y-4 text-xs">
               <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-emerald-50 border border-blue-200 rounded-xl p-4 text-slate-800">
                 <div className="flex items-center gap-2 mb-1">
@@ -802,65 +778,6 @@ VITE_FIREBASE_DATABASE_ID=${customDbId || "(default)"}`;
             </div>
           )}
 
-          {/* TAB: VERCEL DEPLOY GUIDE */}
-          {activeTab === 'guide_vercel' && (
-            <div className="space-y-4 text-xs">
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-3.5 space-y-1 text-purple-950">
-                <span className="font-extrabold text-sm block">
-                  Hướng Dẫn Cài Đặt Biến Môi Trường Khi Deploy Lên Vercel
-                </span>
-                <p className="text-purple-800 leading-relaxed">
-                  Khi triển khai ứng dụng lên <strong>Vercel</strong> để các bác sĩ và điều dưỡng truy cập qua tên miền riêng, bạn chỉ cần cấu hình 5 biến môi trường:
-                </p>
-              </div>
-
-              {/* Step-by-step Vercel */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
-                <h4 className="font-extrabold text-slate-900 text-sm">
-                  Các bước thiết lập trên Vercel Dashboard:
-                </h4>
-                <ol className="list-decimal pl-5 space-y-2 text-slate-700 leading-relaxed">
-                  <li>
-                    Đăng nhập vào <a href="https://vercel.com" target="_blank" rel="noreferrer" className="text-blue-600 underline font-bold">Vercel.com</a> và bấm vào tên dự án của bạn.
-                  </li>
-                  <li>
-                    Vào mục <strong>Settings</strong> (Cài đặt) trên thanh menu trên cùng ➔ Chọn <strong>Environment Variables</strong> ở danh mục bên trái.
-                  </li>
-                  <li>
-                    Nhập các biến môi trường bên dưới (bạn có thể copy toàn bộ bằng 1 click):
-                  </li>
-                </ol>
-
-                {/* Env Snippet */}
-                <div className="space-y-1.5 pt-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-800 text-xs">
-                      Danh sách biến môi trường (.env):
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(vercelEnvSnippet, 'env')}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold text-[11px] transition-colors cursor-pointer"
-                    >
-                      {copiedKey === 'env' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedKey === 'env' ? 'Đã sao chép!' : 'Sao chép toàn bộ biến (.env)'}</span>
-                    </button>
-                  </div>
-                  <pre className="p-3 bg-slate-900 text-purple-300 rounded-xl font-mono text-[11px] overflow-x-auto leading-relaxed border border-slate-800">
-                    {vercelEnvSnippet}
-                  </pre>
-                </div>
-
-                <div className="pt-2 text-slate-600 leading-relaxed">
-                  <p>
-                    4. Sau khi thêm biến xong, hãy vào tab <strong>Deployments</strong> ➔ Bấm vào dấu ba chấm ở bản build mới nhất ➔ Chọn <strong>Redeploy</strong> để Vercel nạp các biến môi trường mới vào ứng dụng.
-                  </p>
-                </div>
-              </div>
-
-            </div>
-          )}
-
         </div>
 
         {/* Footer */}
@@ -872,11 +789,11 @@ VITE_FIREBASE_DATABASE_ID=${customDbId || "(default)"}`;
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setActiveTab('guide_firestore')}
+              onClick={() => setActiveTab('config')}
               className="px-3 py-1.5 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer font-bold flex items-center gap-1"
             >
-              <HelpCircle className="w-3.5 h-3.5 text-blue-600" />
-              <span>Xem Hướng Dẫn</span>
+              <Settings className="w-3.5 h-3.5 text-blue-600" />
+              <span>Cấu Hình</span>
             </button>
             <button
               onClick={onClose}

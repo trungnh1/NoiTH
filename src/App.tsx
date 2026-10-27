@@ -57,6 +57,15 @@ export default function App() {
   // Main active view: 'detailed_list' (Default and primary screen)
   const [activeView, setActiveView] = useState<'map' | 'table' | 'doctors'>('table');
 
+  // Quick room doctor assignments map (persisted in localStorage)
+  const [roomDoctorAssignments, setRoomDoctorAssignments] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('ROOM_DOCTOR_ASSIGNMENTS') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
   // Modal states: Core workflow
   const [isSimplifiedNewPatientOpen, setIsSimplifiedNewPatientOpen] = useState(false);
   const [evolutionPatient, setEvolutionPatient] = useState<Patient | null>(null);
@@ -196,6 +205,30 @@ export default function App() {
     }
   };
 
+  // Manual push on demand button handler
+  const [manualPushMessage, setManualPushMessage] = useState<string | null>(null);
+
+  const handleManualPushCloud = async () => {
+    setIsAutoSyncing(true);
+    setManualPushMessage('Đang đẩy toàn bộ danh sách bệnh nhân lên Cloud Firestore...');
+    try {
+      const res = await syncAllPatientsToCloud(patients);
+      if (res.success) {
+        setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+        setManualPushMessage(`Đã đẩy thành công ${res.count} bệnh nhân lên Cloud Firestore (${new Date().toLocaleTimeString('vi-VN')})!`);
+        setTimeout(() => setManualPushMessage(null), 4500);
+      } else {
+        setManualPushMessage(`Lỗi đẩy dữ liệu Cloud: ${res.error}`);
+        setTimeout(() => setManualPushMessage(null), 5000);
+      }
+    } catch (err) {
+      setManualPushMessage('Lỗi kết nối khi đẩy dữ liệu lên Cloud Firestore.');
+      setTimeout(() => setManualPushMessage(null), 5000);
+    } finally {
+      setIsAutoSyncing(false);
+    }
+  };
+
   // Handle bed transfer
   const handleTransferPatient = (
     patientId: string,
@@ -260,6 +293,70 @@ export default function App() {
     updatePatientsList(updated);
   };
 
+  // Handle quick doctor assignment for a room
+  const handleAssignRoomDoctor = async (roomNumber: string, doctorId: string) => {
+    const cleanRoom = roomNumber.replace(/^(phòng|p\.?)\s*/i, '').trim();
+    
+    // 1. Update assignment map
+    setRoomDoctorAssignments((prev) => {
+      const updated = { ...prev, [cleanRoom]: doctorId };
+      try {
+        localStorage.setItem('ROOM_DOCTOR_ASSIGNMENTS', JSON.stringify(updated));
+      } catch (e) {
+        console.warn(e);
+      }
+      return updated;
+    });
+
+    // 2. Update all active patients in this room
+    const targetDoc = doctors.find((d) => d.id === doctorId);
+    const affectedPatients: Patient[] = [];
+
+    const updatedPatients = patients.map((p) => {
+      const pRoom = (p.roomNumber || '').replace(/^(phòng|p\.?)\s*/i, '').trim();
+      if (pRoom === cleanRoom && p.status === 'ACTIVE') {
+        const now = new Date();
+        const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        const docEvolution = {
+          id: `EV-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+          timestamp: timeStr,
+          doctorName: targetDoc?.name || 'BS Điều trị',
+          shift: 'Sáng' as const,
+          clinicalNote: `Phân công Bác sĩ điều trị buồng: BS. ${targetDoc?.name || ''}.`,
+          treatmentAction: 'Tiếp nhận phụ trách buồng và rà soát phác đồ.',
+        };
+
+        const patUpdated: Patient = {
+          ...p,
+          attendingDoctorId: doctorId,
+          evolutions: [docEvolution, ...(p.evolutions || [])],
+        };
+        affectedPatients.push(patUpdated);
+        return patUpdated;
+      }
+      return p;
+    });
+
+    setPatients(updatedPatients);
+    savePatients(updatedPatients);
+
+    // 3. Sync affected patients to Firestore
+    if (affectedPatients.length > 0) {
+      setIsAutoSyncing(true);
+      try {
+        for (const pat of affectedPatients) {
+          await syncPatientToCloud(pat);
+        }
+        setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+      } catch (err) {
+        console.warn('Auto sync room doctor error:', err);
+      } finally {
+        setIsAutoSyncing(false);
+      }
+    }
+  };
+
   // Reset demo data
   const handleResetData = () => {
     const data = resetAllData();
@@ -295,11 +392,28 @@ export default function App() {
         onOpenHandover={() => setIsHandoverModalOpen(true)}
         onOpenWatchlist={() => setIsWatchlistModalOpen(true)}
         onOpenCloudSync={() => setIsCloudSyncModalOpen(true)}
+        onManualPushToCloud={handleManualPushCloud}
         onOpenDutySchedule={() => setIsDutyModalOpen(true)}
         onResetData={handleResetData}
         isAutoSyncing={isAutoSyncing}
         lastAutoSyncTime={lastAutoSyncTime}
       />
+
+      {/* Manual Push Feedback Banner */}
+      {manualPushMessage && (
+        <div className="bg-slate-900 text-white px-4 py-2 shadow-md flex items-center justify-between text-xs font-bold animate-in fade-in slide-in-from-top-2 border-b border-blue-500">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+            <span>{manualPushMessage}</span>
+          </div>
+          <button
+            onClick={() => setManualPushMessage(null)}
+            className="text-slate-400 hover:text-white cursor-pointer px-2"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Real-time Emergency Ingestion Notification Banner */}
       {emergencyAlert && (
@@ -334,7 +448,19 @@ export default function App() {
         <DetailedPatientListView
           patients={patients}
           doctors={doctors}
-          onOpenNewPatient={() => setIsSimplifiedNewPatientOpen(true)}
+          rooms={rooms}
+          roomDoctorAssignments={roomDoctorAssignments}
+          onAssignRoomDoctor={handleAssignRoomDoctor}
+          onOpenNewPatient={() => {
+            setPrefilledRoom(undefined);
+            setPrefilledBed(undefined);
+            setIsSimplifiedNewPatientOpen(true);
+          }}
+          onOpenNewPatientForRoom={(roomNum) => {
+            setPrefilledRoom(roomNum);
+            setPrefilledBed(undefined);
+            setIsSimplifiedNewPatientOpen(true);
+          }}
           onOpenEvolution={(patient) => setEvolutionPatient(patient)}
           onSelectPatient={(patient) => setSelectedPatient(patient)}
         />

@@ -9,6 +9,7 @@ import {
   VitalSign,
   ClinicalEvolution
 } from '../types/patient';
+import { GROUP_1_ROOM_NUMBERS, GROUP_1_DOCTOR_IDS } from '../data/mockData';
 import { 
   X, 
   UserPlus, 
@@ -50,15 +51,16 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   const [fullName, setFullName] = useState('');
   const [age, setAge] = useState<number>(60);
   const [gender, setGender] = useState<'Nam' | 'Nữ'>('Nam');
-  const [roomNumber, setRoomNumber] = useState<string>(prefilledRoom || rooms[0]?.number || '733');
+  const [roomNumber, setRoomNumber] = useState<string>(prefilledRoom || '703');
   const [admissionDateTime, setAdmissionDateTime] = useState<string>(defaultDateTimeStr);
 
   const [primaryDiagnosis, setPrimaryDiagnosis] = useState('');
-  const [secondaryDiagnosis, setSecondaryDiagnosis] = useState('');
   const [severity, setSeverity] = useState<SeverityLevel>('STABLE');
   const [selectedTags, setSelectedTags] = useState<ClinicalTag[]>([]);
 
-  const [attendingDoctorId, setAttendingDoctorId] = useState<string>(doctors[0]?.id || '00161');
+  // Default to first doctor in Nhóm 1 (e.g. BS. Trần Hữu Ngọc)
+  const defaultGroup1Doc = doctors.find((d) => GROUP_1_DOCTOR_IDS.includes(d.id))?.id || '00708';
+  const [attendingDoctorId, setAttendingDoctorId] = useState<string>(defaultGroup1Doc);
   const [treatmentPlan, setTreatmentPlan] = useState('');
   const [handoverNotes, setHandoverNotes] = useState('');
 
@@ -154,7 +156,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
       attendingDoctorId,
       primaryNurse: 'ĐD. Tua trực tiếp nhận',
       primaryDiagnosis: primaryDiagnosis.trim(),
-      secondaryDiagnosis: secondaryDiagnosis.trim() || undefined,
+      secondaryDiagnosis: undefined,
       severity,
       admissionStatus: 'STABLE_INPATIENT',
       tags: selectedTags,
@@ -215,41 +217,29 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
               1. Buồng Phòng & Thông Tin Bệnh Nhân
             </span>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              {/* Phòng bệnh */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Phòng bệnh - Nhóm 1 */}
               <div>
                 <label className="font-extrabold text-slate-700 block mb-1">
-                  Phòng Bệnh <span className="text-rose-500">*</span>
+                  Phòng Bệnh (Nhóm 1) <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={roomNumber}
                   onChange={(e) => setRoomNumber(e.target.value)}
                   className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-xs focus:ring-2 focus:ring-rose-500 cursor-pointer"
                 >
-                  {rooms.map((r) => (
-                    <option key={r.id} value={r.number}>
-                      Phòng {r.number} ({r.name})
-                    </option>
-                  ))}
+                  <optgroup label="Buồng Phòng Nhóm 1 (703-731 & 733)">
+                    {GROUP_1_ROOM_NUMBERS.map((num) => (
+                      <option key={num} value={num}>
+                        Phòng {num}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
 
-              {/* Giường bệnh */}
-              <div>
-                <label className="font-extrabold text-slate-700 block mb-1">
-                  Giường Bệnh
-                </label>
-                <input
-                  type="text"
-                  value={customBed || autoAssignedBed}
-                  onChange={(e) => setCustomBed(e.target.value)}
-                  placeholder={autoAssignedBed}
-                  className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-xs focus:ring-2 focus:ring-rose-500 text-rose-700"
-                />
-              </div>
-
               {/* Ngày giờ vào viện */}
-              <div className="sm:col-span-2">
+              <div>
                 <label className="font-extrabold text-slate-700 block mb-1">
                   Ngày Giờ Vào Viện <span className="text-rose-500">*</span>
                 </label>
@@ -319,36 +309,21 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
               2. Chẩn Đoán & Tình Trạng Lâm Sàng
             </span>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="font-extrabold text-slate-700 block mb-1">
-                  Chẩn Đoán Hiện Tại (Không Cần ICD) <span className="text-rose-500">*</span>
-                </label>
-                <textarea
-                  rows={2}
-                  value={primaryDiagnosis}
-                  onChange={(e) => {
-                    setPrimaryDiagnosis(e.target.value);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
-                  placeholder="Ví dụ: Suy tim cấp đợt mất bù, Đợt cấp COPD bội nhiễm..."
-                  className="w-full p-2 bg-white border border-slate-300 rounded-lg font-medium text-xs focus:ring-2 focus:ring-rose-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="font-extrabold text-slate-700 block mb-1">
-                  Bệnh Kèm Theo / Tiền Sử (Nếu có)
-                </label>
-                <textarea
-                  rows={2}
-                  value={secondaryDiagnosis}
-                  onChange={(e) => setSecondaryDiagnosis(e.target.value)}
-                  placeholder="Ví dụ: Tăng huyết áp, Đái tháo đường typ 2, Suy thận mạn giai đoạn 3..."
-                  className="w-full p-2 bg-white border border-slate-300 rounded-lg font-medium text-xs focus:ring-2 focus:ring-rose-500"
-                />
-              </div>
+            <div>
+              <label className="font-extrabold text-slate-700 block mb-1">
+                Chẩn Đoán (Tất cả chẩn đoán, không phân biệt bệnh chính / bệnh kèm) <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={primaryDiagnosis}
+                onChange={(e) => {
+                  setPrimaryDiagnosis(e.target.value);
+                  if (errorMsg) setErrorMsg(null);
+                }}
+                placeholder="Nhập tất cả chẩn đoán của bệnh nhân. Ví dụ: Cơn đau thắt ngực không ổn định, Tăng huyết áp độ 2, Đái tháo đường typ 2, Rối loạn lipid máu..."
+                className="w-full p-2.5 bg-white border border-slate-300 rounded-lg font-medium text-xs focus:ring-2 focus:ring-rose-500"
+                required
+              />
             </div>
 
             {/* Mức độ & Bác sĩ phụ trách */}
@@ -403,11 +378,24 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
                   onChange={(e) => setAttendingDoctorId(e.target.value)}
                   className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-xs focus:ring-2 focus:ring-rose-500 cursor-pointer"
                 >
-                  {doctors.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      BS. {d.name}
-                    </option>
-                  ))}
+                  <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)">
+                    {doctors
+                      .filter((d) => GROUP_1_DOCTOR_IDS.includes(d.id) || d.id === 'DOC-NGOC' || /ngọc|trung|huyền|thiên|ánh|bình chi/i.test(d.name))
+                      .map((d) => (
+                        <option key={d.id} value={d.id}>
+                          BS. {d.name}
+                        </option>
+                      ))}
+                  </optgroup>
+                  <optgroup label="Bác sĩ khác">
+                    {doctors
+                      .filter((d) => !GROUP_1_DOCTOR_IDS.includes(d.id) && d.id !== 'DOC-NGOC' && !/ngọc|trung|huyền|thiên|ánh|bình chi/i.test(d.name))
+                      .map((d) => (
+                        <option key={d.id} value={d.id}>
+                          BS. {d.name}
+                        </option>
+                      ))}
+                  </optgroup>
                 </select>
               </div>
             </div>

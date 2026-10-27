@@ -791,7 +791,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                     Chẩn đoán
                   </span>
                   <div className="text-sm font-black text-slate-900">
-                    {patient.primaryDiagnosis}
+                    {[patient.primaryDiagnosis, patient.secondaryDiagnosis].filter(Boolean).join(' - ')}
                   </div>
                 </div>
 

@@ -12,8 +12,8 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
     name: "Phòng 733",
     type: "ACUTE",
     totalBeds: 3,
-    group: "CARDIO",
-    description: "Bệnh nhân tim mạch, cấp cứu nội tiếp nhận theo dõi",
+    group: "GROUP_1",
+    description: "Bệnh nhân tim mạch, cấp cứu nội tiếp nhận theo dõi (Nhóm 1)",
     nurseStation: "Trạm ĐD Dãy 2 (Lầu 7)",
   },
   {
@@ -288,11 +288,34 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
   },
 ];
 
+// Group 1 Configuration (Nhóm 1): Phòng 703 -> 731 và bổ sung phòng 733
+export const GROUP_1_ROOM_NUMBERS = [
+  '703', '704', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731', '733'
+];
+
+// Danh sách 6 Bác sĩ phụ trách Nhóm 1: Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi
+export const GROUP_1_DOCTOR_IDS = [
+  '00708', // BS. Trần Hữu Ngọc (Ngọc)
+  '00979', // BS. Nguyễn Hữu Trung (Trung)
+  '00257', // BS. Đỗ Thị Vân Huyền (Huyền)
+  '00144', // BS. Phạm Cao Thiên (Thiên)
+  '00226', // BS. Đặng Thị Ngọc Ánh (Ánh)
+  '00943', // BS. Trần Bùi Bình Chi (Bình Chi)
+];
+
 // Doctors matching the hospital whiteboard at Khoa Nội Tổng Hợp - Tim Mạch
 // Doctors matching the official staff list at Khoa Nội Tổng Hợp - Bệnh viện Hùng Vương Gia Lai
 export const INITIAL_DOCTORS: Doctor[] = [
   {
     id: '00708',
+    name: 'Trần Hữu Ngọc',
+    title: '',
+    role: '',
+    avatarColor: 'bg-rose-700',
+    shiftStatus: 'Trực chính',
+  },
+  {
+    id: 'DOC-NGOC',
     name: 'Trần Hữu Ngọc',
     title: '',
     role: '',
