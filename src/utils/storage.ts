@@ -1,7 +1,7 @@
 import { Doctor, DepartmentRoom, Patient, AdmissionDischargeStatus } from '../types/patient';
-import { INITIAL_DOCTORS, INITIAL_PATIENTS, INITIAL_ROOMS } from '../data/mockData';
+import { INITIAL_DOCTORS, INITIAL_ROOMS } from '../data/mockData';
 
-const PATIENTS_KEY = 'hvg_internal_med_patients_v3';
+const PATIENTS_KEY = 'hvg_internal_med_patients_v4';
 const DOCTORS_KEY = 'hvg_internal_med_doctors_v5';
 const ROOMS_KEY = 'hvg_internal_med_rooms_v3';
 
@@ -15,6 +15,11 @@ export function shortenPatientName(fullName: string): string {
 
 export function loadPatients(): Patient[] {
   try {
+    // Clear legacy mock data keys if existing
+    localStorage.removeItem('hvg_internal_med_patients_v3');
+    localStorage.removeItem('hvg_internal_med_patients_v2');
+    localStorage.removeItem('hvg_internal_med_patients');
+
     const saved = localStorage.getItem(PATIENTS_KEY);
     let list: Patient[] = [];
     
@@ -140,11 +145,14 @@ export function loadRooms(): DepartmentRoom[] {
 
 export function resetAllData(): { patients: Patient[]; doctors: Doctor[]; rooms: DepartmentRoom[] } {
   localStorage.removeItem(PATIENTS_KEY);
+  localStorage.removeItem('hvg_internal_med_patients_v3');
+  localStorage.removeItem('hvg_internal_med_patients_v2');
+  localStorage.removeItem('hvg_internal_med_patients');
   localStorage.removeItem(DOCTORS_KEY);
   localStorage.removeItem('hvg_internal_med_doctors_v4');
   localStorage.removeItem(ROOMS_KEY);
   return {
-    patients: [], // Changed to empty to clear all
+    patients: [],
     doctors: INITIAL_DOCTORS,
     rooms: INITIAL_ROOMS,
   };
@@ -152,5 +160,8 @@ export function resetAllData(): { patients: Patient[]; doctors: Doctor[]; rooms:
 
 export function clearAllPatients(): void {
   localStorage.removeItem(PATIENTS_KEY);
+  localStorage.removeItem('hvg_internal_med_patients_v3');
+  localStorage.removeItem('hvg_internal_med_patients_v2');
+  localStorage.removeItem('hvg_internal_med_patients');
 }
 

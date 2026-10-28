@@ -34,6 +34,7 @@ import {
   subscribeToDepartmentPatients,
   syncPatientToCloud,
   deletePatientFromCloud,
+  deleteAllPatientsFromCloud,
   testCloudWrite, 
   syncAllPatientsToCloud, 
   SyncStatus 
@@ -114,19 +115,16 @@ export default function App() {
     // 1. Automatic continuous 2-way sync for Inpatients in Khoa Nội Tổng Hợp
     const unsubDept = subscribeToDepartmentPatients(
       (cloudPatients) => {
-        if (cloudPatients && cloudPatients.length > 0) {
-          setPatients(cloudPatients);
-          savePatients(cloudPatients);
-          setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
-        }
+        setPatients(cloudPatients || []);
+        savePatients(cloudPatients || []);
+        setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
       },
       (status) => {
         setSyncStatus(status);
         if (status.connected && status.lastSyncTime) {
           setLastAutoSyncTime(status.lastSyncTime);
         }
-      },
-      initialPatients
+      }
     );
 
     // 2. Subscribe to Khoa Cấp Cứu Firestore clinical_records (Tạm thời tắt theo yêu cầu)
@@ -439,14 +437,26 @@ export default function App() {
   };
 
   // Reset demo data
+  // Reset patient data
   const handleResetData = async () => {
     const data = resetAllData();
-    setPatients(data.patients);
+    setPatients([]);
     setDoctors(data.doctors);
     setRooms(data.rooms);
     setSelectedPatient(null);
-    // Force sync empty list to cloud
-    await syncAllPatientsToCloud([]);
+    setIsAutoSyncing(true);
+    try {
+      await deleteAllPatientsFromCloud();
+      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+      setManualPushMessage('✅ Đã xóa sạch toàn bộ dữ liệu bệnh nhân trên bộ nhớ và Cloud Firestore!');
+      setTimeout(() => setManualPushMessage(null), 5000);
+    } catch (e: any) {
+      console.warn('Lỗi xóa cloud:', e);
+      setManualPushMessage(`❌ Lỗi xóa dữ liệu trên Cloud: ${e.message || String(e)}`);
+      setTimeout(() => setManualPushMessage(null), 8000);
+    } finally {
+      setIsAutoSyncing(false);
+    }
   };
 
   if (!isLoaded) {

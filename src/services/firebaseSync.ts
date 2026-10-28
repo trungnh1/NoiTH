@@ -396,10 +396,7 @@ export function subscribeToDepartmentPatients(
       colRef,
       (snapshot) => {
         if (snapshot.empty) {
-          if (initialFallbackPatients && initialFallbackPatients.length > 0) {
-            console.log('Tự động khởi tạo dữ liệu ban đầu lên Cloud Firestore...');
-            syncAllPatientsToCloud(initialFallbackPatients);
-          }
+          onPatientsChange([]);
           if (onStatusChange) {
             onStatusChange({
               connected: true,
@@ -540,6 +537,23 @@ export async function deletePatientFromCloud(patientId: string): Promise<{ succe
     return { success: true };
   } catch (e: any) {
     console.warn('Lỗi xóa bệnh nhân khỏi Cloud Firestore:', e);
+    return { success: false, error: e?.message || String(e) };
+  }
+}
+
+// Delete all patient documents from Cloud Firestore collection 'department_patients'
+export async function deleteAllPatientsFromCloud(): Promise<{ success: boolean; error?: string }> {
+  try {
+    await executeFirestoreOp(async (db) => {
+      const colRef = collection(db, 'department_patients');
+      const snap = await getDocs(colRef);
+      for (const d of snap.docs) {
+        await deleteDoc(d.ref);
+      }
+    });
+    return { success: true };
+  } catch (e: any) {
+    console.warn('Lỗi xóa toàn bộ bệnh nhân trên Cloud Firestore:', e);
     return { success: false, error: e?.message || String(e) };
   }
 }
