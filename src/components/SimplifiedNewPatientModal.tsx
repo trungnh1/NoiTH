@@ -107,15 +107,13 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
     return patients.filter((p) => p.status === 'ACTIVE' && p.roomNumber === roomNumber).length;
   }, [roomNumber, patients]);
 
-  // Sync allergy checkbox with clinical tags
+  // Sync allergy checkbox with clinical tags (gán thẻ lâm sàng đặc biệt: Dị ứng)
   const handleToggleAllergy = (checked: boolean) => {
     setHasAllergy(checked);
     if (checked) {
-      if (!selectedTags.includes('ALLERGY')) {
-        setSelectedTags([...selectedTags, 'ALLERGY']);
-      }
+      setSelectedTags((prev) => (prev.includes('ALLERGY') ? prev : [...prev, 'ALLERGY']));
     } else {
-      setSelectedTags(selectedTags.filter((t) => t !== 'ALLERGY'));
+      setSelectedTags((prev) => prev.filter((t) => t !== 'ALLERGY'));
       setAllergyDetails('');
     }
   };
@@ -142,11 +140,16 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
 
   const toggleTag = (tag: ClinicalTag) => {
     if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter((t) => t !== tag));
-      if (tag === 'ALLERGY') setHasAllergy(false);
+      setSelectedTags((prev) => prev.filter((t) => t !== tag));
+      if (tag === 'ALLERGY') {
+        setHasAllergy(false);
+        setAllergyDetails('');
+      }
     } else {
-      setSelectedTags([...selectedTags, tag]);
-      if (tag === 'ALLERGY') setHasAllergy(true);
+      setSelectedTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
+      if (tag === 'ALLERGY') {
+        setHasAllergy(true);
+      }
     }
   };
 
@@ -732,13 +735,13 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
                 </div>
               </div>
 
-              {/* TÁCH LÀM 2: BÀN GIAO TUA TRỰC (Ở TRÊN) & GHI CHÚ (Ở DƯỚI) */}
+              {/* TÁCH LÀM 2: BÀN GIAO BỆNH (Ở TRÊN) & GHI CHÚ (Ở DƯỚI) */}
               <div className="space-y-3">
-                {/* 9. Bàn Giao Tua Trực (ở trên) */}
+                {/* 9. Bàn Giao Bệnh (ở trên) */}
                 <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-200 space-y-1.5 shadow-2xs">
                   <div className="flex items-center gap-1.5 text-amber-900 font-black text-xs uppercase">
                     <ArrowRightLeft className="w-3.5 h-3.5 text-amber-700" />
-                    <span>Bàn Giao Tua Trực</span>
+                    <span>Bàn Giao Bệnh</span>
                   </div>
                   <textarea
                     rows={2}

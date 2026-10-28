@@ -451,11 +451,11 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                 />
               </div>
 
-              {/* 3. Bàn giao kíp trực */}
+              {/* 3. Bàn giao bệnh */}
               <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-200 space-y-1.5 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-amber-900 font-black text-xs uppercase">
                   <ArrowRightLeft className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Bàn Giao Ca Trực Tiếp Theo & Ghi Chú</span>
+                  <span>Bàn Giao Bệnh</span>
                 </div>
                 <textarea
                   rows={2}
