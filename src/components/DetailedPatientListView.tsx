@@ -598,24 +598,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
             })}
           </div>
 
-          <div className="relative flex-1 min-w-[160px] max-w-xs">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm tên, phòng, chẩn đoán..."
-              className="w-full pl-8 pr-7 py-1 bg-slate-50 hover:bg-slate-100/60 focus:bg-white text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-rose-500 font-medium transition-all"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+
         </div>
 
         {/* Filter Bar */}
