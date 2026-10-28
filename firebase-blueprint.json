@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "Patient": {
+      "title": "Patient",
+      "description": "Hồ sơ bệnh nhân nội trú Khoa Nội Tổng Hợp - Tim Mạch",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Mã định danh bệnh nhân" },
+        "fullName": { "type": "string", "description": "Họ và tên bệnh nhân" },
+        "patientCode": { "type": "string", "description": "Mã bệnh nhân viện" },
+        "medicalRecordNumber": { "type": "string", "description": "Số hồ sơ bệnh án" },
+        "gender": { "type": "string", "description": "Giới tính" },
+        "age": { "type": "number", "description": "Tuổi" },
+        "dateOfBirth": { "type": "string", "description": "Ngày tháng năm sinh" },
+        "roomNumber": { "type": "string", "description": "Số phòng" },
+        "bedNumber": { "type": "string", "description": "Số giường" },
+        "primaryDiagnosis": { "type": "string", "description": "Chẩn đoán chính" },
+        "severity": { "type": "string", "description": "Mức độ bệnh: CRITICAL, MODERATE, STABLE" },
+        "status": { "type": "string", "description": "Trạng thái: ACTIVE, DISCHARGED, TRANSFERRED" }
+      },
+      "required": ["id", "fullName", "roomNumber", "bedNumber", "severity", "status"]
+    },
+    "ClinicalRecord": {
+      "title": "ClinicalRecord",
+      "description": "Bản ghi lâm sàng và cấp cứu",
+      "type": "object",
+      "properties": {
+        "deptCode": { "type": "string", "description": "Mã khoa phòng" },
+        "patientName": { "type": "string", "description": "Tên bệnh nhân" },
+        "diagnosis": { "type": "string", "description": "Chẩn đoán ban đầu" },
+        "roomNumber": { "type": "string", "description": "Phòng tiếp nhận" },
+        "bedNumber": { "type": "string", "description": "Giường" }
+      }
+    }
+  },
+  "firestore": {
+    "/department_patients/{patientId}": {
+      "schema": "Patient",
+      "description": "Danh sách hồ sơ bệnh nhân nội trú đang điều trị"
+    },
+    "/clinical_records/{recordId}": {
+      "schema": "ClinicalRecord",
+      "description": "Hồ sơ ghi nhận ca cấp cứu lâm sàng"
+    }
+  }
+}

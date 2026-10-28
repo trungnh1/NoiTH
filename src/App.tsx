@@ -551,6 +551,7 @@ export default function App() {
           onDischargePatient={handleDischargePatient}
           onDeletePatient={handleDeletePatient}
           onOpenPrintModal={() => setIsPrintModalOpen(true)}
+          onAddPatient={handleAddPatient}
         />
       </main>
 

@@ -54,6 +54,7 @@ interface DetailedPatientListViewProps {
   onDischargePatient?: (patient: Patient) => void;
   onDeletePatient?: (patient: Patient) => void;
   onOpenPrintModal?: () => void;
+  onAddPatient?: (patient: Patient) => void;
 }
 
 /**
@@ -162,6 +163,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   onDischargePatient,
   onDeletePatient,
   onOpenPrintModal,
+  onAddPatient,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | SeverityLevel | 'DISCHARGE_TODAY' | 'DISCHARGE_TOMORROW'>('ALL');
@@ -366,7 +368,15 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   return (
     <div className="space-y-4 animate-in fade-in">
       
-      <QuickPatientEntry onAddPatient={onOpenNewPatient} />
+      {onAddPatient && (
+        <QuickPatientEntry 
+          onAddPatient={(newPat) => {
+            onAddPatient(newPat);
+            setNotification(`Đã trích xuất và thêm bệnh nhân ${newPat.fullName} vào Phòng ${newPat.roomNumber} - ${newPat.bedNumber}`);
+            setTimeout(() => setNotification(null), 5000);
+          }} 
+        />
+      )}
 
       {/* Quick feedback notification banner */}
       {notification && (
