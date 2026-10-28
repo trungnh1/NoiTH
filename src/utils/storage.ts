@@ -2,8 +2,8 @@ import { Doctor, DepartmentRoom, Patient, AdmissionDischargeStatus } from '../ty
 import { INITIAL_DOCTORS, INITIAL_ROOMS } from '../data/mockData';
 
 const PATIENTS_KEY = 'hvg_internal_med_patients_v4';
-const DOCTORS_KEY = 'hvg_internal_med_doctors_v5';
-const ROOMS_KEY = 'hvg_internal_med_rooms_v3';
+const DOCTORS_KEY = 'hvg_internal_med_doctors_v6';
+const ROOMS_KEY = 'hvg_internal_med_rooms_v4';
 
 export function shortenPatientName(fullName: string): string {
   if (!fullName) return '';
@@ -71,6 +71,7 @@ export function loadPatients(): Patient[] {
 
       return {
         ...p,
+        roomNumber: p.roomNumber === '704' ? '707' : p.roomNumber,
         fullName: shortenPatientName(p.fullName),
         patientCode: pCode,
         department: dept,
@@ -97,17 +98,23 @@ export function savePatients(patients: Patient[]): void {
 
 export function loadDoctors(): Doctor[] {
   try {
-    // Clean legacy key if present
+    // Clean legacy keys
+    localStorage.removeItem('hvg_internal_med_doctors_v5');
     localStorage.removeItem('hvg_internal_med_doctors_v4');
 
     const saved = localStorage.getItem(DOCTORS_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length >= 10) {
-        return parsed.map((d: any) => {
-          const { phone, ...cleanDoctor } = d;
-          return cleanDoctor as Doctor;
-        });
+      if (Array.isArray(parsed) && parsed.length >= 5) {
+        const filtered = parsed
+          .filter((d: any) => d.id !== '00101' && d.id !== '00199' && !/tuế|quyên/i.test(d.name || ''))
+          .map((d: any) => {
+            const { phone, ...cleanDoctor } = d;
+            return cleanDoctor as Doctor;
+          });
+        if (filtered.length >= 10) {
+          return filtered;
+        }
       }
     }
   } catch (e) {

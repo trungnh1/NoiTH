@@ -8,10 +8,13 @@ import {
   Cloud,
   CheckCircle2,
   Printer,
-  AlertCircle
+  AlertCircle,
+  LogOut,
+  Database
 } from 'lucide-react';
-import { Patient } from '../types/patient';
+import { Patient, Doctor } from '../types/patient';
 import { SyncStatus } from '../services/firebaseSync';
+import { formatDoctorShortName } from './DetailedPatientListView';
 
 interface HeaderProps {
   patients: Patient[];
@@ -22,11 +25,13 @@ interface HeaderProps {
   onOpenWatchlist?: () => void;
   onOpenPrintModal?: () => void;
   onManualPushToCloud?: () => void;
-  onResetData?: () => void;
   onOpenDutySchedule?: () => void;
+  onOpenSatelliteSync?: () => void;
   syncStatus: SyncStatus;
   isAutoSyncing?: boolean;
   lastAutoSyncTime?: string | null;
+  currentDoctor?: Doctor | null;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,10 +39,12 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNewPatient,
   onOpenPrintModal,
   onManualPushToCloud,
-  onResetData,
+  onOpenSatelliteSync,
   syncStatus,
   isAutoSyncing = false,
   lastAutoSyncTime,
+  currentDoctor,
+  onLogout,
 }) => {
   const activePatients = patients.filter((p) => p.status === 'ACTIVE');
   const criticalCount = activePatients.filter((p) => p.severity === 'CRITICAL').length;
@@ -133,6 +140,18 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Action Area */}
           <div className="flex items-center gap-2">
+            {onOpenSatelliteSync && (
+              <button
+                type="button"
+                onClick={onOpenSatelliteSync}
+                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-[10px] font-black rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                title="Đồng bộ hồ sơ bệnh nhân tự động từ Cloud Firestore lâm sàng vệ tinh"
+              >
+                <Database className="w-3.5 h-3.5 text-indigo-600" />
+                <span>BN Vệ Tinh</span>
+              </button>
+            )}
+
             {onManualPushToCloud && (
               <button
                 type="button"
@@ -144,14 +163,41 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>Đẩy Cloud</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={onResetData}
-              className="px-2 py-1 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-700 text-[10px] font-black rounded-lg transition-all cursor-pointer"
-              title="CẢNH BÁO: Xóa sạch dữ liệu bệnh nhân"
-            >
-              Xóa sạch dữ liệu
-            </button>
+
+            {/* Current Logged-in Doctor badge & Logout */}
+            {currentDoctor && (
+              <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                <div 
+                  className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 px-2.5 py-1 rounded-xl text-xs border border-slate-200 transition-colors"
+                  title={`Bác sĩ: ${currentDoctor.name} (Mã BS: ${currentDoctor.id})`}
+                >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[11px] font-black ${currentDoctor.avatarColor || 'bg-indigo-600'}`}>
+                    {formatDoctorShortName(currentDoctor.name).slice(0, 1)}
+                  </div>
+                  <div className="flex flex-col text-left leading-tight">
+                    <span className="font-black text-slate-800 text-xs truncate max-w-[120px]">
+                      BS. {formatDoctorShortName(currentDoctor.name)}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      ID: {currentDoctor.id}
+                    </span>
+                  </div>
+                </div>
+
+                {onLogout && (
+                  <button
+                    type="button"
+                    onClick={onLogout}
+                    className="p-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
+                    title="Đăng xuất khỏi hệ thống"
+                  >
+                    <LogOut className="w-4 h-4 text-rose-500" />
+                    <span className="hidden sm:inline text-rose-600">Đăng xuất</span>
+                  </button>
+                )}
+              </div>
+            )}
+
           </div>
 
         </div>

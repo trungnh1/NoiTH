@@ -24,7 +24,7 @@ export interface DoctorDutyShift {
 }
 
 // Pre-parsed complete duty roster from LỊCH TRỰC NỘI TỔNG HỢP (tháng 7 - đầu tháng 8)
-export const DUTY_ROSTER_DATA: DoctorDutyShift[] = [
+const RAW_DUTY_ROSTER_DATA: DoctorDutyShift[] = [
   {
     date: '01/07',
     dayOfWeek: 'Thứ Tư',
@@ -591,6 +591,32 @@ export const DUTY_ROSTER_DATA: DoctorDutyShift[] = [
 /**
  * Returns list of all available duty dates
  */
+function filterShiftDoctors(shift: DoctorDutyShift): DoctorDutyShift {
+  const isExcluded = (name: string) => /tuế|quyên/i.test(name);
+  return {
+    ...shift,
+    emergencyDuty: (shift.emergencyDuty || []).filter((n) => !isExcluded(n)),
+    wardDuty: (shift.wardDuty || []).filter((n) => !isExcluded(n)),
+    inpatientDoctors: (shift.inpatientDoctors || []).filter((n) => !isExcluded(n)),
+    clinic220: shift.clinic220?.filter((n) => !isExcluded(n)),
+    clinic248: shift.clinic248?.filter((n) => !isExcluded(n)),
+    clinic232Morning: shift.clinic232Morning?.filter((n) => !isExcluded(n)),
+    clinic230Morning: shift.clinic230Morning?.filter((n) => !isExcluded(n)),
+    clinic230Afternoon: shift.clinic230Afternoon?.filter((n) => !isExcluded(n)),
+    icuDuty: shift.icuDuty?.filter((n) => !isExcluded(n)),
+    echoCardio: shift.echoCardio?.filter((n) => !isExcluded(n)),
+    postDuty: shift.postDuty?.filter((n) => !isExcluded(n)),
+    offDuty: shift.offDuty?.filter((n) => !isExcluded(n)),
+    studying: shift.studying?.filter((n) => !isExcluded(n)),
+  };
+}
+
+// Complete duty roster with Tuế and Quyên excluded
+export const DUTY_ROSTER_DATA: DoctorDutyShift[] = RAW_DUTY_ROSTER_DATA.map(filterShiftDoctors);
+
+/**
+ * Returns list of all available duty dates
+ */
 export function getAvailableDutyDates(): string[] {
   return DUTY_ROSTER_DATA.map((d) => d.date);
 }
@@ -600,9 +626,8 @@ export function getAvailableDutyDates(): string[] {
  */
 export function getDutyScheduleForDate(dateStr: string): DoctorDutyShift {
   const found = DUTY_ROSTER_DATA.find((d) => d.date === dateStr);
-  if (found) return found;
-  // Fallback to 20/07 (matching the hospital board active shift)
-  return DUTY_ROSTER_DATA.find((d) => d.date === '20/07') || DUTY_ROSTER_DATA[0];
+  const raw = found || DUTY_ROSTER_DATA.find((d) => d.date === '20/07') || DUTY_ROSTER_DATA[0];
+  return filterShiftDoctors(raw);
 }
 
 /**
@@ -616,7 +641,7 @@ export function getTodayDutySchedule(): DoctorDutyShift {
   
   // Try matching today's date if in July/August
   const todayMatch = DUTY_ROSTER_DATA.find((d) => d.date === currentKey);
-  if (todayMatch) return todayMatch;
+  if (todayMatch) return filterShiftDoctors(todayMatch);
 
   // Otherwise, default to 20/07 which represents current active duty board
   return getDutyScheduleForDate('20/07');

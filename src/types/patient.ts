@@ -240,6 +240,7 @@ export interface ClinicalEvolution {
   vitalSummary?: string;
   treatmentAction: string;
   orders?: string;
+  notes?: string;
 }
 
 export interface LabResult {
@@ -371,10 +372,10 @@ export const WARD_GROUPS_META: Record<WardRoomGroup, {
     id: 'GROUP_1',
     name: 'Nhóm 1',
     shortName: 'Nhóm 1',
-    rooms: ['703', '704', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731'],
+    rooms: ['703', '707', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731'],
     badgeColor: 'bg-blue-600 text-white',
     borderColor: 'border-blue-400',
     bgLight: 'bg-blue-50/70',
-    description: 'Phòng 703, 704, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731',
+    description: 'Phòng 703, 707, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731',
   },
 };

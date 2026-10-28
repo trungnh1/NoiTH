@@ -21,13 +21,30 @@ import {
   ArrowRightLeft,
   LogOut,
   Trash2,
-  Printer
+  Printer,
+  Database
 } from 'lucide-react';
 import { QuickPatientEntry } from './QuickPatientEntry';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
 export const GROUP_1_ROOM_NUMBERS = [
-  '703', '704', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731', '733'
+  '703', '704', '707', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731', '733'
+];
+
+// Rooms for Nhóm Tim Mạch (Cardio: 735 -> 745)
+export const CARDIO_ROOM_NUMBERS = [
+  '735', '737', '739', '741', '743', '745'
+];
+
+// Rooms for Nhóm 2 (747 -> 757)
+export const GROUP_2_ROOM_NUMBERS = [
+  '747', '749', '751', '753', '755', '757'
+];
+
+export const ALL_ROOM_NUMBERS = [
+  ...GROUP_1_ROOM_NUMBERS,
+  ...CARDIO_ROOM_NUMBERS,
+  ...GROUP_2_ROOM_NUMBERS,
 ];
 
 // 6 Bác sĩ phụ trách Nhóm 1: Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi
@@ -40,6 +57,23 @@ export const GROUP_1_DOCTOR_IDS = [
   '00943', // BS. Trần Bùi Bình Chi (Bình Chi)
 ];
 
+// Bác sĩ Nhóm 2: Linh, Hoài, Mai, Ngoan, Chi
+export const GROUP_2_DOCTOR_IDS = [
+  '00161', // BS. Thái Thị Thùy Linh (Linh)
+  '00146', // BS. Dương Thị Hoài (Hoài)
+  '00318', // BS. Nguyễn Thị Ngọc Mai (Mai)
+  '00176', // BS. Đỗ Thị Ngoan (Ngoan)
+  '00769', // BS. Nguyễn Thị Phương Chi (Chi)
+];
+
+// Bác sĩ Tim Mạch: Nhật, Thọ, Thịnh, Lam
+export const CARDIO_DOCTOR_IDS = [
+  '00020', // BS. Nguyễn Văn Phương Nhật (Nhật)
+  '00355', // BS. Võ Văn Thọ (Thọ)
+  '00818', // BS. Võ Hồng Thịnh (Thịnh)
+  '00929', // BS. Trương Hoài Lam (Lam)
+];
+
 interface DetailedPatientListViewProps {
   patients: Patient[];
   doctors: Doctor[];
@@ -50,11 +84,13 @@ interface DetailedPatientListViewProps {
   onOpenNewPatientForRoom?: (roomNumber: string) => void;
   onOpenEvolution: (patient: Patient) => void;
   onSelectPatient: (patient: Patient) => void;
+  onEditPatient?: (patient: Patient) => void;
   onTransferPatient?: (patient: Patient) => void;
   onDischargePatient?: (patient: Patient) => void;
   onDeletePatient?: (patient: Patient) => void;
   onOpenPrintModal?: () => void;
   onAddPatient?: (patient: Patient) => void;
+  onOpenSatelliteSync?: () => void;
 }
 
 /**
@@ -159,50 +195,45 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   onOpenNewPatientForRoom,
   onOpenEvolution,
   onSelectPatient,
+  onEditPatient,
   onTransferPatient,
   onDischargePatient,
   onDeletePatient,
   onOpenPrintModal,
   onAddPatient,
+  onOpenSatelliteSync,
 }) => {
+  const [selectedGroup, setSelectedGroup] = useState<'GROUP_1' | 'CARDIO' | 'GROUP_2' | 'ALL'>('GROUP_1');
+  const [showEmptyRooms, setShowEmptyRooms] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | SeverityLevel | 'DISCHARGE_TODAY' | 'DISCHARGE_TOMORROW'>('ALL');
   const [doctorFilter, setDoctorFilter] = useState<string>('ALL');
-  const [showAllGroup1Rooms, setShowAllGroup1Rooms] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
 
   // Group 1 doctors (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)
   const group1Doctors = useMemo(() => {
-    const raw = doctors.filter((d) => 
-      GROUP_1_DOCTOR_IDS.includes(d.id) || 
-      d.id === 'DOC-NGOC' ||
-      /ngọc|trung|huyền|thiên|ánh|bình chi/i.test(d.name)
+    return doctors.filter((d) => 
+      (GROUP_1_DOCTOR_IDS.includes(d.id) || d.id === 'DOC-NGOC' || /trần hữu ngọc|nguyễn hữu trung|đỗ thị vân huyền|phạm cao thiên|đặng thị ngọc ánh|trần bùi bình chi/i.test(d.name)) &&
+      !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
     );
-    const seenNames = new Set<string>();
-    const uniqueList: Doctor[] = [];
-    for (const d of raw) {
-      const norm = d.name.trim().toLowerCase();
-      if (!seenNames.has(norm)) {
-        seenNames.add(norm);
-        uniqueList.push(d);
-      }
-    }
-    return uniqueList;
   }, [doctors]);
 
-  const otherDoctors = useMemo(() => {
-    const raw = doctors.filter((d) => !group1Doctors.some((g) => g.id === d.id || g.name.trim().toLowerCase() === d.name.trim().toLowerCase()));
-    const seenNames = new Set<string>();
-    const uniqueList: Doctor[] = [];
-    for (const d of raw) {
-      const norm = d.name.trim().toLowerCase();
-      if (!seenNames.has(norm)) {
-        seenNames.add(norm);
-        uniqueList.push(d);
-      }
-    }
-    return uniqueList;
-  }, [doctors, group1Doctors]);
+  // Group 2 doctors (Linh, Hoài, Mai, Ngoan, Chi)
+  const group2Doctors = useMemo(() => {
+    return doctors.filter((d) => 
+      (GROUP_2_DOCTOR_IDS.includes(d.id) || /thái thị thùy linh|dương thị hoài|nguyễn thị ngọc mai|đỗ thị ngoan|nguyễn thị phương chi/i.test(d.name)) &&
+      !/bình chi/i.test(d.name) &&
+      !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
+    );
+  }, [doctors]);
+
+  // Cardio doctors (Nhật, Thọ, Thịnh, Lam)
+  const cardioDoctors = useMemo(() => {
+    return doctors.filter((d) => 
+      (CARDIO_DOCTOR_IDS.includes(d.id) || /nguyễn văn phương nhật|võ văn thọ|võ hồng thịnh|trương hoài lam/i.test(d.name)) &&
+      !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
+    );
+  }, [doctors]);
 
   const doctorMap = useMemo(() => {
     const map = new Map<string, Doctor>();
@@ -217,18 +248,26 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     return map;
   }, [doctors]);
 
-  // Active inpatients - Filtered strictly to NHÓM 1 ROOMS (including 733)
-  const group1ActivePatients = useMemo(() => {
+  // Current room numbers for the selected clinical group
+  const currentGroupRoomNumbers = useMemo(() => {
+    if (selectedGroup === 'CARDIO') return CARDIO_ROOM_NUMBERS;
+    if (selectedGroup === 'GROUP_2') return GROUP_2_ROOM_NUMBERS;
+    if (selectedGroup === 'ALL') return ALL_ROOM_NUMBERS;
+    return GROUP_1_ROOM_NUMBERS;
+  }, [selectedGroup]);
+
+  // Active inpatients - Filtered strictly to current group rooms
+  const activeGroupPatients = useMemo(() => {
     return patients.filter((p) => {
       if (p.status !== 'ACTIVE') return false;
       const cleanRoom = p.roomNumber ? p.roomNumber.replace(/^(phòng|p\.?)\s*/i, '').trim() : '';
-      return GROUP_1_ROOM_NUMBERS.includes(cleanRoom);
+      return currentGroupRoomNumbers.includes(cleanRoom);
     });
-  }, [patients]);
+  }, [patients, currentGroupRoomNumbers]);
 
   // Filtered patients based on user search and filters
   const filteredPatients = useMemo(() => {
-    return group1ActivePatients.filter((p) => {
+    return activeGroupPatients.filter((p) => {
       // Status & Severity filter
       if (statusFilter !== 'ALL') {
         if (statusFilter === 'DISCHARGE_TODAY') {
@@ -267,9 +306,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
       return true;
     });
-  }, [group1ActivePatients, statusFilter, doctorFilter, searchTerm, doctorMap]);
+  }, [activeGroupPatients, statusFilter, doctorFilter, searchTerm, doctorMap]);
 
-  // Group patients by Room (Vertical List of Nhóm 1 Rooms)
+  // Group patients by Room (Vertical List of Rooms for Selected Group)
   const roomGroups = useMemo(() => {
     const patientMap = new Map<string, Patient[]>();
 
@@ -283,10 +322,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
       }
     });
 
-    // Rooms to display: either all 15 rooms of Nhóm 1, or only rooms with patients
-    const roomsToRender = showAllGroup1Rooms 
-      ? GROUP_1_ROOM_NUMBERS 
-      : GROUP_1_ROOM_NUMBERS.filter((r) => patientMap.has(r));
+    // Rooms to display: either all rooms in current group, or only rooms with patients (nút ẩn phòng trống)
+    const roomsToRender = showEmptyRooms 
+      ? currentGroupRoomNumbers 
+      : currentGroupRoomNumbers.filter((r) => patientMap.has(r));
 
     return roomsToRender.map((roomKey) => {
       const roomPatientList = patientMap.get(roomKey) || [];
@@ -312,7 +351,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         patients: roomPatientList,
       };
     });
-  }, [filteredPatients, doctorMap, roomDoctorAssignments, showAllGroup1Rooms]);
+  }, [filteredPatients, doctorMap, roomDoctorAssignments, showEmptyRooms, currentGroupRoomNumbers]);
 
   // Handler for quick doctor assignment
   const handleQuickAssignDoctor = (roomNumber: string, doctorId: string) => {
@@ -324,18 +363,18 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     }
   };
 
-  // Counters for Nhóm 1
-  const criticalCount = group1ActivePatients.filter((p) => p.severity === 'CRITICAL').length;
-  const moderateCount = group1ActivePatients.filter((p) => p.severity === 'MODERATE').length;
-  const stableCount = group1ActivePatients.filter((p) => p.severity === 'STABLE').length;
-  const dischargeTodayCount = group1ActivePatients.filter((p) => p.admissionStatus === 'DISCHARGE_TODAY').length;
-  const dischargeTomorrowCount = group1ActivePatients.filter((p) => p.admissionStatus === 'DISCHARGE_TOMORROW').length;
+  // Counters for the currently selected group
+  const criticalCount = activeGroupPatients.filter((p) => p.severity === 'CRITICAL').length;
+  const moderateCount = activeGroupPatients.filter((p) => p.severity === 'MODERATE').length;
+  const stableCount = activeGroupPatients.filter((p) => p.severity === 'STABLE').length;
+  const dischargeTodayCount = activeGroupPatients.filter((p) => p.admissionStatus === 'DISCHARGE_TODAY').length;
+  const dischargeTomorrowCount = activeGroupPatients.filter((p) => p.admissionStatus === 'DISCHARGE_TOMORROW').length;
 
-  // Active doctors currently treating patients in Nhóm 1 (sorted alphabetically by Vietnamese given name)
+  // Active doctors currently treating patients in the selected group (sorted alphabetically by Vietnamese given name)
   const activeDoctorsWithCounts = useMemo(() => {
     const countsMap = new Map<string, { id: string; name: string; count: number }>();
 
-    group1ActivePatients.forEach((p) => {
+    activeGroupPatients.forEach((p) => {
       let doc = doctorMap.get(p.attendingDoctorId);
       if (!doc && p.attendingDoctorId === 'DOC-NGOC') {
         doc = doctors.find((d) => d.id === '00708' || /trần hữu ngọc/i.test(d.name));
@@ -363,7 +402,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     });
 
     return list;
-  }, [group1ActivePatients, doctorMap, doctors]);
+  }, [activeGroupPatients, doctorMap, doctors]);
 
   return (
     <div className="space-y-4 animate-in fade-in">
@@ -397,15 +436,68 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
       {/* Top Action Bar & Quick Filters (Ultra-Compact) */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs px-3 py-2 space-y-2">
         
-        {/* Row 1: Title, Nhóm 1 Scope & Action Buttons */}
+        {/* Row 1: Title, Clinical Group Selector & Action Buttons */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-black text-slate-900 tracking-tight">
-              Danh Sách Bệnh Nhân - Buồng Phòng Nhóm 1
+              Danh Sách Bệnh Nhân
             </h2>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-600 text-white font-extrabold">
-              Nhóm 1 (703-731 & 733) • {group1ActivePatients.length} BN
+
+            {/* Clinical Group Tabs (Nhóm 1, Tim Mạch, Nhóm 2, Tất cả) */}
+            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-bold gap-0.5">
+              <button
+                type="button"
+                onClick={() => setSelectedGroup('GROUP_1')}
+                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                  selectedGroup === 'GROUP_1'
+                    ? 'bg-rose-600 text-white font-extrabold shadow-2xs'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+                title="Nhóm 1: Phòng 703 - 731 & 733 (16 phòng)"
+              >
+                Nhóm 1 (16P)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedGroup('CARDIO')}
+                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                  selectedGroup === 'CARDIO'
+                    ? 'bg-rose-600 text-white font-extrabold shadow-2xs'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+                title="Nhóm Tim Mạch: Phòng 735 - 745 (6 phòng)"
+              >
+                Tim Mạch (6P)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedGroup('GROUP_2')}
+                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                  selectedGroup === 'GROUP_2'
+                    ? 'bg-indigo-600 text-white font-extrabold shadow-2xs'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+                title="Nhóm 2: Phòng 747 - 757 (6 phòng)"
+              >
+                Nhóm 2 (6P)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedGroup('ALL')}
+                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                  selectedGroup === 'ALL'
+                    ? 'bg-slate-900 text-white font-extrabold shadow-2xs'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+                title="Tất cả các phòng trong khoa (28 phòng)"
+              >
+                Tất cả (28P)
+              </button>
+            </div>
+
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-white font-extrabold">
+              {activeGroupPatients.length} BN
             </span>
           </div>
 
@@ -422,18 +514,32 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               </button>
             )}
 
+            {/* Nút Ẩn / Hiện phòng trống - Được giữ lại theo yêu cầu */}
             <button
               type="button"
-              onClick={() => setShowAllGroup1Rooms(!showAllGroup1Rooms)}
+              onClick={() => setShowEmptyRooms(!showEmptyRooms)}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
-                showAllGroup1Rooms 
-                  ? 'bg-slate-900 text-white border-slate-900' 
+                !showEmptyRooms 
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs' 
                   : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
               }`}
+              title={showEmptyRooms ? 'Ẩn các buồng phòng hiện chưa có bệnh nhân' : 'Hiển thị tất cả các buồng phòng'}
             >
               <Users className="w-3 h-3" />
-              <span>{showAllGroup1Rooms ? 'Ẩn phòng trống' : 'Phòng trống (15)'}</span>
+              <span>{showEmptyRooms ? 'Ẩn phòng trống' : `Hiện phòng trống (${currentGroupRoomNumbers.length})`}</span>
             </button>
+
+            {onOpenSatelliteSync && (
+              <button
+                type="button"
+                onClick={onOpenSatelliteSync}
+                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-lg shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-98"
+                title="Đồng bộ và nhập bệnh nhân tự động từ Cloud Firestore lâm sàng vệ tinh"
+              >
+                <Database className="w-3 h-3 text-indigo-600" />
+                <span>+ BN Vệ Tinh</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -537,7 +643,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Tất cả ({group1ActivePatients.length})
+                Tất cả ({activeGroupPatients.length})
               </button>
               <button
                 type="button"
@@ -620,22 +726,27 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer"
               >
                 <option value="ALL">Lọc theo Bác sĩ</option>
-                <optgroup label="Bác sĩ Nhóm 1">
+                <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)">
                   {group1Doctors.map((d) => (
                     <option key={d.id} value={d.id}>
                       BS. {formatDoctorShortName(d.name)}
                     </option>
                   ))}
                 </optgroup>
-                {otherDoctors.length > 0 && (
-                  <optgroup label="Bác sĩ khác">
-                    {otherDoctors.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        BS. {formatDoctorShortName(d.name)}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
+                <optgroup label="Bác sĩ Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)">
+                  {group2Doctors.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      BS. {formatDoctorShortName(d.name)}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam)">
+                  {cardioDoctors.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      BS. {formatDoctorShortName(d.name)}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </div>
 
@@ -657,15 +768,15 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         </div>
       </div>
 
-      {/* Main Vertical List of Nhóm 1 Rooms */}
+      {/* Main Vertical List of Rooms */}
       {roomGroups.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 shadow-xs">
           <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-2" />
           <p className="font-extrabold text-slate-700 text-sm">
-            Không tìm thấy bệnh nhân nào trong Nhóm 1 theo bộ lọc hiện tại.
+            Không tìm thấy bệnh nhân nào trong {selectedGroup === 'CARDIO' ? 'Nhóm Tim Mạch' : selectedGroup === 'GROUP_2' ? 'Nhóm 2' : selectedGroup === 'ALL' ? 'Toàn Khoa' : 'Nhóm 1'} theo bộ lọc hiện tại.
           </p>
           <p className="text-xs text-slate-400 mt-1">
-            Bấm "Hiện cả phòng trống" để xem tất cả buồng phòng Nhóm 1 hoặc bấm "+ Nhập Mới Bệnh Nhân".
+            Bấm "Hiện phòng trống" để hiển thị tất cả các buồng phòng hoặc bấm "+ Nhập BN".
           </p>
         </div>
       ) : (
@@ -706,15 +817,20 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                             </option>
                           ))}
                         </optgroup>
-                        {otherDoctors.length > 0 && (
-                          <optgroup label="Bác sĩ khác" className="text-slate-900 bg-white">
-                            {otherDoctors.map((doc) => (
-                              <option key={doc.id} value={doc.id}>
-                                BS. {formatDoctorShortName(doc.name)}
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
+                        <optgroup label="Bác sĩ Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)" className="text-slate-900 bg-white font-bold">
+                          {group2Doctors.map((doc) => (
+                            <option key={doc.id} value={doc.id}>
+                              BS. {formatDoctorShortName(doc.name)}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam)" className="text-slate-900 bg-white font-bold">
+                          {cardioDoctors.map((doc) => (
+                            <option key={doc.id} value={doc.id}>
+                              BS. {formatDoctorShortName(doc.name)}
+                            </option>
+                          ))}
+                        </optgroup>
                       </select>
                     </div>
 
@@ -820,8 +936,22 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 </div>
                               </div>
 
-                              {/* Quick Actions Beside Name: Chuyển phòng, Đã ra viện, Xóa */}
+                              {/* Quick Actions Beside Name: Sửa, Chuyển phòng, Đã ra viện, Xóa */}
                               <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onEditPatient) onEditPatient(patient);
+                                    else onSelectPatient(patient);
+                                  }}
+                                  className="p-1 px-1.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                  title="Chỉnh sửa thông tin bệnh nhân"
+                                >
+                                  <FileEdit className="w-2.5 h-2.5 text-amber-600" />
+                                  <span>Sửa</span>
+                                </button>
+
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -831,7 +961,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   className="p-1 px-1.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
                                   title="Chuyển bệnh nhân sang buồng phòng khác"
                                 >
-                                  <ArrowRightLeft className="w-3 h-3 text-blue-600" />
+                                  <ArrowRightLeft className="w-2.5 h-2.5 text-blue-600" />
                                   <span>Chuyển</span>
                                 </button>
 
@@ -844,7 +974,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   className="p-1 px-1.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
                                   title="Bấm đã ra viện (rời khỏi buồng phòng)"
                                 >
-                                  <LogOut className="w-3 h-3 text-emerald-600" />
+                                  <LogOut className="w-2.5 h-2.5 text-emerald-600" />
                                   <span>Ra viện</span>
                                 </button>
 
@@ -857,7 +987,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   className="p-1 px-1.5 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
                                   title="Xóa bệnh nhân khỏi hệ thống"
                                 >
-                                  <Trash2 className="w-3 h-3 text-rose-600" />
+                                  <Trash2 className="w-2.5 h-2.5 text-rose-600" />
                                   <span>Xóa</span>
                                 </button>
                               </div>
@@ -949,24 +1079,24 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                           </div>
 
-                          {/* Bottom Action Buttons: + Diễn Tiến & Chi Tiết */}
-                          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto">
+                          {/* Bottom Action Buttons: + Diễn Tiến & Chi Tiết (Nút ngắn gọn) */}
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto">
                             <button
                               type="button"
                               onClick={() => onOpenEvolution(patient)}
-                              className="flex-1 py-1.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black text-xs shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                              className="py-1 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs shadow-2xs flex items-center gap-1 transition-all cursor-pointer active:scale-95 shrink-0"
                               title="Nhập diễn tiến và kế hoạch điều trị cho ngày hôm sau"
                             >
-                              <Activity className="w-3.5 h-3.5 text-indigo-200" />
+                              <Activity className="w-3 h-3 text-indigo-200" />
                               <span>+ Diễn Tiến</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => onSelectPatient(patient)}
-                              className="py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1"
+                              className="py-1 px-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 shrink-0"
                               title="Xem chi tiết hồ sơ bệnh nhân"
                             >
-                              <FileEdit className="w-3.5 h-3.5 text-slate-500" />
+                              <FileEdit className="w-3 h-3 text-slate-500" />
                               <span>Chi tiết</span>
                             </button>
                           </div>

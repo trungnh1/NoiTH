@@ -143,7 +143,7 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
   },
 
   // ==========================================
-  // NHÓM 1 (703, 704, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731)
+  // NHÓM 1 (703, 707, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731)
   // Mỗi phòng tối đa 3 giường
   // ==========================================
   {
@@ -160,6 +160,16 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
     id: "R704",
     number: "704",
     name: "Phòng 704",
+    type: "STANDARD",
+    totalBeds: 3,
+    group: "GROUP_1",
+    description: "Điều trị nội khoa chung",
+    nurseStation: "Trạm ĐD Dãy 1 (Lầu 7)",
+  },
+  {
+    id: "R707",
+    number: "707",
+    name: "Phòng 707",
     type: "STANDARD",
     totalBeds: 3,
     group: "GROUP_1",
@@ -290,7 +300,7 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
 
 // Group 1 Configuration (Nhóm 1): Phòng 703 -> 731 và bổ sung phòng 733
 export const GROUP_1_ROOM_NUMBERS = [
-  '703', '704', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731', '733'
+  '703', '707', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731', '733'
 ];
 
 // Danh sách 6 Bác sĩ phụ trách Nhóm 1: Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi
@@ -303,9 +313,26 @@ export const GROUP_1_DOCTOR_IDS = [
   '00943', // BS. Trần Bùi Bình Chi (Bình Chi)
 ];
 
-// Doctors matching the hospital whiteboard at Khoa Nội Tổng Hợp - Tim Mạch
+// Danh sách Bác sĩ Nhóm 2: Linh, Hoài, Mai, Ngoan, Chi
+export const GROUP_2_DOCTOR_IDS = [
+  '00161', // BS. Thái Thị Thùy Linh (Linh)
+  '00146', // BS. Dương Thị Hoài (Hoài)
+  '00318', // BS. Nguyễn Thị Ngọc Mai (Mai)
+  '00176', // BS. Đỗ Thị Ngoan (Ngoan)
+  '00769', // BS. Nguyễn Thị Phương Chi (Chi)
+];
+
+// Danh sách Bác sĩ Tim Mạch (còn lại sau khi bỏ Tuế, Quyên): Nhật, Thọ, Thịnh, Lam
+export const CARDIO_DOCTOR_IDS = [
+  '00020', // BS. Nguyễn Văn Phương Nhật (Nhật)
+  '00355', // BS. Võ Văn Thọ (Thọ)
+  '00818', // BS. Võ Hồng Thịnh (Thịnh)
+  '00929', // BS. Trương Hoài Lam (Lam)
+];
+
 // Doctors matching the official staff list at Khoa Nội Tổng Hợp - Bệnh viện Hùng Vương Gia Lai
 export const INITIAL_DOCTORS: Doctor[] = [
+  // Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)
   {
     id: '00708',
     name: 'Trần Hữu Ngọc',
@@ -315,35 +342,19 @@ export const INITIAL_DOCTORS: Doctor[] = [
     shiftStatus: 'Trực chính',
   },
   {
-    id: '00161',
-    name: 'Thái Thị Thùy Linh',
+    id: '00979',
+    name: 'Nguyễn Hữu Trung',
     title: '',
     role: '',
-    avatarColor: 'bg-rose-600',
-    shiftStatus: 'Trực chính',
-  },
-  {
-    id: '00226',
-    name: 'Đặng Thị Ngọc Ánh',
-    title: '',
-    role: '',
-    avatarColor: 'bg-emerald-600',
+    avatarColor: 'bg-amber-600',
     shiftStatus: 'Trực phụ',
   },
   {
-    id: '00020',
-    name: 'Nguyễn Văn Phương Nhật',
+    id: '00257',
+    name: 'Đỗ Thị Vân Huyền',
     title: '',
     role: '',
-    avatarColor: 'bg-blue-600',
-    shiftStatus: 'Trực chính',
-  },
-  {
-    id: '00101',
-    name: 'Mai Đình Tuế',
-    title: '',
-    role: '',
-    avatarColor: 'bg-slate-600',
+    avatarColor: 'bg-indigo-700',
     shiftStatus: 'Trực phụ',
   },
   {
@@ -355,12 +366,46 @@ export const INITIAL_DOCTORS: Doctor[] = [
     shiftStatus: 'Trực chính',
   },
   {
+    id: '00226',
+    name: 'Đặng Thị Ngọc Ánh',
+    title: '',
+    role: '',
+    avatarColor: 'bg-emerald-600',
+    shiftStatus: 'Trực phụ',
+  },
+  {
+    id: '00943',
+    name: 'Trần Bùi Bình Chi',
+    title: '',
+    role: '',
+    avatarColor: 'bg-teal-700',
+    shiftStatus: 'Hành chính',
+  },
+
+  // Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)
+  {
+    id: '00161',
+    name: 'Thái Thị Thùy Linh',
+    title: '',
+    role: '',
+    avatarColor: 'bg-rose-600',
+    shiftStatus: 'Trực chính',
+  },
+  {
     id: '00146',
     name: 'Dương Thị Hoài',
     title: '',
     role: '',
     avatarColor: 'bg-pink-700',
     shiftStatus: 'Hành chính',
+  },
+  {
+    id: '00318',
+    name: 'Nguyễn Thị Ngọc Mai',
+    title: '',
+    role: '',
+    avatarColor: 'bg-blue-600',
+    shiftStatus: 'Trực chính',
   },
   {
     id: '00176',
@@ -371,24 +416,18 @@ export const INITIAL_DOCTORS: Doctor[] = [
     shiftStatus: 'Hành chính',
   },
   {
-    id: '00199',
-    name: 'Trần Thị Quyên',
+    id: '00769',
+    name: 'Nguyễn Thị Phương Chi',
     title: '',
     role: '',
-    avatarColor: 'bg-teal-600',
-    shiftStatus: 'Trực chính',
+    avatarColor: 'bg-cyan-600',
+    shiftStatus: 'Hành chính',
   },
+
+  // Tim Mạch (Còn lại: Nhật, Thọ, Thịnh, Lam)
   {
-    id: '00257',
-    name: 'Đỗ Thị Vân Huyền',
-    title: '',
-    role: '',
-    avatarColor: 'bg-indigo-700',
-    shiftStatus: 'Trực phụ',
-  },
-  {
-    id: '00318',
-    name: 'Nguyễn Thị Ngọc Mai',
+    id: '00020',
+    name: 'Nguyễn Văn Phương Nhật',
     title: '',
     role: '',
     avatarColor: 'bg-blue-600',
@@ -400,14 +439,6 @@ export const INITIAL_DOCTORS: Doctor[] = [
     title: '',
     role: '',
     avatarColor: 'bg-amber-700',
-    shiftStatus: 'Hành chính',
-  },
-  {
-    id: '00769',
-    name: 'Nguyễn Thị Phương Chi',
-    title: '',
-    role: '',
-    avatarColor: 'bg-cyan-600',
     shiftStatus: 'Hành chính',
   },
   {
@@ -426,22 +457,6 @@ export const INITIAL_DOCTORS: Doctor[] = [
     avatarColor: 'bg-violet-600',
     shiftStatus: 'Trực chính',
   },
-  {
-    id: '00943',
-    name: 'Trần Bùi Bình Chi',
-    title: '',
-    role: '',
-    avatarColor: 'bg-teal-700',
-    shiftStatus: 'Hành chính',
-  },
-  {
-    id: '00979',
-    name: 'Nguyễn Hữu Trung',
-    title: '',
-    role: '',
-    avatarColor: 'bg-amber-600',
-    shiftStatus: 'Trực phụ',
-  },
 ];
 
 // Inpatient records directly matching the hospital whiteboard and clinical requirements
@@ -449,38 +464,39 @@ export const INITIAL_PATIENTS: Patient[] = [];
 
 // Bác sĩ phụ trách mặc định theo sơ đồ bảng trực thực tế tại viện
 export const DEFAULT_ROOM_DOCTORS: Record<string, string> = {
-  // Nhóm Tim Mạch (733 - 745)
-  "733": "00226",    // Đặng Thị Ngọc Ánh
-  "735": "00318",    // Nguyễn Thị Ngọc Mai
-  "737": "00161",    // Thái Thị Thùy Linh
-  "739": "00144",    // Phạm Cao Thiên
-  "741": "00979",    // Nguyễn Hữu Trung
-  "743": "00161",    // Thái Thị Thùy Linh
-  "745": "00943",    // Trần Bùi Bình Chi
-
-  // Nhóm 2 (747 - 757)
-  "747": "00979",    // Nguyễn Hữu Trung
-  "749": "00769",    // Nguyễn Thị Phương Chi
-  "751": "00708",    // Trần Hữu Ngọc
-  "753": "00020",    // Nguyễn Văn Phương Nhật
-  "755": "00257",    // Đỗ Thị Vân Huyền
-  "757": "00708",    // Trần Hữu Ngọc
-
-  // Nhóm 1 (703 - 731)
+  // Nhóm 1 (703 - 731 & 733) - BS: Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi
   "703": "00708",    // Trần Hữu Ngọc
-  "704": "00769",    // Nguyễn Thị Phương Chi
+  "704": "00979",    // Nguyễn Hữu Trung
+  "707": "00257",    // Đỗ Thị Vân Huyền
   "705": "00943",    // Trần Bùi Bình Chi
-  "709": "00146",    // Dương Thị Hoài
-  "711": "00176",    // Đỗ Thị Ngoan
+  "709": "00144",    // Phạm Cao Thiên
+  "711": "00226",    // Đặng Thị Ngọc Ánh
   "713": "00144",    // Phạm Cao Thiên
-  "715": "00818",    // Võ Hồng Thịnh
-  "717": "00318",    // Nguyễn Thị Ngọc Mai
-  "718": "00929",    // Trương Hoài Lam
-  "721": "00355",    // Võ Văn Thọ
-  "725": "00979",    // Nguyễn Hữu Trung
-  "727": "00199",    // Trần Thị Quyên
-  "729": "00146",    // Dương Thị Hoài
-  "731": "00318",    // Nguyễn Thị Ngọc Mai
+  "715": "00708",    // Trần Hữu Ngọc
+  "717": "00979",    // Nguyễn Hữu Trung
+  "718": "00257",    // Đỗ Thị Vân Huyền
+  "721": "00943",    // Trần Bùi Bình Chi
+  "725": "00226",    // Đặng Thị Ngọc Ánh
+  "727": "00708",    // Trần Hữu Ngọc
+  "729": "00979",    // Nguyễn Hữu Trung
+  "731": "00144",    // Phạm Cao Thiên
+  "733": "00226",    // Đặng Thị Ngọc Ánh
+
+  // Nhóm Tim Mạch (735 - 745) - BS: Nhật, Thọ, Thịnh, Lam
+  "735": "00020",    // Nguyễn Văn Phương Nhật
+  "737": "00355",    // Võ Văn Thọ
+  "739": "00818",    // Võ Hồng Thịnh
+  "741": "00929",    // Trương Hoài Lam
+  "743": "00020",    // Nguyễn Văn Phương Nhật
+  "745": "00818",    // Võ Hồng Thịnh
+
+  // Nhóm 2 (747 - 757) - BS: Linh, Hoài, Mai, Ngoan, Chi
+  "747": "00161",    // Thái Thị Thùy Linh
+  "749": "00146",    // Dương Thị Hoài
+  "751": "00318",    // Nguyễn Thị Ngọc Mai
+  "753": "00176",    // Đỗ Thị Ngoan
+  "755": "00769",    // Nguyễn Thị Phương Chi
+  "757": "00161",    // Thái Thị Thùy Linh
 };
 
 /**
@@ -492,7 +508,7 @@ export function getDoctorShortName(nameOrDoctor?: string | Doctor | null): strin
   if (!fullName) return "Chưa phân";
   
   if (fullName.includes("Bình Chi") || fullName.includes("B.Chi")) return "Bình Chi";
-  if (fullName.includes("Phương Chi") || fullName.includes("P.Chi")) return "Phương Chi";
+  if (fullName.includes("Phương Chi") || fullName.includes("P.Chi")) return "Chi";
   if (fullName.includes("Phương Nhật")) return "Nhật";
   if (fullName.includes("Vân Huyền")) return "Huyền";
   if (fullName.includes("Ngọc Ánh")) return "Ánh";
@@ -501,13 +517,11 @@ export function getDoctorShortName(nameOrDoctor?: string | Doctor | null): strin
   if (fullName.includes("Hữu Ngọc")) return "Ngọc";
   if (fullName.includes("Hữu Trung")) return "Trung";
   if (fullName.includes("Cao Thiên")) return "Thiên";
-  if (fullName.includes("Đình Tuế")) return "Tuế";
   if (fullName.includes("Hoài Lam")) return "Lam";
   if (fullName.includes("Hồng Thịnh")) return "Thịnh";
   if (fullName.includes("Văn Thọ")) return "Thọ";
   if (fullName.includes("Dương Thị Hoài")) return "Hoài";
   if (fullName.includes("Đỗ Thị Ngoan")) return "Ngoan";
-  if (fullName.includes("Trần Thị Quyên")) return "Quyên";
 
   const clean = fullName
     .replace(/^BS\.CKII\s+/i, "")

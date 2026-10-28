@@ -42,6 +42,7 @@ import {
 interface PatientDetailModalProps {
   patient: Patient;
   doctors: Doctor[];
+  currentUser?: Doctor | null;
   onClose: () => void;
   onUpdatePatient: (updatedPatient: Patient) => void;
 }
@@ -49,6 +50,7 @@ interface PatientDetailModalProps {
 export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   patient,
   doctors,
+  currentUser,
   onClose,
   onUpdatePatient,
 }) => {
@@ -248,7 +250,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
     const newEvo: ClinicalEvolution = {
       id: `EV-${Date.now()}`,
       timestamp: timeStr,
-      doctorName: currentDoctor?.name || 'Bác sĩ điều trị',
+      doctorName: currentUser?.name || currentDoctor?.name || 'Bác sĩ điều trị',
       shift: newEvolutionShift,
       clinicalNote: newEvolutionNote,
       treatmentAction: newEvolutionAction || 'Tiếp tục y lệnh hiện tại.',

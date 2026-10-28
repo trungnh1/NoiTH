@@ -18,6 +18,9 @@ import { DetailedPatientListView } from './components/DetailedPatientListView';
 import { SimplifiedNewPatientModal } from './components/SimplifiedNewPatientModal';
 import { QuickEvolutionModal } from './components/QuickEvolutionModal';
 import { PatientPrintModal } from './components/PatientPrintModal';
+import { DoctorLoginScreen } from './components/DoctorLoginScreen';
+import { SatelliteClinicalSyncModal } from './components/SatelliteClinicalSyncModal';
+import { getSavedDoctorSession, saveDoctorSession, clearDoctorSession } from './utils/auth';
 
 // Preserve existing feature components (kept in codebase, not deleted)
 import { WardRoomMap } from './components/WardRoomMap';
@@ -45,6 +48,8 @@ export default function App() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [rooms, setRooms] = useState<DepartmentRoom[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [authenticatedDoctor, setAuthenticatedDoctor] = useState<Doctor | null>(null);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   // Firestore Sync State & Auto-save status
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
@@ -73,7 +78,10 @@ export default function App() {
   const [isSimplifiedNewPatientOpen, setIsSimplifiedNewPatientOpen] = useState(false);
   const [evolutionPatient, setEvolutionPatient] = useState<Patient | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isSatelliteSyncOpen, setIsSatelliteSyncOpen] = useState(false);
+  const [satelliteImportDraft, setSatelliteImportDraft] = useState<Patient | null>(null);
 
   // Legacy modal states preserved in codebase
   const [transferringPatient, setTransferringPatient] = useState<Patient | null>(null);
@@ -107,9 +115,17 @@ export default function App() {
   // Initial load & Realtime 2-way Cloud Firestore Sync
   useEffect(() => {
     const initialPatients = loadPatients();
+    const loadedDocs = loadDoctors();
     setPatients(initialPatients);
-    setDoctors(loadDoctors());
+    setDoctors(loadedDocs);
     setRooms(loadRooms());
+
+    // Restore saved authenticated doctor session
+    const savedDoc = getSavedDoctorSession(loadedDocs);
+    if (savedDoc) {
+      setAuthenticatedDoctor(savedDoc);
+    }
+    setIsAuthChecked(true);
     setIsLoaded(true);
 
     // 1. Automatic continuous 2-way sync for Inpatients in Khoa Nội Tổng Hợp
@@ -436,37 +452,34 @@ export default function App() {
     }
   };
 
-  // Reset demo data
-  // Reset patient data
-  const handleResetData = async () => {
-    const data = resetAllData();
-    setPatients([]);
-    setDoctors(data.doctors);
-    setRooms(data.rooms);
-    setSelectedPatient(null);
-    setIsAutoSyncing(true);
-    try {
-      await deleteAllPatientsFromCloud();
-      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
-      setManualPushMessage('✅ Đã xóa sạch toàn bộ dữ liệu bệnh nhân trên bộ nhớ và Cloud Firestore!');
-      setTimeout(() => setManualPushMessage(null), 5000);
-    } catch (e: any) {
-      console.warn('Lỗi xóa cloud:', e);
-      setManualPushMessage(`❌ Lỗi xóa dữ liệu trên Cloud: ${e.message || String(e)}`);
-      setTimeout(() => setManualPushMessage(null), 8000);
-    } finally {
-      setIsAutoSyncing(false);
-    }
+  const handleLoginSuccess = (doctor: Doctor) => {
+    setAuthenticatedDoctor(doctor);
+    saveDoctorSession(doctor);
   };
 
-  if (!isLoaded) {
+  const handleLogout = () => {
+    setAuthenticatedDoctor(null);
+    clearDoctorSession();
+  };
+
+  if (!isLoaded || !isAuthChecked) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <div className="w-10 h-10 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm font-bold text-slate-700">Đang tải dữ liệu Khoa Nội Tổng Hợp...</p>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-bold text-slate-300">Đang khởi tạo hệ thống Khoa Nội Tổng Hợp - Tim Mạch...</p>
         </div>
       </div>
+    );
+  }
+
+  // Doctor Authentication Gate: Must log in with doctor ID before accessing app
+  if (!authenticatedDoctor) {
+    return (
+      <DoctorLoginScreen
+        doctors={doctors}
+        onLoginSuccess={handleLoginSuccess}
+      />
     );
   }
 
@@ -486,9 +499,11 @@ export default function App() {
         onOpenWatchlist={() => setIsWatchlistModalOpen(true)}
         onOpenPrintModal={() => setIsPrintModalOpen(true)}
         syncStatus={syncStatus}
+        currentDoctor={authenticatedDoctor}
+        onLogout={handleLogout}
         onManualPushToCloud={handleManualPushCloud}
         onOpenDutySchedule={() => setIsDutyModalOpen(true)}
-        onResetData={handleResetData}
+        onOpenSatelliteSync={() => setIsSatelliteSyncOpen(true)}
         isAutoSyncing={isAutoSyncing}
         lastAutoSyncTime={lastAutoSyncTime}
       />
@@ -539,6 +554,7 @@ export default function App() {
 
       {/* Main Content Area - Core Detailed Patient List View */}
       <main className="flex-1 w-full px-2 sm:px-4 py-3">
+
         <DetailedPatientListView
           patients={patients}
           doctors={doctors}
@@ -557,11 +573,13 @@ export default function App() {
           }}
           onOpenEvolution={(patient) => setEvolutionPatient(patient)}
           onSelectPatient={(patient) => setSelectedPatient(patient)}
+          onEditPatient={(patient) => setEditingPatient(patient)}
           onTransferPatient={(patient) => setTransferringPatient(patient)}
           onDischargePatient={handleDischargePatient}
           onDeletePatient={handleDeletePatient}
           onOpenPrintModal={() => setIsPrintModalOpen(true)}
           onAddPatient={handleAddPatient}
+          onOpenSatelliteSync={() => setIsSatelliteSyncOpen(true)}
         />
       </main>
 
@@ -673,11 +691,27 @@ export default function App() {
         />
       )}
 
+      {/* 1b. Edit Patient Modal using the same convenient, comprehensive form */}
+      {editingPatient && (
+        <SimplifiedNewPatientModal
+          rooms={rooms}
+          doctors={doctors}
+          patients={patients}
+          patientToEdit={editingPatient}
+          onClose={() => setEditingPatient(null)}
+          onUpdatePatient={(updatedPatient) => {
+            handleUpdatePatient(updatedPatient);
+            setEditingPatient(null);
+          }}
+        />
+      )}
+
       {/* 2. Simplified Daily Progress Note & Treatment Plan Modal */}
       {evolutionPatient && (
         <QuickEvolutionModal
           patient={evolutionPatient}
           doctors={doctors}
+          currentUser={authenticatedDoctor}
           onClose={() => setEvolutionPatient(null)}
           onSaveEvolution={(updatedPatient) => {
             handleUpdatePatient(updatedPatient);
@@ -691,6 +725,7 @@ export default function App() {
         <PatientDetailModal
           patient={selectedPatient}
           doctors={doctors}
+          currentUser={authenticatedDoctor}
           onClose={() => setSelectedPatient(null)}
           onUpdatePatient={handleUpdatePatient}
         />
@@ -703,6 +738,40 @@ export default function App() {
           doctors={doctors}
           rooms={rooms}
           onClose={() => setIsPrintModalOpen(false)}
+        />
+      )}
+
+      {/* 6. Satellite Clinical Cloud Firestore Sync Modal */}
+      {isSatelliteSyncOpen && (
+        <SatelliteClinicalSyncModal
+          currentPatients={patients}
+          doctors={doctors}
+          rooms={rooms}
+          currentUser={authenticatedDoctor}
+          onClose={() => setIsSatelliteSyncOpen(false)}
+          onImportPatientDirect={(newPat) => {
+            handleAddPatient(newPat);
+          }}
+          onOpenEditAdmission={(prefilledPatient) => {
+            setSatelliteImportDraft(prefilledPatient);
+            setIsSatelliteSyncOpen(false);
+          }}
+        />
+      )}
+
+      {/* 7. Review & Edit Satellite Imported Case Before Admission */}
+      {satelliteImportDraft && (
+        <SimplifiedNewPatientModal
+          rooms={rooms}
+          doctors={doctors}
+          patients={patients}
+          patientToEdit={satelliteImportDraft}
+          isImportMode={true}
+          onClose={() => setSatelliteImportDraft(null)}
+          onAddPatient={(newPatient) => {
+            handleAddPatient(newPatient);
+            setSatelliteImportDraft(null);
+          }}
         />
       )}
 

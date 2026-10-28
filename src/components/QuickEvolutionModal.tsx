@@ -4,7 +4,9 @@ import {
   Doctor, 
   SeverityLevel, 
   ClinicalEvolution, 
-  VitalSign 
+  VitalSign,
+  ClinicalTag,
+  CLINICAL_TAGS_META
 } from '../types/patient';
 import { 
   X, 
@@ -19,14 +21,75 @@ import {
   Copy,
   Clock,
   ArrowRightLeft,
-  ChevronRight
+  ChevronRight,
+  Tags,
+  Tag
 } from 'lucide-react';
 import { calculateTreatmentDays, formatDoctorShortName } from './DetailedPatientListView';
-import { GROUP_1_DOCTOR_IDS } from '../data/mockData';
+import { getSavedDoctorSession } from '../utils/auth';
+
+// Ngưỡng sinh hiệu tiêu chuẩn lâm sàng
+export type VitalStatus = 'normal' | 'warning' | 'critical' | 'empty';
+
+export function getBpSysStatus(valStr: string): VitalStatus {
+  if (!valStr.trim()) return 'empty';
+  const val = Number(valStr);
+  if (isNaN(val)) return 'empty';
+  if (val >= 160 || val < 85) return 'critical'; // Đỏ: Tăng huyết áp độ 2-3 hoặc tụt HA nặng
+  if (val >= 140 || val < 90) return 'warning'; // Vàng: THA độ 1 hoặc HA thấp
+  return 'normal';
+}
+
+export function getBpDiaStatus(valStr: string): VitalStatus {
+  if (!valStr.trim()) return 'empty';
+  const val = Number(valStr);
+  if (isNaN(val)) return 'empty';
+  if (val >= 100 || val < 55) return 'critical'; // Đỏ
+  if (val >= 90 || val < 60) return 'warning'; // Vàng
+  return 'normal';
+}
+
+export function getPulseStatus(valStr: string): VitalStatus {
+  if (!valStr.trim()) return 'empty';
+  const val = Number(valStr);
+  if (isNaN(val)) return 'empty';
+  if (val > 120 || val < 50) return 'critical'; // Đỏ: Mạch > 120 l/p hoặc quá chậm < 50
+  if (val >= 100 || val < 60) return 'warning'; // Vàng: Mạch nhanh 100-120 hoặc chậm nhẹ
+  return 'normal';
+}
+
+export function getSpO2Status(valStr: string): VitalStatus {
+  if (!valStr.trim()) return 'empty';
+  const val = Number(valStr);
+  if (isNaN(val)) return 'empty';
+  if (val < 94) return 'critical'; // Đỏ: SpO2 < 94%
+  if (val === 94) return 'warning'; // Vàng: SpO2 = 94% ranh giới
+  return 'normal';
+}
+
+export function getTempStatus(valStr: string): VitalStatus {
+  if (!valStr.trim()) return 'empty';
+  const val = Number(valStr);
+  if (isNaN(val)) return 'empty';
+  if (val >= 38.5 || val < 35.5) return 'critical'; // Đỏ: Sốt cao >= 38.5°C hoặc hạ thân nhiệt
+  if (val >= 37.5 || val < 36.0) return 'warning'; // Vàng: Sốt nhẹ 37.5-38.4°C
+  return 'normal';
+}
+
+export function getVitalInputClass(status: VitalStatus, base = ''): string {
+  if (status === 'critical') {
+    return `${base} bg-rose-50 text-rose-700 border-rose-500 ring-2 ring-rose-400 font-black shadow-xs`;
+  }
+  if (status === 'warning') {
+    return `${base} bg-amber-50 text-amber-900 border-amber-400 ring-2 ring-amber-300 font-black shadow-xs`;
+  }
+  return `${base} bg-white border-slate-300 text-slate-800 font-bold`;
+}
 
 interface QuickEvolutionModalProps {
   patient: Patient;
   doctors: Doctor[];
+  currentUser?: Doctor | null;
   onClose: () => void;
   onSaveEvolution: (updatedPatient: Patient) => void;
 }
@@ -34,6 +97,7 @@ interface QuickEvolutionModalProps {
 export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
   patient,
   doctors,
+  currentUser,
   onClose,
   onSaveEvolution,
 }) => {
@@ -45,16 +109,26 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
   const [evolutionDateTime, setEvolutionDateTime] = useState(defaultDateTimeStr);
   const [shift, setShift] = useState<'Sáng' | 'Chiều' | 'Đêm / Trực'>('Sáng');
   
+  // Mặc định Bác sĩ nhập là Bác sĩ đang đăng nhập vào hệ thống
+  const loggedInDoctor = currentUser || getSavedDoctorSession(doctors);
   const currentDoc = doctors.find((d) => d.id === patient.attendingDoctorId);
-  const [doctorName, setDoctorName] = useState(currentDoc?.name || doctors[0]?.name || 'BS Điều trị');
+  const defaultDoctorName = loggedInDoctor?.name || currentDoc?.name || doctors[0]?.name || 'BS Điều trị';
+  const [doctorName] = useState(defaultDoctorName);
   const [severity, setSeverity] = useState<SeverityLevel>(patient.severity || 'STABLE');
   const [admissionStatus, setAdmissionStatus] = useState<Patient['admissionStatus']>(patient.admissionStatus || 'STABLE_INPATIENT');
+
+  // Chẩn đoán lâm sàng & Gắn nhãn theo dõi đặc biệt
+  const initialDiagnosis = patient.primaryDiagnosis + (patient.secondaryDiagnosis ? ` - ${patient.secondaryDiagnosis}` : '');
+  const [diagnosis, setDiagnosis] = useState<string>(initialDiagnosis);
+  const [selectedTags, setSelectedTags] = useState<ClinicalTag[]>(patient.tags || []);
 
   // Clinical content
   const [clinicalNote, setClinicalNote] = useState('');
   const [treatmentAction, setTreatmentAction] = useState(
     patient.treatmentPlan || patient.evolutions?.[0]?.treatmentAction || ''
   );
+  const [labTests, setLabTests] = useState('');
+  const [dailyNotes, setDailyNotes] = useState('');
   const [handoverNotes, setHandoverNotes] = useState(patient.handoverNotes || patient.importantNotes || '');
 
   // Quick vital signs (không bắt buộc nhập sẵn nếu không có đo mới)
@@ -69,10 +143,22 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Group 1 core doctors list for 1-click select
-  const group1Doctors = doctors.filter(
-    (d) => GROUP_1_DOCTOR_IDS.includes(d.id) || /ngọc|trung|huyền|thiên|ánh|bình chi/i.test(d.name)
-  );
+
+
+  // Sao chép chẩn đoán gần nhất
+  const handleCopyLatestDiagnosis = () => {
+    const latestDiag = patient.primaryDiagnosis + (patient.secondaryDiagnosis ? ` - ${patient.secondaryDiagnosis}` : '');
+    setDiagnosis(latestDiag);
+    setToastMsg('Đã sao chép chẩn đoán gần nhất!');
+    setTimeout(() => setToastMsg(null), 2500);
+  };
+
+  // Bật/tắt gắn nhãn thẻ lâm sàng đặc biệt
+  const handleToggleTag = (tag: ClinicalTag) => {
+    setSelectedTags((prev) => 
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
 
   // Hotkeys: Esc to close, Ctrl+Enter to submit
   useEffect(() => {
@@ -85,7 +171,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [clinicalNote, treatmentAction, handoverNotes, evolutionDateTime, shift, doctorName, severity, admissionStatus, bpSys, bpDia, pulse, temperature, spO2]);
+  }, [clinicalNote, treatmentAction, dailyNotes, handoverNotes, evolutionDateTime, shift, doctorName, severity, admissionStatus, diagnosis, selectedTags, bpSys, bpDia, pulse, temperature, spO2]);
 
   const handleCopyPreviousPlan = (actionText: string) => {
     setTreatmentAction(actionText);
@@ -99,17 +185,23 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
       setErrorMsg('Vui lòng nhập diễn biến lâm sàng của bệnh nhân trong ngày.');
       return;
     }
+    if (!diagnosis.trim()) {
+      setErrorMsg('Vui lòng nhập chẩn đoán lâm sàng của bệnh nhân.');
+      return;
+    }
 
     const formattedTime = evolutionDateTime.replace('T', ' ');
 
-    // New evolution entry
+    // New evolution entry - Tự động gắn tên Bác sĩ đã đăng nhập
     const newEvolution: ClinicalEvolution = {
       id: `EV-${Date.now()}`,
       timestamp: formattedTime,
-      doctorName,
+      doctorName: loggedInDoctor?.name || doctorName || 'BS Điều trị',
       shift,
       clinicalNote: clinicalNote.trim(),
       treatmentAction: treatmentAction.trim() || 'Duy trì phác đồ điều trị hiện tại.',
+      orders: labTests.trim() || undefined,
+      notes: dailyNotes.trim() || undefined,
     };
 
     // New vital sign entry if values provided
@@ -133,6 +225,10 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
 
     const updatedPatient: Patient = {
       ...patient,
+      primaryDiagnosis: diagnosis.trim() || patient.primaryDiagnosis,
+      secondaryDiagnosis: undefined,
+      tags: selectedTags,
+      allergies: selectedTags.includes('ALLERGY') ? (patient.allergies || 'Có dị ứng thuốc/thức ăn') : patient.allergies,
       severity,
       admissionStatus,
       treatmentPlan: treatmentAction.trim() || patient.treatmentPlan,
@@ -144,6 +240,31 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
 
     onSaveEvolution(updatedPatient);
   };
+
+  // UI - Form structure inside column 1
+  // ...
+  // Inside the <div className="space-y-3.5"> of the form (around line 553):
+  
+  /* 1. Diễn biến lâm sàng trong ngày */
+  /* ... existing code ... */
+  
+  /* ADD THIS: */
+  /* 1.5 Ghi chú trong ngày */
+  <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+    <label className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+       <FileText className="w-3.5 h-3.5 text-slate-500" />
+       <span className="uppercase text-slate-800 font-black">Ghi Chú Trong Ngày</span>
+    </label>
+    <textarea
+      rows={2}
+      value={dailyNotes}
+      onChange={(e) => setDailyNotes(e.target.value)}
+      placeholder="Ghi chú khác..."
+      className="w-full p-2 bg-white border border-slate-300 rounded-lg font-medium text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+    />
+  </div>
+
+
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
@@ -172,10 +293,27 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-indigo-200/90 font-medium mt-0.5">
-                Chẩn đoán: <strong className="text-white">{patient.primaryDiagnosis}</strong>
-                {patient.secondaryDiagnosis ? ` - ${patient.secondaryDiagnosis}` : ''}
+                Chẩn đoán: <strong className="text-white">{diagnosis || patient.primaryDiagnosis}</strong>
+                {patient.secondaryDiagnosis && !diagnosis.includes(patient.secondaryDiagnosis) ? ` - ${patient.secondaryDiagnosis}` : ''}
                 {patient.medicalHistory ? ` • Tiền sử: ${patient.medicalHistory}` : ''}
               </p>
+              {selectedTags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1 mt-1">
+                  <span className="text-[10px] text-indigo-300 font-bold">Nhãn:</span>
+                  {selectedTags.map((tagKey) => {
+                    const meta = CLINICAL_TAGS_META[tagKey];
+                    if (!meta) return null;
+                    return (
+                      <span
+                        key={tagKey}
+                        className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-bold text-white ${meta.badgeBg}`}
+                      >
+                        {meta.shortLabel || meta.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -224,7 +362,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                 </div>
               )}
 
-              {/* Ngày giờ, Ca trực & Bác sĩ ký */}
+              {/* Ngày giờ & Ca trực */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
                 <div>
                   <label className="font-extrabold text-slate-700 block mb-1">
@@ -260,31 +398,73 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                     ))}
                   </div>
                 </div>
+              </div>
 
-                {/* Bác sĩ ký diễn tiến */}
-                <div className="sm:col-span-2 pt-1">
-                  <label className="font-extrabold text-slate-700 block mb-1">
-                    Bác Sĩ Ký Diễn Tiến: <strong className="text-indigo-700">{formatDoctorShortName(doctorName)}</strong>
+              {/* Cập nhật chẩn đoán & Gắn nhãn lâm sàng */}
+              <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <label className="font-extrabold text-slate-800 text-xs uppercase flex items-center gap-1.5">
+                    <Stethoscope className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Cập Nhật Chẩn Đoán <span className="text-rose-500">*</span></span>
                   </label>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
-                    {group1Doctors.map((doc) => {
-                      const isSelected = doctorName === doc.name || doctorName.includes(formatDoctorShortName(doc.name));
-                      return (
-                        <button
-                          type="button"
-                          key={doc.id}
-                          onClick={() => setDoctorName(doc.name)}
-                          className={`py-1 px-1 rounded-lg border font-bold text-xs text-center transition-all cursor-pointer truncate ${
-                            isSelected
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs font-black'
-                              : 'bg-white text-slate-700 border-slate-200 hover:bg-indigo-50'
-                          }`}
-                          title={doc.name}
-                        >
-                          BS. {formatDoctorShortName(doc.name)}
-                        </button>
-                      );
-                    })}
+                  <button
+                    type="button"
+                    onClick={handleCopyLatestDiagnosis}
+                    className="text-[10.5px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded border border-rose-200 flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Sao chép lại chẩn đoán ban đầu / gần nhất của bệnh nhân"
+                  >
+                    <Copy className="w-3 h-3 text-rose-600" />
+                    <span>Sao chép chẩn đoán gần nhất</span>
+                  </button>
+                </div>
+
+                <textarea
+                  rows={2}
+                  value={diagnosis}
+                  onChange={(e) => {
+                    setDiagnosis(e.target.value);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
+                  placeholder="Nhập hoặc chỉnh sửa chẩn đoán bệnh nhân: VD: Cơn đau thắt ngực không ổn định / THA độ 2, ĐTĐ typ 2..."
+                  className="w-full p-2 bg-slate-50/70 border border-slate-300 rounded-lg font-bold text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-rose-500 leading-relaxed transition-colors"
+                  required
+                />
+
+                {/* Phần gắn nhãn / Thẻ theo dõi lâm sàng đặc biệt */}
+                <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 uppercase">
+                      <Tags className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Gắn Nhãn Theo Dõi Lâm Sàng Đặc Biệt</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      {selectedTags.length > 0 ? `Đã gắn ${selectedTags.length} nhãn` : 'Chọn nhãn theo dõi'}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1">
+                    {(Object.keys(CLINICAL_TAGS_META) as ClinicalTag[])
+                      .filter((t) => t !== 'O2')
+                      .map((tagKey) => {
+                        const meta = CLINICAL_TAGS_META[tagKey];
+                        const isSelected = selectedTags.includes(tagKey);
+                        return (
+                          <button
+                            type="button"
+                            key={tagKey}
+                            onClick={() => handleToggleTag(tagKey)}
+                            className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                              isSelected
+                                ? `${meta.badgeBg} ${meta.textColor} border-transparent shadow-xs font-black`
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+                            }`}
+                            title={meta.description}
+                          >
+                            <span>{isSelected ? '✓' : '+'}</span>
+                            <span>{meta.shortLabel || meta.label}</span>
+                          </button>
+                        );
+                      })}
                   </div>
                 </div>
               </div>
@@ -334,75 +514,146 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                 </div>
               </div>
 
-              {/* Sinh hiệu thăm khám hôm nay */}
-              <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-slate-800 font-black text-[11px] uppercase">
-                    <HeartPulse className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Sinh Hiệu Hôm Nay</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-semibold">(Không bắt buộc)</span>
-                </div>
+              {/* Sinh hiệu thăm khám hôm nay - Tự động highlight đỏ/vàng khi ngoài ngưỡng an toàn */}
+              {(() => {
+                const bpSysStatus = getBpSysStatus(bpSys);
+                const bpDiaStatus = getBpDiaStatus(bpDia);
+                const pulseStatus = getPulseStatus(pulse);
+                const spO2Status = getSpO2Status(spO2);
+                const tempStatus = getTempStatus(temperature);
 
-                <div className="grid grid-cols-4 gap-1.5">
-                  <div>
-                    <label className="text-[9px] font-bold text-slate-600 block text-center truncate">HA (mmHg)</label>
-                    <div className="flex items-center gap-0.5">
-                      <input
-                        type="number"
-                        value={bpSys}
-                        onChange={(e) => setBpSys(e.target.value)}
-                        placeholder="120"
-                        className="w-full p-1 bg-white border border-slate-300 rounded text-center font-bold text-xs placeholder:font-normal placeholder:text-slate-300"
-                        title="Tâm thu"
-                      />
-                      <span className="text-slate-400 text-xs font-bold">/</span>
-                      <input
-                        type="number"
-                        value={bpDia}
-                        onChange={(e) => setBpDia(e.target.value)}
-                        placeholder="80"
-                        className="w-full p-1 bg-white border border-slate-300 rounded text-center font-bold text-xs placeholder:font-normal placeholder:text-slate-300"
-                        title="Tâm trương"
-                      />
+                const vitalAlerts: { text: string; isCritical: boolean }[] = [];
+
+                if (pulseStatus === 'critical') {
+                  vitalAlerts.push({
+                    text: Number(pulse) > 120 ? `Mạch rất nhanh (${pulse} l/p > 120)` : `Mạch chậm nguy hiểm (${pulse} l/p < 50)`,
+                    isCritical: true,
+                  });
+                } else if (pulseStatus === 'warning') {
+                  vitalAlerts.push({ text: `Mạch cảnh báo (${pulse} l/p)`, isCritical: false });
+                }
+
+                if (spO2Status === 'critical') {
+                  vitalAlerts.push({ text: `SpO2 tụt thấp (${spO2}% < 94%)`, isCritical: true });
+                } else if (spO2Status === 'warning') {
+                  vitalAlerts.push({ text: `SpO2 ranh giới (${spO2}%)`, isCritical: false });
+                }
+
+                if (bpSysStatus === 'critical' || bpDiaStatus === 'critical') {
+                  vitalAlerts.push({
+                    text: `Huyết áp bất thường nguy hiểm (${bpSys || '--'}/${bpDia || '--'} mmHg)`,
+                    isCritical: true,
+                  });
+                } else if (bpSysStatus === 'warning' || bpDiaStatus === 'warning') {
+                  vitalAlerts.push({
+                    text: `Huyết áp cảnh báo (${bpSys || '--'}/${bpDia || '--'} mmHg)`,
+                    isCritical: false,
+                  });
+                }
+
+                if (tempStatus === 'critical') {
+                  vitalAlerts.push({
+                    text: Number(temperature) >= 38.5 ? `Sốt cao (${temperature}°C >= 38.5)` : `Hạ thân nhiệt (${temperature}°C < 35.5)`,
+                    isCritical: true,
+                  });
+                } else if (tempStatus === 'warning') {
+                  vitalAlerts.push({ text: `Thân nhiệt cảnh báo (${temperature}°C)`, isCritical: false });
+                }
+
+                const hasCritical = vitalAlerts.some((a) => a.isCritical);
+
+                return (
+                  <div className={`p-3 rounded-xl border space-y-2 shadow-2xs transition-colors ${
+                    hasCritical 
+                      ? 'bg-rose-50/50 border-rose-300 ring-1 ring-rose-200' 
+                      : vitalAlerts.length > 0 
+                      ? 'bg-amber-50/50 border-amber-300' 
+                      : 'bg-white border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-slate-800 font-black text-[11px] uppercase">
+                        <HeartPulse className={`w-3.5 h-3.5 ${hasCritical ? 'text-rose-600 animate-pulse' : 'text-rose-600'}`} />
+                        <span>Sinh Hiệu Hôm Nay</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-semibold">(Không bắt buộc)</span>
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="text-[9px] font-bold text-slate-600 block text-center truncate">Mạch (l/p)</label>
-                    <input
-                      type="number"
-                      value={pulse}
-                      onChange={(e) => setPulse(e.target.value)}
-                      placeholder="80"
-                      className="w-full p-1 bg-white border border-slate-300 rounded text-center font-bold text-xs placeholder:font-normal placeholder:text-slate-300"
-                    />
-                  </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-600 block text-center truncate">HA (mmHg)</label>
+                        <div className="flex items-center gap-0.5">
+                          <input
+                            type="number"
+                            value={bpSys}
+                            onChange={(e) => setBpSys(e.target.value)}
+                            placeholder="120"
+                            className={getVitalInputClass(bpSysStatus, 'w-full p-1 rounded text-center text-xs placeholder:font-normal placeholder:text-slate-300')}
+                            title="Tâm thu: Bình thường 90-139, Vàng >=140, Đỏ >=160 hoặc <85"
+                          />
+                          <span className="text-slate-400 text-xs font-bold">/</span>
+                          <input
+                            type="number"
+                            value={bpDia}
+                            onChange={(e) => setBpDia(e.target.value)}
+                            placeholder="80"
+                            className={getVitalInputClass(bpDiaStatus, 'w-full p-1 rounded text-center text-xs placeholder:font-normal placeholder:text-slate-300')}
+                            title="Tâm trương: Bình thường 60-89, Vàng >=90, Đỏ >=100 hoặc <55"
+                          />
+                        </div>
+                      </div>
 
-                  <div>
-                    <label className="text-[9px] font-bold text-slate-600 block text-center truncate">SpO2 (%)</label>
-                    <input
-                      type="number"
-                      value={spO2}
-                      onChange={(e) => setSpO2(e.target.value)}
-                      placeholder="98"
-                      className="w-full p-1 bg-white border border-slate-300 rounded text-center font-black text-xs text-rose-600 placeholder:font-normal placeholder:text-slate-300"
-                    />
-                  </div>
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-600 block text-center truncate">Mạch (l/p)</label>
+                        <input
+                          type="number"
+                          value={pulse}
+                          onChange={(e) => setPulse(e.target.value)}
+                          placeholder="80"
+                          className={getVitalInputClass(pulseStatus, 'w-full p-1 rounded text-center text-xs placeholder:font-normal placeholder:text-slate-300')}
+                          title="Mạch: Bình thường 60-99, Vàng 100-120, Đỏ >120 hoặc <50"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="text-[9px] font-bold text-slate-600 block text-center truncate">Nhiệt (°C)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={temperature}
-                      onChange={(e) => setTemperature(e.target.value)}
-                      placeholder="37"
-                      className="w-full p-1 bg-white border border-slate-300 rounded text-center font-bold text-xs placeholder:font-normal placeholder:text-slate-300"
-                    />
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-600 block text-center truncate">SpO2 (%)</label>
+                        <input
+                          type="number"
+                          value={spO2}
+                          onChange={(e) => setSpO2(e.target.value)}
+                          placeholder="98"
+                          className={getVitalInputClass(spO2Status, 'w-full p-1 rounded text-center text-xs placeholder:font-normal placeholder:text-slate-300')}
+                          title="SpO2: Bình thường >=95%, Vàng 94%, Đỏ <94%"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-600 block text-center truncate">Nhiệt (°C)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={temperature}
+                          onChange={(e) => setTemperature(e.target.value)}
+                          placeholder="37"
+                          className={getVitalInputClass(tempStatus, 'w-full p-1 rounded text-center text-xs placeholder:font-normal placeholder:text-slate-300')}
+                          title="Nhiệt độ: Bình thường 36.5-37.4, Vàng 37.5-38.4, Đỏ >=38.5 hoặc <35.5"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Dải thông báo cảnh báo trực quan khi vượt ngưỡng an toàn */}
+                    {vitalAlerts.length > 0 && (
+                      <div className={`p-1.5 px-2.5 rounded-lg text-[10.5px] font-black flex items-center gap-1.5 animate-in fade-in ${
+                        hasCritical 
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300' 
+                          : 'bg-amber-100 text-amber-900 border border-amber-300'
+                      }`}>
+                        <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${hasCritical ? 'text-rose-600 animate-bounce' : 'text-amber-600'}`} />
+                        <span>Cảnh báo: {vitalAlerts.map((a) => a.text).join(' • ')}</span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* 1. Diễn biến lâm sàng trong ngày */}
               <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
@@ -423,34 +674,6 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                 />
               </div>
 
-              {/* 2. Kế hoạch điều trị & y lệnh mới */}
-              <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-200 space-y-1.5 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-blue-950 font-black text-xs uppercase">
-                    Kế Hoạch Điều Trị / Y Lệnh Mới
-                  </span>
-                  {patient.evolutions?.[0]?.treatmentAction && (
-                    <button
-                      type="button"
-                      onClick={() => handleCopyPreviousPlan(patient.evolutions![0].treatmentAction)}
-                      className="text-[10px] font-bold text-blue-700 bg-white hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-300 flex items-center gap-1 cursor-pointer transition-colors"
-                      title="Sao chép y lệnh của lần ghi gần nhất"
-                    >
-                      <Copy className="w-3 h-3" />
-                      <span>Sao chép y lệnh trước</span>
-                    </button>
-                  )}
-                </div>
-
-                <textarea
-                  rows={3}
-                  value={treatmentAction}
-                  onChange={(e) => setTreatmentAction(e.target.value)}
-                  placeholder="Ví dụ: Tiếp tục kháng sinh Ceftriaxon 1g x 02 lọ tiêm TM; Thở oxy gọng kính 2 l/p; Làm lại Creatinine và Điện giải đồ..."
-                  className="w-full p-2 bg-white border border-blue-300 rounded-lg font-medium text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 leading-relaxed"
-                />
-              </div>
-
               {/* 3. Bàn giao bệnh */}
               <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-200 space-y-1.5 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-amber-900 font-black text-xs uppercase">
@@ -463,6 +686,21 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                   onChange={(e) => setHandoverNotes(e.target.value)}
                   placeholder="Dặn dò theo dõi đêm, báo bác sĩ trực nếu SpO2 < 94% hoặc đau ngực tái phát..."
                   className="w-full p-2 bg-white border border-amber-300 rounded-lg font-medium text-xs text-slate-900 focus:ring-2 focus:ring-amber-500 leading-relaxed"
+                />
+              </div>
+
+              {/* 1.5 Ghi chú trong ngày (Moved to bottom) */}
+              <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                <label className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+                   <FileText className="w-3.5 h-3.5 text-slate-500" />
+                   <span className="uppercase text-slate-800 font-black">Ghi Chú Trong Ngày</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={dailyNotes}
+                  onChange={(e) => setDailyNotes(e.target.value)}
+                  placeholder="Ghi chú khác..."
+                  className="w-full p-2 bg-white border border-slate-300 rounded-lg font-medium text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 leading-relaxed"
                 />
               </div>
             </div>
@@ -596,6 +834,18 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                           </span>
                           <p className="text-blue-950 font-semibold leading-relaxed bg-blue-50/80 p-2 rounded-lg border border-blue-200/80">
                             {evo.treatmentAction}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Ghi chú trong ngày */}
+                      {evo.notes && (
+                        <div className="text-xs">
+                          <span className="text-[10px] font-black text-slate-500 uppercase block mb-0.5">
+                            Ghi chú:
+                          </span>
+                          <p className="text-slate-800 font-medium leading-relaxed bg-slate-50/80 p-2 rounded-lg border border-slate-200/80">
+                            {evo.notes}
                           </p>
                         </div>
                       )}

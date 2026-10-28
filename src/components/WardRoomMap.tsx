@@ -41,7 +41,7 @@ import {
 import { DiseaseStatisticsBar, DiseaseFilterType, matchPatientDisease } from './DiseaseStatisticsBar';
 import { DutyRosterBar } from './DutyRosterBar';
 import { DutyRosterModal } from './DutyRosterModal';
-import { DEFAULT_ROOM_DOCTORS, getDoctorShortName } from '../data/mockData';
+import { DEFAULT_ROOM_DOCTORS, getDoctorShortName, GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS } from '../data/mockData';
 
 interface WardRoomMapProps {
   rooms: DepartmentRoom[];
@@ -106,9 +106,9 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
   const [selectedDiseaseFilter, setSelectedDiseaseFilter] = useState<DiseaseFilterType>('ALL');
 
   // 3 Clinical Room Groups defined by user (Khoa Nội Tổng Hợp - Tim Mạch)
-  const CARDIO_ROOM_NUMBERS = ['733', '735', '737', '739', '741', '743', '745'];
+  const CARDIO_ROOM_NUMBERS = ['735', '737', '739', '741', '743', '745'];
   const GROUP_2_ROOM_NUMBERS = ['747', '749', '751', '753', '755', '757'];
-  const GROUP_1_ROOM_NUMBERS = ['703', '704', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731'];
+  const GROUP_1_ROOM_NUMBERS = ['733', '703', '704', '707', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731'];
 
   const [selectedGroup, setSelectedGroup] = useState<'ALL' | 'CARDIO' | 'GROUP_2' | 'GROUP_1'>('ALL');
 
@@ -144,7 +144,20 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
   }, [doctors, patients]);
 
   const activeDoctors = useMemo(() => {
-    return doctors.filter((doc) => doc.shiftStatus !== 'Nghỉ' || (doctorPatientCounts[doc.id] || 0) > 0);
+    const valid = doctors.filter(
+      (doc) =>
+        !['00101', '00199'].includes(doc.id) &&
+        !/tuế|quyên/i.test(doc.name) &&
+        (doc.shiftStatus !== 'Nghỉ' || (doctorPatientCounts[doc.id] || 0) > 0)
+    );
+    return valid.sort((a, b) => {
+      const getRank = (id: string, name: string) => {
+        if (GROUP_1_DOCTOR_IDS.includes(id) || /ngọc|trung|huyền|thiên|ánh|bình chi/i.test(name)) return 1;
+        if (GROUP_2_DOCTOR_IDS.includes(id) || /linh|hoài|mai|ngoan|nguyễn thị phương chi/i.test(name)) return 2;
+        return 3;
+      };
+      return getRank(a.id, a.name) - getRank(b.id, b.name);
+    });
   }, [doctors, doctorPatientCounts]);
 
   // Distinct room groups defined by user
@@ -825,7 +838,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
               <span className="text-[10px] opacity-75 font-mono">({group2Rooms.length}P)</span>
             </button>
 
-            {/* Group 1: 703, 704, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731 */}
+            {/* Group 1: 703, 707, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731 */}
             <button
               onClick={() => setSelectedGroup('GROUP_1')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
@@ -862,13 +875,13 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
         <div className="space-y-4 w-full">
           {selectedGroup === 'ALL' ? (
             <>
-              {/* 1. NHÓM 1: 703, 704, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731 */}
+              {/* 1. NHÓM 1: 703, 707, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731 */}
               {group1Rooms.length > 0 && (
                 <div className="bg-white rounded-2xl border-2 border-blue-300 shadow-2xs p-3 sm:p-4 w-full">
                   <div className="flex items-center gap-2 pb-2.5 mb-2.5 border-b border-blue-100">
                     <span className="w-3 h-5 rounded-full bg-blue-600 shrink-0" />
                     <h2 className="text-sm font-black text-blue-950 tracking-tight uppercase">
-                      NHÓM 1: PHÒNG 703, 704, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731
+                      NHÓM 1: PHÒNG 703, 707, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731
                     </h2>
                   </div>
                   {renderRoomColumns(group1Rooms)}
@@ -1339,15 +1352,32 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
               <div className="max-h-60 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
                 {doctors
                   .filter((d) => 
-                    !doctorSearchInModal.trim() || 
+                    !['00101', '00199'].includes(d.id) &&
+                    !/tuế|quyên/i.test(d.name) &&
+                    (!doctorSearchInModal.trim() || 
                     d.name.toLowerCase().includes(doctorSearchInModal.toLowerCase()) ||
                     (d.specialty && d.specialty.toLowerCase().includes(doctorSearchInModal.toLowerCase())) ||
-                    d.role.toLowerCase().includes(doctorSearchInModal.toLowerCase())
+                    d.role.toLowerCase().includes(doctorSearchInModal.toLowerCase()))
                   )
+                  .sort((a, b) => {
+                    const getRank = (id: string, name: string) => {
+                      if (GROUP_1_DOCTOR_IDS.includes(id) || /ngọc|trung|huyền|thiên|ánh|bình chi/i.test(name)) return 1;
+                      if (GROUP_2_DOCTOR_IDS.includes(id) || /linh|hoài|mai|ngoan|nguyễn thị phương chi/i.test(name)) return 2;
+                      return 3;
+                    };
+                    return getRank(a.id, a.name) - getRank(b.id, b.name);
+                  })
                   .map((doc) => {
                     const isCurrent = (roomDoctorState[roomToChangeDoctor] || DEFAULT_ROOM_DOCTORS[roomToChangeDoctor]) === doc.id;
                     const patientCount = doctorPatientCounts[doc.id] || 0;
                     const shortName = getDoctorShortName(doc);
+                    const isGroup1 = GROUP_1_DOCTOR_IDS.includes(doc.id) || /ngọc|trung|huyền|thiên|ánh|bình chi/i.test(doc.name);
+                    const isGroup2 = GROUP_2_DOCTOR_IDS.includes(doc.id) || /linh|hoài|mai|ngoan|nguyễn thị phương chi/i.test(doc.name);
+                    const groupBadge = isGroup1 
+                      ? { label: 'Nhóm 1', bg: 'bg-indigo-50 text-indigo-700 border-indigo-200' }
+                      : isGroup2
+                      ? { label: 'Nhóm 2', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+                      : { label: 'Tim Mạch', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
 
                     return (
                       <div
@@ -1372,6 +1402,9 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                               </span>
                               <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-bold">
                                 {shortName}
+                              </span>
+                              <span className={`text-[9.5px] px-1.5 py-0.2 rounded-full border font-black ${groupBadge.bg}`}>
+                                {groupBadge.label}
                               </span>
                             </div>
                             <span className="text-[10px] text-slate-500 block">
