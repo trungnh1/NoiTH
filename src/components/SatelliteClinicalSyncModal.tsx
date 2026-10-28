@@ -34,7 +34,9 @@ import {
   loginSatelliteGoogle,
   logoutSatelliteGoogle,
   subscribeSatelliteAuth,
-  parseVitalSignsText
+  parseVitalSignsText,
+  checkSatelliteRecordCompleteness,
+  parseAgeNumber
 } from '../services/clinicalFirebase';
 import { User as FirebaseUser } from 'firebase/auth';
 
@@ -62,7 +64,12 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filterMode, setFilterMode] = useState<'all' | 'today' | 'critical'>('all');
+  const [filterMode, setFilterMode] = useState<'all' | 'pending' | 'critical'>('all');
+
+  // Count pending records that are incomplete (missing name, age, or room)
+  const pendingRecordsCount = useMemo(() => {
+    return records.filter((rec) => !checkSatelliteRecordCompleteness(rec).isComplete).length;
+  }, [records]);
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
   
@@ -190,7 +197,10 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
       }
 
       // Filter tabs
-      if (filterMode === 'critical') {
+      if (filterMode === 'pending') {
+        const comp = checkSatelliteRecordCompleteness(rec);
+        if (comp.isComplete) return false;
+      } else if (filterMode === 'critical') {
         const parsedVitals = parseVitalSignsText(rec.vitalSigns);
         const isCritical = parsedVitals.bpSystolic >= 160 || parsedVitals.spO2 < 94;
         if (!isCritical) return false;
@@ -374,6 +384,22 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
               </button>
               <button
                 type="button"
+                onClick={() => setFilterMode('pending')}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                  filterMode === 'pending' 
+                    ? 'bg-amber-500 text-white font-extrabold shadow-2xs' 
+                    : 'hover:text-slate-900 text-amber-800'
+                }`}
+              >
+                <span>Chờ bổ sung</span>
+                {pendingRecordsCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-900 text-amber-100 text-[10px] font-black">
+                    {pendingRecordsCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={() => setFilterMode('critical')}
                 className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                   filterMode === 'critical' 
@@ -473,7 +499,8 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
             <div className="grid grid-cols-1 gap-4">
               {filteredRecords.map((record) => {
                 const name = record.patientName || record.fullName || 'Bệnh Nhân Vệ Tinh';
-                const age = record.patientAge || record.age || '60';
+                const parsedAgeNum = parseAgeNumber(record.patientAge || record.age);
+                const age = parsedAgeNum ? `${parsedAgeNum}` : (record.patientAge || record.age || '60');
                 const rawGender = String(record.patientGender || record.gender || 'Nam');
                 const isFemale = rawGender.toLowerCase().includes('nữ') || rawGender.toLowerCase().includes('nu') || rawGender.toLowerCase().includes('female');
                 const room = record.patientRoom || record.roomNumber || 'Chưa xếp phòng';
@@ -486,6 +513,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                 const vitalSignsText = record.vitalSigns || '';
 
                 const parsedVitals = parseVitalSignsText(vitalSignsText);
+                const completeness = checkSatelliteRecordCompleteness(record);
 
                 const isAlreadyInDept = checkIsAlreadyInDept(record);
                 const isJustImported = importedIds.has(record.id);
@@ -494,13 +522,28 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                   <div
                     key={record.id}
                     className={`bg-white rounded-2xl border transition-all shadow-xs hover:shadow-md overflow-hidden ${
-                      isJustImported 
+                      !completeness.isComplete
+                        ? 'border-amber-300 bg-amber-50/20'
+                        : isJustImported 
                         ? 'border-emerald-400 ring-2 ring-emerald-300' 
                         : isAlreadyInDept 
                         ? 'border-slate-300 bg-slate-50/70' 
                         : 'border-slate-200'
                     }`}
                   >
+                    {/* Incomplete Record Notice */}
+                    {!completeness.isComplete && (
+                      <div className="bg-amber-100 border-b border-amber-200 px-4 py-1.5 text-amber-900 text-xs font-bold flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span>Dữ liệu chưa đủ điều kiện tự động tiếp nhận: <strong className="font-extrabold text-amber-950">Thiếu {completeness.missingFields.join(', ')}</strong></span>
+                        </div>
+                        <span className="text-[10.5px] text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full font-bold">
+                          Cần nhập bổ sung thủ công
+                        </span>
+                      </div>
+                    )}
+
                     {/* Top Case Bar */}
                     <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100">
                       
@@ -512,7 +555,11 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                           <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 font-bold text-slate-700">
                             {age} tuổi • {isFemale ? 'Nữ' : 'Nam'}
                           </span>
-                          <span className="text-xs px-2.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 font-black text-indigo-700 flex items-center gap-1">
+                          <span className={`text-xs px-2.5 py-0.5 rounded-md font-black flex items-center gap-1 ${
+                            !room || room === 'Chưa xếp phòng'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                              : 'bg-indigo-50 border border-indigo-200 text-indigo-700'
+                          }`}>
                             <Building2 className="w-3.5 h-3.5" />
                             <span>{room}</span>
                           </span>
@@ -542,29 +589,43 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
 
                       {/* Import Action Buttons */}
                       <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                        <button
-                          type="button"
-                          onClick={() => handleReviewAndEdit(record)}
-                          className="px-3 py-2 rounded-xl border border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
-                          title="Mở biểu mẫu nhập viện hoàn chỉnh với dữ liệu đã điền sẵn để rà soát trước khi lưu"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>Xem & Sửa Trước Khi Nhập</span>
-                        </button>
+                        {!completeness.isComplete ? (
+                          <button
+                            type="button"
+                            onClick={() => handleReviewAndEdit(record)}
+                            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-md hover:shadow-lg active:scale-95"
+                            title="Bổ sung các thông tin còn thiếu (Họ tên, Tuổi, Buồng phòng) và tiếp nhận bệnh nhân vào nội trú"
+                          >
+                            <FileText className="w-4 h-4" />
+                            <span>Bổ Sung Thông Tin & Nhập Viện</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleReviewAndEdit(record)}
+                              className="px-3 py-2 rounded-xl border border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                              title="Mở biểu mẫu nhập viện hoàn chỉnh với dữ liệu đã điền sẵn để rà soát trước khi lưu"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>Xem & Sửa Trước Khi Nhập</span>
+                            </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleImportDirect(record)}
-                          className={`px-4 py-2 rounded-xl text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm hover:shadow active:scale-95 ${
-                            isJustImported
-                              ? 'bg-emerald-600 hover:bg-emerald-700'
-                              : 'bg-indigo-600 hover:bg-indigo-700'
-                          }`}
-                          title="Nhập trực tiếp ca bệnh này vào danh sách bệnh nhân nội trú của khoa"
-                        >
-                          <CloudDownload className="w-4 h-4" />
-                          <span>{isJustImported ? 'Nhập Lại Lần Nữa' : 'Nhập Vào Bệnh Án'}</span>
-                        </button>
+                            <button
+                              type="button"
+                              onClick={() => handleImportDirect(record)}
+                              className={`px-4 py-2 rounded-xl text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm hover:shadow active:scale-95 ${
+                                isJustImported
+                                  ? 'bg-emerald-600 hover:bg-emerald-700'
+                                  : 'bg-indigo-600 hover:bg-indigo-700'
+                              }`}
+                              title="Nhập trực tiếp ca bệnh này vào danh sách bệnh nhân nội trú của khoa"
+                            >
+                              <CloudDownload className="w-4 h-4" />
+                              <span>{isJustImported ? 'Nhập Lại Lần Nữa' : 'Nhập Vào Bệnh Án'}</span>
+                            </button>
+                          </>
+                        )}
                       </div>
 
                     </div>

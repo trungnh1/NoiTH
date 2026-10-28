@@ -27,6 +27,7 @@ interface HeaderProps {
   onManualPushToCloud?: () => void;
   onOpenDutySchedule?: () => void;
   onOpenSatelliteSync?: () => void;
+  pendingSatelliteCount?: number;
   syncStatus: SyncStatus;
   isAutoSyncing?: boolean;
   lastAutoSyncTime?: string | null;
@@ -40,6 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPrintModal,
   onManualPushToCloud,
   onOpenSatelliteSync,
+  pendingSatelliteCount,
   syncStatus,
   isAutoSyncing = false,
   lastAutoSyncTime,
@@ -144,11 +146,16 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenSatelliteSync}
-                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-[10px] font-black rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
-                title="Đồng bộ hồ sơ bệnh nhân tự động từ Cloud Firestore lâm sàng vệ tinh"
+                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-[10px] font-black rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95 relative"
+                title="Lấy dữ liệu bệnh nhân từ Cloud Firestore lâm sàng vệ tinh"
               >
                 <Database className="w-3.5 h-3.5 text-indigo-600" />
-                <span>BN Vệ Tinh</span>
+                <span>Lấy dữ liệu BN</span>
+                {Boolean(pendingSatelliteCount && pendingSatelliteCount > 0) && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white font-black text-[9px] animate-pulse">
+                    {pendingSatelliteCount} chờ
+                  </span>
+                )}
               </button>
             )}
 

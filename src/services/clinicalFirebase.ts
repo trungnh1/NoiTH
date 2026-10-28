@@ -213,6 +213,56 @@ export function parseVitalSignsText(vitalText?: string): {
 }
 
 /**
+ * Trích xuất số tuổi an toàn từ chuỗi (ví dụ: "45T", "45t", "45 tuổi", 45)
+ */
+export function parseAgeNumber(ageInput?: any): number {
+  if (ageInput === null || ageInput === undefined) return 0;
+  if (typeof ageInput === 'number' && !isNaN(ageInput) && ageInput > 0) return Math.round(ageInput);
+  const str = String(ageInput).trim();
+  const match = str.match(/(\d{1,3})/);
+  if (match) {
+    const val = parseInt(match[1], 10);
+    if (!isNaN(val) && val > 0 && val <= 125) return val;
+  }
+  return 0;
+}
+
+/**
+ * Kiểm tra xem bản ghi vệ tinh có ĐỦ thông tin quan trọng để tự động nhập viện nội trú không
+ * (Bao gồm: Tên bệnh nhân, Tuổi, Số phòng)
+ */
+export function checkSatelliteRecordCompleteness(record: ClinicalRecord): {
+  isComplete: boolean;
+  missingFields: string[];
+} {
+  const missingFields: string[] = [];
+
+  // 1. Kiểm tra Họ tên
+  const name = (record.patientName || record.fullName || '').trim();
+  if (!name || name.length < 2 || name.toLowerCase() === 'bệnh nhân vệ tinh') {
+    missingFields.push('Họ tên bệnh nhân');
+  }
+
+  // 2. Kiểm tra Tuổi
+  const age = parseAgeNumber(record.patientAge || record.age);
+  if (!age) {
+    missingFields.push('Tuổi bệnh nhân');
+  }
+
+  // 3. Kiểm tra Số phòng
+  let rawRoom = String(record.patientRoom || record.roomNumber || '').trim();
+  rawRoom = rawRoom.replace(/^(phòng|p\.?|buồng)\s*/i, '').trim();
+  if (!rawRoom || rawRoom === 'Chưa xếp phòng' || !/\d/.test(rawRoom)) {
+    missingFields.push('Số buồng / phòng');
+  }
+
+  return {
+    isComplete: missingFields.length === 0,
+    missingFields,
+  };
+}
+
+/**
  * Chuyển đổi an toàn từ 1 bản ghi vệ tinh chuẩn Schema sang đối tượng Patient bệnh viện
  */
 export function mapClinicalRecordToPatient(
@@ -228,8 +278,8 @@ export function mapClinicalRecordToPatient(
   const fullName = (record.patientName || record.fullName || 'Bệnh Nhân Vệ Tinh').trim();
 
   // Tuổi
-  let age = Number(record.patientAge || record.age || 60);
-  if (isNaN(age) || age < 1 || age > 125) age = 60;
+  let age = parseAgeNumber(record.patientAge || record.age);
+  if (!age) age = 60;
 
   // Giới tính
   let gender: 'Nam' | 'Nữ' = 'Nam';

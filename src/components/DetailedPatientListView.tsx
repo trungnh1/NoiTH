@@ -91,6 +91,7 @@ interface DetailedPatientListViewProps {
   onOpenPrintModal?: () => void;
   onAddPatient?: (patient: Patient) => void;
   onOpenSatelliteSync?: () => void;
+  pendingSatelliteCount?: number;
 }
 
 /**
@@ -202,6 +203,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   onOpenPrintModal,
   onAddPatient,
   onOpenSatelliteSync,
+  pendingSatelliteCount,
 }) => {
   const [selectedGroup, setSelectedGroup] = useState<'GROUP_1' | 'CARDIO' | 'GROUP_2' | 'ALL'>('GROUP_1');
   const [showEmptyRooms, setShowEmptyRooms] = useState<boolean>(true);
@@ -533,11 +535,16 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={onOpenSatelliteSync}
-                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-lg shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-98"
-                title="Đồng bộ và nhập bệnh nhân tự động từ Cloud Firestore lâm sàng vệ tinh"
+                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-lg shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-98 relative"
+                title="Lấy dữ liệu bệnh nhân tự động từ Cloud Firestore lâm sàng vệ tinh"
               >
                 <Database className="w-3 h-3 text-indigo-600" />
-                <span>+ BN Vệ Tinh</span>
+                <span>Lấy dữ liệu BN</span>
+                {Boolean(pendingSatelliteCount && pendingSatelliteCount > 0) && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white font-black text-[10px] animate-pulse">
+                    {pendingSatelliteCount}
+                  </span>
+                )}
               </button>
             )}
 

@@ -21,6 +21,12 @@ import { PatientPrintModal } from './components/PatientPrintModal';
 import { DoctorLoginScreen } from './components/DoctorLoginScreen';
 import { SatelliteClinicalSyncModal } from './components/SatelliteClinicalSyncModal';
 import { getSavedDoctorSession, saveDoctorSession, clearDoctorSession } from './utils/auth';
+import { 
+  subscribeToClinicalRecords, 
+  checkSatelliteRecordCompleteness, 
+  mapClinicalRecordToPatient, 
+  ClinicalRecord 
+} from './services/clinicalFirebase';
 
 // Preserve existing feature components (kept in codebase, not deleted)
 import { WardRoomMap } from './components/WardRoomMap';
@@ -61,6 +67,7 @@ export default function App() {
   const [isAutoSyncing, setIsAutoSyncing] = useState(false);
   const [lastAutoSyncTime, setLastAutoSyncTime] = useState<string | null>(null);
   const [emergencyAlert, setEmergencyAlert] = useState<{ message: string; patient: Patient } | null>(null);
+  const [pendingSatelliteRecords, setPendingSatelliteRecords] = useState<ClinicalRecord[]>([]);
 
   // Main active view: 'detailed_list' (Default and primary screen)
   const [activeView, setActiveView] = useState<'map' | 'table' | 'doctors'>('table');
@@ -143,13 +150,82 @@ export default function App() {
       }
     );
 
-    // 2. Subscribe to Khoa Cấp Cứu Firestore clinical_records (Tạm thời tắt theo yêu cầu)
-    // const unsubEmergency = subscribeToEmergencyRecords(...);
-    const unsubEmergency = () => {};
+    // 2. Real-time background subscriber to Satellite Cloud Firestore (iron-foundation-kbcxw)
+    const unsubSatellite = subscribeToClinicalRecords((satelliteRecords) => {
+      if (!satelliteRecords || satelliteRecords.length === 0) {
+        setPendingSatelliteRecords([]);
+        return;
+      }
+
+      let processedIds: string[] = [];
+      try {
+        processedIds = JSON.parse(localStorage.getItem('PROCESSED_SATELLITE_IDS') || '[]');
+      } catch (e) {
+        console.warn(e);
+      }
+
+      const pendingQueue: ClinicalRecord[] = [];
+
+      satelliteRecords.forEach((rec) => {
+        const recordId = rec.id;
+        const completeness = checkSatelliteRecordCompleteness(rec);
+
+        // Check if already processed
+        if (processedIds.includes(recordId)) {
+          return;
+        }
+
+        if (completeness.isComplete) {
+          // Auto-admit complete patient if not already in active list
+          const name = (rec.patientName || rec.fullName || '').toLowerCase().trim();
+          const rawRoom = String(rec.patientRoom || rec.roomNumber || '').replace(/\D/g, '');
+
+          const alreadyInDept = initialPatients.some((p) => {
+            const pName = p.fullName.toLowerCase().trim();
+            const pRoom = p.roomNumber.replace(/\D/g, '');
+            return pName === name && (pRoom === rawRoom || !rawRoom);
+          });
+
+          if (!alreadyInDept) {
+            const mappedPatient = mapClinicalRecordToPatient(rec, loadedDocs, loadRooms(), savedDoc?.id);
+            
+            // Add patient to department and sync
+            setPatients((prev) => {
+              if (prev.some((p) => p.id === mappedPatient.id || p.fullName.toLowerCase() === name)) {
+                return prev;
+              }
+              const updated = [mappedPatient, ...prev];
+              savePatients(updated);
+              syncPatientToCloud(mappedPatient).catch(console.warn);
+              return updated;
+            });
+
+            // Mark processed
+            processedIds.push(recordId);
+            try {
+              localStorage.setItem('PROCESSED_SATELLITE_IDS', JSON.stringify(processedIds));
+            } catch (e) {
+              console.warn(e);
+            }
+
+            // Show auto-admission banner
+            setEmergencyAlert({
+              message: `🎉 Tự động tiếp nhận Bệnh nhân mới từ Vệ Tinh: ${mappedPatient.fullName} (${mappedPatient.age}t, ${mappedPatient.gender}) -> Phòng ${mappedPatient.roomNumber} - ${mappedPatient.bedNumber}`,
+              patient: mappedPatient,
+            });
+          }
+        } else {
+          // Incomplete record -> queue into pending for manual entry via button "Lấy dữ liệu BN"
+          pendingQueue.push(rec);
+        }
+      });
+
+      setPendingSatelliteRecords(pendingQueue);
+    });
 
     return () => {
       unsubDept();
-      unsubEmergency();
+      if (typeof unsubSatellite === 'function') unsubSatellite();
     };
   }, []);
 
@@ -504,6 +580,7 @@ export default function App() {
         onManualPushToCloud={handleManualPushCloud}
         onOpenDutySchedule={() => setIsDutyModalOpen(true)}
         onOpenSatelliteSync={() => setIsSatelliteSyncOpen(true)}
+        pendingSatelliteCount={pendingSatelliteRecords.length}
         isAutoSyncing={isAutoSyncing}
         lastAutoSyncTime={lastAutoSyncTime}
       />
@@ -580,6 +657,7 @@ export default function App() {
           onOpenPrintModal={() => setIsPrintModalOpen(true)}
           onAddPatient={handleAddPatient}
           onOpenSatelliteSync={() => setIsSatelliteSyncOpen(true)}
+          pendingSatelliteCount={pendingSatelliteRecords.length}
         />
       </main>
 
