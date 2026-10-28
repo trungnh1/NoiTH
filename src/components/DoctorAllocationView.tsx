@@ -14,6 +14,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+import { sortDoctorsAlphabetically, getDoctorGivenName, formatPatientName } from '../utils/doctorSorter';
+
 interface DoctorAllocationViewProps {
   rooms: DepartmentRoom[];
   doctors: Doctor[];
@@ -33,11 +35,13 @@ const SCHEDULE_STORAGE_KEY = 'hvg_room_doctor_schedule_v2';
 
 export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
   rooms,
-  doctors,
+  doctors: rawDoctors,
   patients,
   onSelectPatient,
   onReassignDoctorForRoom,
 }) => {
+  const doctors = useMemo(() => sortDoctorsAlphabetically(rawDoctors), [rawDoctors]);
+
   const activePatients = useMemo(
     () => patients.filter((p) => p.status === 'ACTIVE'),
     [patients]
@@ -199,29 +203,31 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
     showToast('Đã sao chép toàn bộ phân công hôm nay sang ngày mai');
   };
 
-  // Compute patient count statistics per doctor
+  // Compute patient count statistics per doctor (only doctors with > 0 patients)
   const doctorStats = useMemo(() => {
-    return doctors.map((doc) => {
-      const docPatients = activePatients.filter((p) => p.attendingDoctorId === doc.id);
-      const criticalCount = docPatients.filter((p) => p.severity === 'CRITICAL').length;
-      const moderateCount = docPatients.filter((p) => p.severity === 'MODERATE').length;
-      const stableCount = docPatients.filter((p) => p.severity === 'STABLE').length;
+    return doctors
+      .map((doc) => {
+        const docPatients = activePatients.filter((p) => p.attendingDoctorId === doc.id);
+        const criticalCount = docPatients.filter((p) => p.severity === 'CRITICAL').length;
+        const moderateCount = docPatients.filter((p) => p.severity === 'MODERATE').length;
+        const stableCount = docPatients.filter((p) => p.severity === 'STABLE').length;
 
-      // Find rooms assigned today
-      const assignedRooms = rooms
-        .filter((r) => scheduleMap[r.number]?.todayDoctorId === doc.id)
-        .map((r) => r.number);
+        // Find rooms assigned today
+        const assignedRooms = rooms
+          .filter((r) => scheduleMap[r.number]?.todayDoctorId === doc.id)
+          .map((r) => r.number);
 
-      return {
-        doctor: doc,
-        totalPatients: docPatients.length,
-        criticalCount,
-        moderateCount,
-        stableCount,
-        assignedRooms,
-        patients: docPatients,
-      };
-    });
+        return {
+          doctor: doc,
+          totalPatients: docPatients.length,
+          criticalCount,
+          moderateCount,
+          stableCount,
+          assignedRooms,
+          patients: docPatients,
+        };
+      })
+      .filter((stat) => stat.totalPatients > 0);
   }, [doctors, activePatients, rooms, scheduleMap]);
 
   // Filtered rooms list
@@ -252,12 +258,20 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
         const tmDoc = doctors.find((d) => d.id === sched?.tomorrowDoctorId)?.name.toLowerCase() || '';
         
         const docMatch = yDoc.includes(query) || tDoc.includes(query) || tmDoc.includes(query);
-        return roomNameMatch || docMatch;
+
+        const roomPatients = activePatients.filter(
+          (p) => p.roomNumber === room.number || p.roomNumber === `P.${room.number}` || p.roomNumber === `Phòng ${room.number}`
+        );
+        const patientMatch = roomPatients.some(
+          (p) => p.fullName.toLowerCase().includes(query) || (p.medicalRecordNumber || '').toLowerCase().includes(query)
+        );
+
+        return roomNameMatch || docMatch || patientMatch;
       }
 
       return true;
     });
-  }, [rooms, selectedGroup, selectedDoctorFilter, searchTerm, scheduleMap, doctors]);
+  }, [rooms, selectedGroup, selectedDoctorFilter, searchTerm, scheduleMap, doctors, activePatients]);
 
   const totalActivePatients = activePatients.length;
 
@@ -298,7 +312,7 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
               </button>
             )}
             <span className="text-slate-500 font-medium">
-              Hiển thị {doctors.length} bác sĩ
+              Hiển thị {doctorStats.length} bác sĩ có bệnh nhân
             </span>
           </div>
         </div>
@@ -324,13 +338,12 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                   <div
                     className={`w-7 h-7 rounded-lg ${doctor.avatarColor} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}
                   >
-                    {doctor.name.split(' ').pop()?.[0]}
+                    {getDoctorGivenName(doctor.name)[0]}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-xs text-slate-900 truncate leading-snug" title={doctor.name}>
-                      {doctor.name}
+                      {getDoctorGivenName(doctor.name)}
                     </p>
-                    
                   </div>
                 </div>
 
@@ -412,7 +425,7 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Tìm phòng hoặc tên bác sĩ..."
+                placeholder="Tìm phòng, bác sĩ, bệnh nhân..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
@@ -514,18 +527,15 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="font-extrabold text-slate-900 text-sm">
-                                {room.name}
-                              </span>
                               {groupMeta && (
                                 <span
-                                  className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${groupMeta.badgeColor}`}
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded ${groupMeta.badgeColor}`}
                                 >
                                   {groupMeta.shortName}
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">
+                            <div className="text-[11px] text-slate-500 mt-0.5 font-medium">
                               {roomPatients.length}/{room.totalBeds} giường có bệnh
                             </div>
                           </div>
@@ -533,26 +543,29 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                       </td>
 
                       {/* BS Hôm Qua */}
-                      <td className="py-2.5 px-3 sm:px-4 align-middle">
+                      <td className="py-2 px-3 align-middle">
                         <div className="relative">
                           <select
                             value={schedule.yesterdayDoctorId}
                             onChange={(e) =>
                               handleChangeDoctor(room.number, 'yesterday', e.target.value)
                             }
-                            className="w-full pl-2.5 pr-7 py-1.5 bg-slate-50 hover:bg-white text-slate-700 font-medium text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-400 cursor-pointer transition-colors"
+                            className="w-full pl-2 pr-6 py-1 bg-slate-50 hover:bg-white text-slate-700 font-medium text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-400 cursor-pointer transition-colors"
                           >
-                            {doctors.map((doc) => (
-                              <option key={doc.id} value={doc.id}>
-                                {doc.title ? `${doc.title} ` : ''}{doc.name}
-                              </option>
-                            ))}
+                            {doctors.map((doc) => {
+                              const shortName = getDoctorGivenName(doc.name);
+                              return (
+                                <option key={doc.id} value={doc.id}>
+                                  {shortName}
+                                </option>
+                              );
+                            })}
                           </select>
                         </div>
                       </td>
 
-                      {/* BS Hôm Nay - Khung nổi bật, thay đổi sẽ cập nhật BN trực tiếp */}
-                      <td className="py-2.5 px-3 sm:px-4 align-middle bg-rose-50/30 border-x border-rose-200/80">
+                      {/* BS Hôm Nay - Khung nổi bật với menu thả xuống gọn gàng */}
+                      <td className="py-2.5 px-3 align-middle bg-rose-50/30 border-x border-rose-200/80">
                         <div className="space-y-1">
                           <div className="relative">
                             <select
@@ -562,11 +575,14 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                               }
                               className="w-full pl-2.5 pr-7 py-1.5 bg-white text-rose-950 font-bold text-xs border-2 border-rose-400 rounded-lg shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-rose-500 cursor-pointer"
                             >
-                              {doctors.map((doc) => (
-                                <option key={doc.id} value={doc.id}>
-                                  {doc.title ? `${doc.title} ` : ''}{doc.name}
-                                </option>
-                              ))}
+                              {doctors.map((doc) => {
+                                const shortName = getDoctorGivenName(doc.name);
+                                return (
+                                  <option key={doc.id} value={doc.id}>
+                                    {shortName}
+                                  </option>
+                                );
+                              })}
                             </select>
                           </div>
                           {roomPatients.length > 0 && (
@@ -579,29 +595,33 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                       </td>
 
                       {/* BS Ngày Mai */}
-                      <td className="py-2.5 px-3 sm:px-4 align-middle">
-                        <div className="flex items-center gap-1.5">
+                      <td className="py-2 px-3 align-middle">
+                        <div className="flex items-center gap-1">
                           <div className="relative flex-1">
                             <select
                               value={schedule.tomorrowDoctorId}
                               onChange={(e) =>
                                 handleChangeDoctor(room.number, 'tomorrow', e.target.value)
                               }
-                              className="w-full pl-2.5 pr-7 py-1.5 bg-indigo-50/50 hover:bg-white text-slate-800 font-medium text-xs border border-indigo-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-indigo-400 cursor-pointer transition-colors"
+                              className="w-full pl-2 pr-6 py-1 bg-indigo-50/50 hover:bg-white text-slate-800 font-medium text-xs border border-indigo-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-indigo-400 cursor-pointer transition-colors"
                             >
-                              {doctors.map((doc) => (
-                                <option key={doc.id} value={doc.id}>
-                                  {doc.title ? `${doc.title} ` : ''}{doc.name}
-                                </option>
-                              ))}
+                              {doctors.map((doc) => {
+                                const shortName = getDoctorGivenName(doc.name);
+                                return (
+                                  <option key={doc.id} value={doc.id}>
+                                    {shortName}
+                                  </option>
+                                );
+                              })}
                             </select>
                           </div>
                           <button
+                            type="button"
                             onClick={() =>
                               handleChangeDoctor(room.number, 'tomorrow', schedule.todayDoctorId)
                             }
                             title="Sao chép BS hôm nay sang ngày mai cho phòng này"
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer shrink-0"
                           >
                             <Copy className="w-3.5 h-3.5" />
                           </button>
@@ -615,25 +635,33 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                             Phòng trống
                           </span>
                         ) : (
-                          <div className="flex flex-wrap items-center justify-end gap-1.5">
-                            {roomPatients.map((patient) => (
-                              <button
-                                key={patient.id}
-                                onClick={() => onSelectPatient(patient)}
-                                className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1 shadow-2xs ${
-                                  patient.severity === 'CRITICAL'
-                                    ? 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100'
-                                    : patient.severity === 'MODERATE'
-                                    ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
-                                    : 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200'
-                                }`}
-                              >
-                                <span>{patient.bedNumber}:</span>
-                                <span className="underline decoration-slate-300 underline-offset-2">
-                                  {patient.fullName}
-                                </span>
-                              </button>
-                            ))}
+                          <div className="flex flex-wrap items-center justify-end gap-1">
+                            {roomPatients.map((patient) => {
+                              const displayName = formatPatientName(patient.fullName);
+                              return (
+                                <button
+                                  key={patient.id}
+                                  type="button"
+                                  onClick={() => onSelectPatient(patient)}
+                                  className={`px-2 py-0.5 rounded-md text-[10.5px] font-medium border transition-all flex items-center gap-1 shadow-2xs hover:scale-105 cursor-pointer ${
+                                    patient.severity === 'CRITICAL'
+                                      ? 'bg-rose-50 text-rose-900 border-rose-300 hover:bg-rose-100 font-bold'
+                                      : patient.severity === 'MODERATE'
+                                      ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 font-medium'
+                                      : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100'
+                                  }`}
+                                  title={`Xem chi tiết bệnh nhân ${displayName}`}
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                    patient.severity === 'CRITICAL' ? 'bg-rose-500 animate-pulse' :
+                                    patient.severity === 'MODERATE' ? 'bg-amber-500' : 'bg-emerald-500'
+                                  }`} />
+                                  <span className="truncate max-w-[140px]">
+                                    {displayName}
+                                  </span>
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </td>

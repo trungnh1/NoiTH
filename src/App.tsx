@@ -21,6 +21,9 @@ import { PatientPrintModal } from './components/PatientPrintModal';
 import { DoctorLoginScreen } from './components/DoctorLoginScreen';
 import { SatelliteClinicalSyncModal } from './components/SatelliteClinicalSyncModal';
 import { getSavedDoctorSession, saveDoctorSession, clearDoctorSession } from './utils/auth';
+import { loadAppSettings, saveAppSettings, getFontSizeScale, AppSettings } from './utils/settings';
+import { AppSettingsModal } from './components/AppSettingsModal';
+import { ExcelDataSyncModal } from './components/ExcelDataSyncModal';
 import { 
   subscribeToClinicalRecords, 
   checkSatelliteRecordCompleteness, 
@@ -28,7 +31,7 @@ import {
   ClinicalRecord 
 } from './services/clinicalFirebase';
 
-// Preserve existing feature components (kept in codebase, not deleted)
+import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { WardRoomMap } from './components/WardRoomMap';
 import { PatientTableView } from './components/PatientTableView';
 import { DoctorAllocationView } from './components/DoctorAllocationView';
@@ -70,7 +73,8 @@ export default function App() {
   const [pendingSatelliteRecords, setPendingSatelliteRecords] = useState<ClinicalRecord[]>([]);
 
   // Main active view: 'detailed_list' (Default and primary screen)
-  const [activeView, setActiveView] = useState<'map' | 'table' | 'doctors'>('table');
+  const [activeView, setActiveView] = useState<'detailed_list' | 'map' | 'table' | 'doctors'>('detailed_list');
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Quick room doctor assignments map (persisted in localStorage)
   const [roomDoctorAssignments, setRoomDoctorAssignments] = useState<Record<string, string>>(() => {
@@ -80,6 +84,16 @@ export default function App() {
       return {};
     }
   });
+
+  // App UI & Theme settings
+  const [appSettings, setAppSettings] = useState<AppSettings>(loadAppSettings);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
+
+  const handleUpdateSettings = (newSettings: AppSettings) => {
+    setAppSettings(newSettings);
+    saveAppSettings(newSettings);
+  };
 
   // Modal states: Core workflow
   const [isSimplifiedNewPatientOpen, setIsSimplifiedNewPatientOpen] = useState(false);
@@ -228,6 +242,19 @@ export default function App() {
       if (typeof unsubSatellite === 'function') unsubSatellite();
     };
   }, []);
+
+  // 3. Warn user when closing tab/browser if data is currently syncing or cloud sync has error
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isAutoSyncing || syncStatus.errorMessage) {
+        e.preventDefault();
+        e.returnValue = 'Dữ liệu chưa đồng bộ hoàn tất lên Cloud. Bạn có chắc chắn muốn rời khỏi trang không?';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isAutoSyncing, syncStatus.errorMessage]);
 
   // Sync patients changes to storage and cloud automatically in real-time
   const updatePatientsList = async (newPatients: Patient[]) => {
@@ -559,8 +586,13 @@ export default function App() {
     );
   }
 
+  const fontSizeScaleClass = getFontSizeScale(appSettings.fontSize);
+  const isDark = appSettings.themeMode === 'dark';
+
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans selection:bg-rose-500 selection:text-white">
+    <div className={`min-h-screen ${fontSizeScaleClass} ${
+      isDark ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-100/70 text-slate-900'
+    } flex flex-col font-sans selection:bg-rose-500 selection:text-white transition-colors duration-200`}>
       {/* Streamlined Header */}
       <Header
         patients={patients}
@@ -580,6 +612,8 @@ export default function App() {
         onManualPushToCloud={handleManualPushCloud}
         onOpenDutySchedule={() => setIsDutyModalOpen(true)}
         onOpenSatelliteSync={() => setIsSatelliteSyncOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenChangePassword={() => setIsChangePasswordOpen(true)}
         pendingSatelliteCount={pendingSatelliteRecords.length}
         isAutoSyncing={isAutoSyncing}
         lastAutoSyncTime={lastAutoSyncTime}
@@ -629,36 +663,82 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Content Area - Core Detailed Patient List View */}
+      {/* Main Content Area - Dynamic View Based on Tab */}
       <main className="flex-1 w-full px-2 sm:px-4 py-3">
+        {activeView === 'detailed_list' && (
+          <DetailedPatientListView
+            patients={patients}
+            doctors={doctors}
+            rooms={rooms}
+            roomDoctorAssignments={roomDoctorAssignments}
+            onAssignRoomDoctor={handleAssignRoomDoctor}
+            onOpenNewPatient={() => {
+              setPrefilledRoom(undefined);
+              setPrefilledBed(undefined);
+              setIsSimplifiedNewPatientOpen(true);
+            }}
+            onOpenNewPatientForRoom={(roomNum) => {
+              setPrefilledRoom(roomNum);
+              setPrefilledBed(undefined);
+              setIsSimplifiedNewPatientOpen(true);
+            }}
+            onOpenEvolution={(patient) => setEvolutionPatient(patient)}
+            onSelectPatient={(patient) => setSelectedPatient(patient)}
+            onEditPatient={(patient) => setEditingPatient(patient)}
+            onTransferPatient={(patient) => setTransferringPatient(patient)}
+            onDischargePatient={handleDischargePatient}
+            onDeletePatient={handleDeletePatient}
+            onOpenPrintModal={() => setIsPrintModalOpen(true)}
+            onAddPatient={handleAddPatient}
+            onOpenSatelliteSync={() => setIsSatelliteSyncOpen(true)}
+            pendingSatelliteCount={pendingSatelliteRecords.length}
+          />
+        )}
 
-        <DetailedPatientListView
-          patients={patients}
-          doctors={doctors}
-          rooms={rooms}
-          roomDoctorAssignments={roomDoctorAssignments}
-          onAssignRoomDoctor={handleAssignRoomDoctor}
-          onOpenNewPatient={() => {
-            setPrefilledRoom(undefined);
-            setPrefilledBed(undefined);
-            setIsSimplifiedNewPatientOpen(true);
-          }}
-          onOpenNewPatientForRoom={(roomNum) => {
-            setPrefilledRoom(roomNum);
-            setPrefilledBed(undefined);
-            setIsSimplifiedNewPatientOpen(true);
-          }}
-          onOpenEvolution={(patient) => setEvolutionPatient(patient)}
-          onSelectPatient={(patient) => setSelectedPatient(patient)}
-          onEditPatient={(patient) => setEditingPatient(patient)}
-          onTransferPatient={(patient) => setTransferringPatient(patient)}
-          onDischargePatient={handleDischargePatient}
-          onDeletePatient={handleDeletePatient}
-          onOpenPrintModal={() => setIsPrintModalOpen(true)}
-          onAddPatient={handleAddPatient}
-          onOpenSatelliteSync={() => setIsSatelliteSyncOpen(true)}
-          pendingSatelliteCount={pendingSatelliteRecords.length}
-        />
+        {activeView === 'map' && (
+          <WardRoomMap
+            rooms={rooms}
+            patients={patients}
+            doctors={doctors}
+            onSelectPatient={(p) => setSelectedPatient(p)}
+            onTransferPatient={(p) => setTransferringPatient(p)}
+            onAdmitToBed={(rNum, bNum) => {
+              setPrefilledRoom(rNum);
+              setPrefilledBed(bNum);
+              setIsSimplifiedNewPatientOpen(true);
+            }}
+            onDeletePatient={(pId) => {
+              const target = patients.find((p) => p.id === pId);
+              if (target) handleDeletePatient(target);
+            }}
+            onReassignDoctorForRoom={handleAssignRoomDoctor}
+          />
+        )}
+
+        {activeView === 'table' && (
+          <PatientTableView
+            patients={patients}
+            doctors={doctors}
+            onSelectPatient={(p) => setSelectedPatient(p)}
+            onTransferPatient={(p) => setTransferringPatient(p)}
+          />
+        )}
+
+        {activeView === 'doctors' && (
+          <DoctorAllocationView
+            rooms={rooms}
+            doctors={doctors}
+            patients={patients}
+            onSelectPatient={(p) => setSelectedPatient(p)}
+            onReassignDoctor={(patientId, newDoctorId) => {
+              const target = patients.find((p) => p.id === patientId);
+              if (target) {
+                handleUpdatePatient({ ...target, attendingDoctorId: newDoctorId });
+              }
+            }}
+            onReassignDoctorForRoom={handleAssignRoomDoctor}
+          />
+        )}
       </main>
 
       {/* Standard Clean Footer */}
@@ -761,6 +841,7 @@ export default function App() {
           patients={patients}
           prefilledRoom={prefilledRoom}
           prefilledBed={prefilledBed}
+          currentUser={authenticatedDoctor}
           onClose={() => setIsSimplifiedNewPatientOpen(false)}
           onAddPatient={(newPatient) => {
             handleAddPatient(newPatient);
@@ -776,6 +857,7 @@ export default function App() {
           doctors={doctors}
           patients={patients}
           patientToEdit={editingPatient}
+          currentUser={authenticatedDoctor}
           onClose={() => setEditingPatient(null)}
           onUpdatePatient={(updatedPatient) => {
             handleUpdatePatient(updatedPatient);
@@ -834,6 +916,7 @@ export default function App() {
             setSatelliteImportDraft(prefilledPatient);
             setIsSatelliteSyncOpen(false);
           }}
+          onOpenExcelImport={() => setIsExcelImportOpen(true)}
         />
       )}
 
@@ -845,10 +928,47 @@ export default function App() {
           patients={patients}
           patientToEdit={satelliteImportDraft}
           isImportMode={true}
+          currentUser={authenticatedDoctor}
           onClose={() => setSatelliteImportDraft(null)}
           onAddPatient={(newPatient) => {
             handleAddPatient(newPatient);
             setSatelliteImportDraft(null);
+          }}
+        />
+      )}
+
+      {/* 8. App Settings Modal */}
+      {isSettingsOpen && (
+        <AppSettingsModal
+          settings={appSettings}
+          onUpdateSettings={handleUpdateSettings}
+          onOpenExcelImport={() => setIsExcelImportOpen(true)}
+          onClose={() => setIsSettingsOpen(false)}
+        />
+      )}
+
+      {/* 9. Excel File Data Import & Auto Match Modal */}
+      {isExcelImportOpen && (
+        <ExcelDataSyncModal
+          pendingSatelliteRecords={pendingSatelliteRecords}
+          doctors={doctors}
+          rooms={rooms}
+          currentUser={authenticatedDoctor}
+          onClose={() => setIsExcelImportOpen(false)}
+          onImportPatientDirect={(newPat) => {
+            handleAddPatient(newPat);
+          }}
+        />
+      )}
+
+      {/* 10. Change Password Modal */}
+      {isChangePasswordOpen && authenticatedDoctor && (
+        <ChangePasswordModal
+          doctor={authenticatedDoctor}
+          onClose={() => setIsChangePasswordOpen(false)}
+          onSuccess={(msg) => {
+            setManualPushMessage(msg);
+            setTimeout(() => setManualPushMessage(null), 4000);
           }}
         />
       )}

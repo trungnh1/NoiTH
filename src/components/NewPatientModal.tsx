@@ -32,6 +32,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { shortenPatientName } from '../utils/storage';
+import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 
 interface NewPatientModalProps {
   rooms: DepartmentRoom[];
@@ -616,7 +617,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                 {/* Severity selection */}
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Mức độ lâm sàng (*)</label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <button
                       type="button"
                       onClick={() => setSeverity('CRITICAL')}
@@ -649,6 +650,17 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                       }`}
                     >
                       🟢 Ổn định (Xanh)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSeverity('UNCLASSIFIED')}
+                      className={`p-2 rounded-xl font-black border transition-all text-center cursor-pointer ${
+                        severity === 'UNCLASSIFIED'
+                          ? 'bg-slate-700 text-white border-slate-700 shadow-sm scale-[1.01]'
+                          : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      ⚪ Chưa phân loại
                     </button>
                   </div>
                 </div>
@@ -796,7 +808,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                       onChange={(e) => setAttendingDoctorId(e.target.value)}
                       className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-rose-700 truncate"
                     >
-                      {doctors.map((d) => (
+                      {sortDoctorsAlphabetically(doctors).map((d) => (
                         <option key={d.id} value={d.id}>
                           {d.name}
                         </option>

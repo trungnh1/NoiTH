@@ -12,6 +12,7 @@ import {
   AdmissionDischargeStatus
 } from '../types/patient';
 import { formatDoctorShortName } from './DetailedPatientListView';
+import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { 
   X, 
   Sparkles, 
@@ -426,6 +427,16 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                 }`}
               >
                 Ổn định
+              </button>
+              <button
+                onClick={() => handleChangeSeverity('UNCLASSIFIED')}
+                className={`px-2 py-1 rounded text-xs font-black transition-all ${
+                  patient.severity === 'UNCLASSIFIED' || !patient.severity
+                    ? 'bg-slate-700 text-white shadow-xs'
+                    : 'text-white/70 hover:text-white'
+                }`}
+              >
+                Chưa phân loại
               </button>
             </div>
 

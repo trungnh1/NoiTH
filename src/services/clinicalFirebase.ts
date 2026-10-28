@@ -7,6 +7,8 @@ import {
   orderBy, 
   limit, 
   onSnapshot,
+  doc,
+  deleteDoc,
   DocumentData
 } from 'firebase/firestore';
 import { 
@@ -106,26 +108,89 @@ export function stripHtmlTags(htmlStr?: string): string {
     .trim();
 }
 
+/**
+ * Format ISO datetime string (e.g. 2026-10-28T14:13:32.038Z) into readable format: "14:13 28-10-2026"
+ */
+export function formatSatelliteDateTime(dateTimeStr?: string): string {
+  if (!dateTimeStr) return 'N/A';
+  try {
+    const isoMatch = dateTimeStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s](\d{1,2}):(\d{1,2})/);
+    if (isoMatch) {
+      const [, y, m, d, hh, mm] = isoMatch;
+      return `${hh.padStart(2, '0')}:${mm.padStart(2, '0')} ${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+    }
+    const date = new Date(dateTimeStr.replace(' ', 'T'));
+    if (!isNaN(date.getTime())) {
+      const hh = String(date.getHours()).padStart(2, '0');
+      const mm = String(date.getMinutes()).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const y = date.getFullYear();
+      return `${hh}:${mm} ${d}-${m}-${y}`;
+    }
+  } catch {
+    // fallback
+  }
+  return dateTimeStr;
+}
+
+/**
+ * Xóa bản ghi vệ tinh khỏi Cloud Firestore và lưu bộ lọc DELETED_SATELLITE_IDS
+ */
+export async function deleteSatelliteRecord(recordId: string): Promise<boolean> {
+  // 1. Lưu ID đã xóa vào localStorage để lọc vĩnh viễn không hiển thị lại
+  try {
+    const deletedIds: string[] = JSON.parse(localStorage.getItem('DELETED_SATELLITE_IDS') || '[]');
+    if (!deletedIds.includes(recordId)) {
+      deletedIds.push(recordId);
+      localStorage.setItem('DELETED_SATELLITE_IDS', JSON.stringify(deletedIds));
+    }
+  } catch (e) {
+    console.warn('Lỗi lưu DELETED_SATELLITE_IDS:', e);
+  }
+
+  // 2. Thử xóa khỏi Cloud Firestore
+  try {
+    const docRef = doc(db, CLINICAL_COLLECTION, recordId);
+    await deleteDoc(docRef);
+  } catch (err: any) {
+    console.warn('Lỗi xóa Firestore vệ tinh (đã lưu bộ lọc địa phương):', err);
+  }
+  return true;
+}
+
+function filterOutDeletedSatelliteRecords(records: ClinicalRecord[]): ClinicalRecord[] {
+  try {
+    const deletedIds: string[] = JSON.parse(localStorage.getItem('DELETED_SATELLITE_IDS') || '[]');
+    if (deletedIds.length > 0) {
+      return records.filter((r) => !deletedIds.includes(r.id));
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+  return records;
+}
+
 // 4. Hàm lấy danh sách bệnh án mới nhất
 export const fetchClinicalRecords = async (): Promise<ClinicalRecord[]> => {
   const recordsRef = collection(db, CLINICAL_COLLECTION);
+  let records: ClinicalRecord[] = [];
   try {
     const q = query(recordsRef, orderBy('createdAt', 'desc'), limit(50));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(docSnap => ({
+    records = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data()
     } as ClinicalRecord));
   } catch (err) {
-    // Trường hợp không có index orderBy
     const snapshot = await getDocs(recordsRef);
-    const records = snapshot.docs.map(docSnap => ({
+    records = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data()
     } as ClinicalRecord));
     records.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    return records;
   }
+  return filterOutDeletedSatelliteRecords(records);
 };
 
 // 5. Hàm lắng nghe thời gian thực (Realtime)
@@ -138,7 +203,7 @@ export const subscribeToClinicalRecords = (onUpdate: (records: ClinicalRecord[])
       ...docSnap.data()
     } as ClinicalRecord));
     records.sort((a: ClinicalRecord, b: ClinicalRecord) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    onUpdate(records);
+    onUpdate(filterOutDeletedSatelliteRecords(records));
   };
 
   try {
@@ -355,9 +420,11 @@ export function mapClinicalRecordToPatient(
   }
 
   // Mức độ
-  let severity: SeverityLevel = 'STABLE';
+  let severity: SeverityLevel = 'UNCLASSIFIED';
   if (parsedVitals.bpSystolic >= 160 || parsedVitals.spO2 < 93) {
     severity = 'CRITICAL';
+  } else if (parsedVitals.spO2 < 95 || parsedVitals.bpSystolic >= 140) {
+    severity = 'MODERATE';
   }
 
   const newPatient: Patient = {
@@ -377,7 +444,7 @@ export function mapClinicalRecordToPatient(
     admissionStatus: 'ADMITTED_TODAY',
     tags: parsedVitals.spO2 < 95 ? ['O2_CANULA'] : [],
     treatmentPlan,
-    importantNotes: `[Hồ sơ vệ tinh Cloud Firestore] Đồng bộ từ ${record.id}`,
+    importantNotes: 'Hồ sơ lấy từ App tạo slide giao ban',
     initialLabsText: initialLabsText || undefined,
     vitals: vitalsList,
     evolutions: evolutionsList,

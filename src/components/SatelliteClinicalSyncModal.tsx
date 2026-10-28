@@ -21,7 +21,9 @@ import {
   Lock,
   KeyRound,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  FileSpreadsheet,
+  Trash2
 } from 'lucide-react';
 import { Patient, Doctor, DepartmentRoom } from '../types/patient';
 import { 
@@ -36,7 +38,9 @@ import {
   subscribeSatelliteAuth,
   parseVitalSignsText,
   checkSatelliteRecordCompleteness,
-  parseAgeNumber
+  parseAgeNumber,
+  deleteSatelliteRecord,
+  formatSatelliteDateTime
 } from '../services/clinicalFirebase';
 import { User as FirebaseUser } from 'firebase/auth';
 
@@ -48,6 +52,7 @@ interface SatelliteClinicalSyncModalProps {
   onClose: () => void;
   onImportPatientDirect: (patient: Patient) => void;
   onOpenEditAdmission: (prefilledPatient: Patient) => void;
+  onOpenExcelImport?: () => void;
 }
 
 export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProps> = ({
@@ -58,6 +63,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
   onClose,
   onImportPatientDirect,
   onOpenEditAdmission,
+  onOpenExcelImport,
 }) => {
   const [records, setRecords] = useState<ClinicalRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -181,18 +187,52 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
+  // Check if patient already exists in current department
+  const checkIsAlreadyInDept = (rec: ClinicalRecord) => {
+    const name = (rec.patientName || rec.fullName || '').toLowerCase().trim();
+    const mrn = (rec.medicalRecordNumber || '').toLowerCase().trim();
+    return currentPatients.some((p) => {
+      const pName = p.fullName.toLowerCase().trim();
+      const pMrn = (p.medicalRecordNumber || '').toLowerCase().trim();
+      if (mrn && pMrn && mrn === pMrn) return true;
+      if (name && pName && pName === name) return true;
+      return false;
+    });
+  };
+
   // Filter and search
   const filteredRecords = useMemo(() => {
+    let deletedIds: string[] = [];
+    try {
+      deletedIds = JSON.parse(localStorage.getItem('DELETED_SATELLITE_IDS') || '[]');
+    } catch {
+      deletedIds = [];
+    }
+
     return records.filter((rec) => {
-      const name = (rec.patientName || rec.fullName || '').toLowerCase();
-      const room = String(rec.patientRoom || rec.roomNumber || '').toLowerCase();
-      const date = String(rec.admissionDate || rec.createdAt || '').toLowerCase();
-      const diag = String(rec.diagnosis || '').toLowerCase();
+      if (deletedIds.includes(rec.id)) return false;
+      if (checkIsAlreadyInDept(rec)) return false;
 
       // Search term
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase().trim();
-        const matches = name.includes(q) || room.includes(q) || date.includes(q) || diag.includes(q);
+        const name = (rec.patientName || rec.fullName || '').toLowerCase();
+        const room = String(rec.patientRoom || rec.roomNumber || '').toLowerCase();
+        const date = String(rec.admissionDate || rec.createdAt || '').toLowerCase();
+        const diag = String(rec.diagnosis || '').toLowerCase();
+        const mrn = String(rec.medicalRecordNumber || '').toLowerCase();
+        const doc = String(rec.doctorName || '').toLowerCase();
+        const idStr = String(rec.id || '').toLowerCase();
+
+        const matches = 
+          name.includes(q) || 
+          room.includes(q) || 
+          date.includes(q) || 
+          diag.includes(q) || 
+          mrn.includes(q) ||
+          doc.includes(q) ||
+          idStr.includes(q);
+
         if (!matches) return false;
       }
 
@@ -208,18 +248,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
 
       return true;
     });
-  }, [records, searchTerm, filterMode]);
-
-  // Check if patient already exists in current department
-  const checkIsAlreadyInDept = (rec: ClinicalRecord) => {
-    const name = (rec.patientName || rec.fullName || '').toLowerCase().trim();
-    const rawRoom = String(rec.patientRoom || rec.roomNumber || '').replace(/\D/g, '');
-    return currentPatients.some((p) => {
-      const pName = p.fullName.toLowerCase().trim();
-      const pRoom = p.roomNumber.replace(/\D/g, '');
-      return pName === name && (pRoom === rawRoom || !rawRoom);
-    });
-  };
+  }, [records, searchTerm, filterMode, currentPatients]);
 
   // Action: Direct Import
   const handleImportDirect = (record: ClinicalRecord) => {
@@ -238,6 +267,27 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
     const patientObj = mapClinicalRecordToPatient(record, doctors, rooms, currentUser?.id);
     onOpenEditAdmission(patientObj);
     onClose();
+  };
+
+  // Action: Delete inappropriate satellite record
+  const handleDeleteSatelliteRecord = async (record: ClinicalRecord) => {
+    const name = record.patientName || record.fullName || 'Bệnh nhân';
+    const confirmDelete = window.confirm(
+      `Bạn có chắc chắn muốn xóa bản ghi vệ tinh của bệnh nhân "${name}" (${record.id}) không?\n\nBản ghi này sẽ bị loại bỏ khỏi danh sách vệ tinh và không xuất hiện lại.`
+    );
+    if (!confirmDelete) return;
+
+    // 1. Immediate local UI update
+    setRecords((prev) => prev.filter((r) => r.id !== record.id));
+
+    // 2. Persist deletion in localStorage & Firestore
+    await deleteSatelliteRecord(record.id);
+
+    setNotification({
+      message: `Đã xóa thành công bản ghi bệnh nhân "${name}" (${record.id}) khỏi danh sách vệ tinh!`,
+      type: 'success',
+    });
+    setTimeout(() => setNotification(null), 4000);
   };
 
   return (
@@ -297,6 +347,21 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
               >
                 <KeyRound className="w-3.5 h-3.5" />
                 <span>{isLoggingIn ? 'Đang xác thực...' : 'Đăng Nhập Google Vệ Tinh'}</span>
+              </button>
+            )}
+
+            {onOpenExcelImport && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenExcelImport();
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                title="Tải file Excel để ghép nối tự động số phòng với bệnh nhân vệ tinh"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Nhập File Excel</span>
               </button>
             )}
 
@@ -565,7 +630,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                           </span>
                           <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-medium flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            <span>{admissionDate}</span>
+                            <span>{formatSatelliteDateTime(admissionDate)}</span>
                           </span>
                           {isAlreadyInDept && (
                             <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 flex items-center gap-1">
@@ -588,41 +653,51 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                       </div>
 
                       {/* Import Action Buttons */}
-                      <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                      <div className="flex items-center gap-1.5 shrink-0 self-end md:self-center">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSatelliteRecord(record)}
+                          className="px-2 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
+                          title="Xóa bản ghi không phù hợp khỏi dữ liệu vệ tinh"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Xóa</span>
+                        </button>
+
                         {!completeness.isComplete ? (
                           <button
                             type="button"
                             onClick={() => handleReviewAndEdit(record)}
-                            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-md hover:shadow-lg active:scale-95"
+                            className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-black text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-xs hover:shadow active:scale-95"
                             title="Bổ sung các thông tin còn thiếu (Họ tên, Tuổi, Buồng phòng) và tiếp nhận bệnh nhân vào nội trú"
                           >
-                            <FileText className="w-4 h-4" />
-                            <span>Bổ Sung Thông Tin & Nhập Viện</span>
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Bổ Sung & Nhập Viện</span>
                           </button>
                         ) : (
                           <>
                             <button
                               type="button"
                               onClick={() => handleReviewAndEdit(record)}
-                              className="px-3 py-2 rounded-xl border border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                              className="px-2.5 py-1.5 rounded-lg border border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
                               title="Mở biểu mẫu nhập viện hoàn chỉnh với dữ liệu đã điền sẵn để rà soát trước khi lưu"
                             >
                               <FileText className="w-3.5 h-3.5" />
-                              <span>Xem & Sửa Trước Khi Nhập</span>
+                              <span>Xem & Sửa</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleImportDirect(record)}
-                              className={`px-4 py-2 rounded-xl text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm hover:shadow active:scale-95 ${
+                              className={`px-3 py-1.5 rounded-lg text-white font-black text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-xs hover:shadow active:scale-95 ${
                                 isJustImported
                                   ? 'bg-emerald-600 hover:bg-emerald-700'
                                   : 'bg-indigo-600 hover:bg-indigo-700'
                               }`}
                               title="Nhập trực tiếp ca bệnh này vào danh sách bệnh nhân nội trú của khoa"
                             >
-                              <CloudDownload className="w-4 h-4" />
-                              <span>{isJustImported ? 'Nhập Lại Lần Nữa' : 'Nhập Vào Bệnh Án'}</span>
+                              <CloudDownload className="w-3.5 h-3.5" />
+                              <span>{isJustImported ? 'Nhập Lại' : 'Nhập Bệnh Án'}</span>
                             </button>
                           </>
                         )}
@@ -729,7 +804,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                         {/* Summary badge */}
                         <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
                           <span>Mã định danh: <strong className="font-mono text-slate-700">{record.id}</strong></span>
-                          <span className="text-emerald-700 font-bold">Thời gian: {record.createdAt || 'N/A'}</span>
+                          <span className="text-emerald-700 font-bold">Thời gian: {formatSatelliteDateTime(record.createdAt || record.admissionDate)}</span>
                         </div>
                       </div>
 

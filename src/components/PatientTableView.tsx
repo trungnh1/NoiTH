@@ -22,6 +22,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { DiseaseStatisticsBar, DiseaseFilterType, matchPatientDisease } from './DiseaseStatisticsBar';
+import { sortDoctorsAlphabetically, getDoctorGivenName } from '../utils/doctorSorter';
 
 interface PatientTableViewProps {
   patients: Patient[];
@@ -45,9 +46,11 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
   const [selectedRoom, setSelectedRoom] = useState<string>('ALL');
   const [selectedDiseaseFilter, setSelectedDiseaseFilter] = useState<DiseaseFilterType>('ALL');
 
+  const sortedDoctors = useMemo(() => sortDoctorsAlphabetically(doctors), [doctors]);
+
   const doctorMap = useMemo(() => {
-    return new Map<string, Doctor>(doctors.map((d) => [d.id, d]));
-  }, [doctors]);
+    return new Map<string, Doctor>(sortedDoctors.map((d) => [d.id, d]));
+  }, [sortedDoctors]);
 
   // Extract unique room numbers
   const roomsList = useMemo(() => {
@@ -137,34 +140,37 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
             </span>
           </button>
 
-          {doctors.map((doc) => {
-            const count = patients.filter(
-              (p) => p.status === 'ACTIVE' && p.attendingDoctorId === doc.id
-            ).length;
-            const isSelected = selectedDoctorId === doc.id;
+          {sortedDoctors
+            .filter((doc) => patients.some((p) => p.status === 'ACTIVE' && p.attendingDoctorId === doc.id))
+            .map((doc) => {
+              const count = patients.filter(
+                (p) => p.status === 'ACTIVE' && p.attendingDoctorId === doc.id
+              ).length;
+              const isSelected = selectedDoctorId === doc.id;
+              const shortName = getDoctorGivenName(doc.name);
 
-            return (
-              <button
-                key={doc.id}
-                onClick={() => setSelectedDoctorId(doc.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                  isSelected
-                    ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-400'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
-                }`}
-              >
-                <div className={`w-4 h-4 rounded-full ${doc.avatarColor} text-white flex items-center justify-center text-[9px] font-black`}>
-                  {doc.name.split(' ').pop()?.[0]}
-                </div>
-                <span>{doc.name}</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  isSelected ? 'bg-black/30 text-white' : 'bg-slate-700 text-slate-300'
-                }`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={doc.id}
+                  onClick={() => setSelectedDoctorId(doc.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    isSelected
+                      ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-400'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full ${doc.avatarColor} text-white flex items-center justify-center text-[9px] font-black`}>
+                    {shortName[0]}
+                  </div>
+                  <span>{shortName}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    isSelected ? 'bg-black/30 text-white' : 'bg-slate-700 text-slate-300'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
         </div>
       </div>
 
@@ -272,6 +278,17 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
               }`}
             >
               Nhẹ / Ổn định ({patients.filter((p) => p.status === 'ACTIVE' && p.severity === 'STABLE').length})
+            </button>
+
+            <button
+              onClick={() => setSelectedSeverity('UNCLASSIFIED')}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                selectedSeverity === 'UNCLASSIFIED'
+                  ? 'bg-slate-700 text-white shadow-xs'
+                  : 'bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Chưa phân loại ({patients.filter((p) => p.status === 'ACTIVE' && (p.severity === 'UNCLASSIFIED' || !p.severity)).length})
             </button>
           </div>
 
@@ -447,10 +464,12 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                               ? 'bg-rose-600 text-white shadow-xs'
                               : isModerate
                               ? 'bg-amber-500 text-white shadow-xs'
+                              : patient.severity === 'UNCLASSIFIED' || !patient.severity
+                              ? 'bg-slate-200 text-slate-800 border border-slate-300'
                               : 'bg-emerald-600 text-white'
                           }`}>
                             {isCritical && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
-                            {isCritical ? 'NẶNG' : isModerate ? 'TRUNG BÌNH' : 'NHẸ / ỔN ĐỊNH'}
+                            {isCritical ? 'NẶNG' : isModerate ? 'TRUNG BÌNH' : patient.severity === 'UNCLASSIFIED' || !patient.severity ? 'CHƯA PHÂN LOẠI' : 'NHẸ / ỔN ĐỊNH'}
                           </span>
 
                           {/* Admission / Discharge Status Badge */}

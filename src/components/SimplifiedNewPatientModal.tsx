@@ -11,6 +11,7 @@ import {
 } from '../types/patient';
 import { GROUP_1_ROOM_NUMBERS, GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS } from '../data/mockData';
 import { formatDoctorShortName } from './DetailedPatientListView';
+import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { 
   X, 
   UserPlus, 
@@ -43,6 +44,7 @@ interface SimplifiedNewPatientModalProps {
   isImportMode?: boolean;
   prefilledRoom?: string;
   prefilledBed?: string;
+  currentUser?: Doctor | null;
   onClose: () => void;
   onAddPatient?: (newPatient: Patient) => void;
   onUpdatePatient?: (updatedPatient: Patient) => void;
@@ -64,6 +66,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   patientToEdit,
   isImportMode = false,
   prefilledRoom,
+  currentUser,
   onClose,
   onAddPatient,
   onUpdatePatient,
@@ -72,6 +75,9 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   const nameInputRef = useRef<HTMLInputElement>(null);
   const now = new Date();
   const defaultDateTimeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  // Logged-in doctor takes precedence as attending/entering doctor
+  const defaultDocId = currentUser?.id || patientToEdit?.attendingDoctorId || doctors[0]?.id || '00979';
 
   // Form states
   const [fullName, setFullName] = useState(patientToEdit?.fullName || '');
@@ -110,11 +116,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   const [severity, setSeverity] = useState<SeverityLevel>(patientToEdit?.severity || 'STABLE');
   const [selectedTags, setSelectedTags] = useState<ClinicalTag[]>(patientToEdit?.tags || []);
 
-  // Default to first doctor in Nhóm 1 (e.g. BS. Trần Hữu Ngọc)
-  const defaultGroup1Doc = doctors.find((d) => GROUP_1_DOCTOR_IDS.includes(d.id))?.id || '00708';
-  const [attendingDoctorId, setAttendingDoctorId] = useState<string>(
-    patientToEdit?.attendingDoctorId || defaultGroup1Doc
-  );
+  const [attendingDoctorId, setAttendingDoctorId] = useState<string>(defaultDocId);
   const [treatmentPlan, setTreatmentPlan] = useState(patientToEdit?.treatmentPlan || '');
   
   // Tách riêng: Bàn giao tua trực (ở trên) & Ghi chú (ở dưới)
@@ -134,27 +136,30 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // 3 Clinical Doctor Groups for 1-click select
+  // 3 Clinical Doctor Groups for 1-click select (sắp xếp theo thứ tự ABC của tên BS)
   const group1Doctors = useMemo(() => {
-    return doctors.filter(
+    const list = doctors.filter(
       (d) => (GROUP_1_DOCTOR_IDS.includes(d.id) || /trần hữu ngọc|nguyễn hữu trung|đỗ thị vân huyền|phạm cao thiên|đặng thị ngọc ánh|trần bùi bình chi/i.test(d.name)) &&
       !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
     );
+    return sortDoctorsAlphabetically(list);
   }, [doctors]);
 
   const group2Doctors = useMemo(() => {
-    return doctors.filter(
+    const list = doctors.filter(
       (d) => (GROUP_2_DOCTOR_IDS.includes(d.id) || /thái thị thùy linh|dương thị hoài|nguyễn thị ngọc mai|đỗ thị ngoan|nguyễn thị phương chi/i.test(d.name)) &&
       !/bình chi/i.test(d.name) &&
       !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
     );
+    return sortDoctorsAlphabetically(list);
   }, [doctors]);
 
   const cardioDoctors = useMemo(() => {
-    return doctors.filter(
+    const list = doctors.filter(
       (d) => (CARDIO_DOCTOR_IDS.includes(d.id) || /nguyễn văn phương nhật|võ văn thọ|võ hồng thịnh|trương hoài lam/i.test(d.name)) &&
       !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
     );
+    return sortDoctorsAlphabetically(list);
   }, [doctors]);
 
   // Current room active patient count
@@ -715,7 +720,19 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
                   <label className="font-extrabold text-slate-700 block mb-1">
                     Mức Độ Tình Trạng
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSeverity('UNCLASSIFIED')}
+                      className={`py-1.5 px-2 rounded-lg font-black text-xs border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        severity === 'UNCLASSIFIED'
+                          ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-200'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
+                      Chưa phân loại
+                    </button>
                     <button
                       type="button"
                       onClick={() => setSeverity('STABLE')}

@@ -1,4 +1,4 @@
-export type SeverityLevel = 'CRITICAL' | 'MODERATE' | 'STABLE';
+export type SeverityLevel = 'CRITICAL' | 'MODERATE' | 'STABLE' | 'UNCLASSIFIED';
 
 export type AdmissionDischargeStatus = 
   | 'ADMITTED_TODAY' // Mới nhập hôm nay

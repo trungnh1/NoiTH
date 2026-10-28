@@ -25,6 +25,7 @@ import {
   Database
 } from 'lucide-react';
 import { QuickPatientEntry } from './QuickPatientEntry';
+import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
 export const GROUP_1_ROOM_NUMBERS = [
@@ -214,27 +215,30 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
   // Group 1 doctors (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)
   const group1Doctors = useMemo(() => {
-    return doctors.filter((d) => 
+    const list = doctors.filter((d) => 
       (GROUP_1_DOCTOR_IDS.includes(d.id) || d.id === 'DOC-NGOC' || /trần hữu ngọc|nguyễn hữu trung|đỗ thị vân huyền|phạm cao thiên|đặng thị ngọc ánh|trần bùi bình chi/i.test(d.name)) &&
       !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
     );
+    return sortDoctorsAlphabetically(list);
   }, [doctors]);
 
   // Group 2 doctors (Linh, Hoài, Mai, Ngoan, Chi)
   const group2Doctors = useMemo(() => {
-    return doctors.filter((d) => 
+    const list = doctors.filter((d) => 
       (GROUP_2_DOCTOR_IDS.includes(d.id) || /thái thị thùy linh|dương thị hoài|nguyễn thị ngọc mai|đỗ thị ngoan|nguyễn thị phương chi/i.test(d.name)) &&
       !/bình chi/i.test(d.name) &&
       !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
     );
+    return sortDoctorsAlphabetically(list);
   }, [doctors]);
 
   // Cardio doctors (Nhật, Thọ, Thịnh, Lam)
   const cardioDoctors = useMemo(() => {
-    return doctors.filter((d) => 
+    const list = doctors.filter((d) => 
       (CARDIO_DOCTOR_IDS.includes(d.id) || /nguyễn văn phương nhật|võ văn thọ|võ hồng thịnh|trương hoài lam/i.test(d.name)) &&
       !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
     );
+    return sortDoctorsAlphabetically(list);
   }, [doctors]);
 
   const doctorMap = useMemo(() => {
@@ -369,6 +373,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const criticalCount = activeGroupPatients.filter((p) => p.severity === 'CRITICAL').length;
   const moderateCount = activeGroupPatients.filter((p) => p.severity === 'MODERATE').length;
   const stableCount = activeGroupPatients.filter((p) => p.severity === 'STABLE').length;
+  const unclassifiedCount = activeGroupPatients.filter((p) => p.severity === 'UNCLASSIFIED' || !p.severity).length;
   const dischargeTodayCount = activeGroupPatients.filter((p) => p.admissionStatus === 'DISCHARGE_TODAY').length;
   const dischargeTomorrowCount = activeGroupPatients.filter((p) => p.admissionStatus === 'DISCHARGE_TOMORROW').length;
 
@@ -696,6 +701,20 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               </button>
               <button
                 type="button"
+                onClick={() => setStatusFilter('UNCLASSIFIED')}
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 ${
+                  statusFilter === 'UNCLASSIFIED'
+                    ? 'bg-slate-700 text-white shadow-2xs'
+                    : 'text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <span>Chưa phân loại</span>
+                <span className="text-[10px] px-1 rounded-full bg-black/20 font-black">
+                  {unclassifiedCount}
+                </span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setStatusFilter('DISCHARGE_TODAY')}
                 className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 ${
                   statusFilter === 'DISCHARGE_TODAY'
@@ -733,26 +752,32 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer"
               >
                 <option value="ALL">Lọc theo Bác sĩ</option>
-                <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)">
-                  {group1Doctors.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      BS. {formatDoctorShortName(d.name)}
-                    </option>
-                  ))}
+                <optgroup label="Bác sĩ Nhóm 1">
+                  {group1Doctors
+                    .filter((d) => activeGroupPatients.some((p) => p.attendingDoctorId === d.id || (d.id === '00708' && p.attendingDoctorId === 'DOC-NGOC')))
+                    .map((d) => (
+                      <option key={d.id} value={d.id}>
+                        BS. {formatDoctorShortName(d.name)}
+                      </option>
+                    ))}
                 </optgroup>
-                <optgroup label="Bác sĩ Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)">
-                  {group2Doctors.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      BS. {formatDoctorShortName(d.name)}
-                    </option>
-                  ))}
+                <optgroup label="Bác sĩ Nhóm 2">
+                  {group2Doctors
+                    .filter((d) => activeGroupPatients.some((p) => p.attendingDoctorId === d.id))
+                    .map((d) => (
+                      <option key={d.id} value={d.id}>
+                        BS. {formatDoctorShortName(d.name)}
+                      </option>
+                    ))}
                 </optgroup>
-                <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam)">
-                  {cardioDoctors.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      BS. {formatDoctorShortName(d.name)}
-                    </option>
-                  ))}
+                <optgroup label="Bác sĩ Tim Mạch">
+                  {cardioDoctors
+                    .filter((d) => activeGroupPatients.some((p) => p.attendingDoctorId === d.id))
+                    .map((d) => (
+                      <option key={d.id} value={d.id}>
+                        BS. {formatDoctorShortName(d.name)}
+                      </option>
+                    ))}
                 </optgroup>
               </select>
             </div>
@@ -919,8 +944,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           {/* Top Content */}
                           <div>
                             
-                            {/* Row 1: Tên Bệnh Nhân + 3 Nút Thao Tác Nhanh (Chuyển phòng, Ra viện, Xóa BN) */}
-                            <div className="pb-2 border-b border-slate-100 flex flex-wrap items-start justify-between gap-1.5">
+                            {/* Row 1: Tên Bệnh Nhân */}
+                            <div className="pb-2 border-b border-slate-100 flex items-start justify-between gap-1.5">
                               <div 
                                 onClick={() => onSelectPatient(patient)}
                                 className="cursor-pointer group flex-1 min-w-[120px]"
@@ -941,62 +966,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     {patient.gender}
                                   </span>
                                 </div>
-                              </div>
-
-                              {/* Quick Actions Beside Name: Sửa, Chuyển phòng, Đã ra viện, Xóa */}
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onEditPatient) onEditPatient(patient);
-                                    else onSelectPatient(patient);
-                                  }}
-                                  className="p-1 px-1.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
-                                  title="Chỉnh sửa thông tin bệnh nhân"
-                                >
-                                  <FileEdit className="w-2.5 h-2.5 text-amber-600" />
-                                  <span>Sửa</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onTransferPatient) onTransferPatient(patient);
-                                  }}
-                                  className="p-1 px-1.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
-                                  title="Chuyển bệnh nhân sang buồng phòng khác"
-                                >
-                                  <ArrowRightLeft className="w-2.5 h-2.5 text-blue-600" />
-                                  <span>Chuyển</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onDischargePatient) onDischargePatient(patient);
-                                  }}
-                                  className="p-1 px-1.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
-                                  title="Bấm đã ra viện (rời khỏi buồng phòng)"
-                                >
-                                  <LogOut className="w-2.5 h-2.5 text-emerald-600" />
-                                  <span>Ra viện</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onDeletePatient) onDeletePatient(patient);
-                                  }}
-                                  className="p-1 px-1.5 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
-                                  title="Xóa bệnh nhân khỏi hệ thống"
-                                >
-                                  <Trash2 className="w-2.5 h-2.5 text-rose-600" />
-                                  <span>Xóa</span>
-                                </button>
                               </div>
                             </div>
 
@@ -1086,26 +1055,82 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                           </div>
 
-                          {/* Bottom Action Buttons: + Diễn Tiến & Chi Tiết (Nút ngắn gọn) */}
-                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto">
+                          {/* Bottom Action Buttons: + Diễn Tiến, Chi Tiết, Sửa, Chuyển, Ra viện, Xóa (Thao tác trên 1 hàng) */}
+                          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 mt-auto">
                             <button
                               type="button"
                               onClick={() => onOpenEvolution(patient)}
                               className="py-1 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs shadow-2xs flex items-center gap-1 transition-all cursor-pointer active:scale-95 shrink-0"
-                              title="Nhập diễn tiến và kế hoạch điều trị cho ngày hôm sau"
+                              title="Nhập diễn tiến và kế hoạch điều trị"
                             >
                               <Activity className="w-3 h-3 text-indigo-200" />
                               <span>+ Diễn Tiến</span>
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => onSelectPatient(patient)}
-                              className="py-1 px-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                              title="Xem chi tiết hồ sơ bệnh nhân"
-                            >
-                              <FileEdit className="w-3 h-3 text-slate-500" />
-                              <span>Chi tiết</span>
-                            </button>
+
+                            <div className="flex items-center gap-1 flex-wrap shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => onSelectPatient(patient)}
+                                className="py-1 px-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-0.5"
+                                title="Xem chi tiết hồ sơ bệnh nhân"
+                              >
+                                <FileEdit className="w-2.5 h-2.5 text-slate-500" />
+                                <span>Chi tiết</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onEditPatient) onEditPatient(patient);
+                                  else onSelectPatient(patient);
+                                }}
+                                className="py-1 px-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                title="Chỉnh sửa thông tin bệnh nhân"
+                              >
+                                <FileEdit className="w-2.5 h-2.5 text-amber-600" />
+                                <span>Sửa</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onTransferPatient) onTransferPatient(patient);
+                                }}
+                                className="py-1 px-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                title="Chuyển bệnh nhân sang buồng phòng khác"
+                              >
+                                <ArrowRightLeft className="w-2.5 h-2.5 text-blue-600" />
+                                <span>Chuyển</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onDischargePatient) onDischargePatient(patient);
+                                }}
+                                className="py-1 px-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                title="Bấm đã ra viện (rời khỏi buồng phòng)"
+                              >
+                                <LogOut className="w-2.5 h-2.5 text-emerald-600" />
+                                <span>Ra viện</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onDeletePatient) onDeletePatient(patient);
+                                }}
+                                className="py-1 px-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                title="Xóa bệnh nhân khỏi hệ thống"
+                              >
+                                <Trash2 className="w-2.5 h-2.5 text-rose-600" />
+                                <span>Xóa</span>
+                              </button>
+                            </div>
                           </div>
 
                         </div>

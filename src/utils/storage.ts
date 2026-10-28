@@ -96,6 +96,8 @@ export function savePatients(patients: Patient[]): void {
   }
 }
 
+import { sortDoctorsAlphabetically } from './doctorSorter';
+
 export function loadDoctors(): Doctor[] {
   try {
     // Clean legacy keys
@@ -113,14 +115,14 @@ export function loadDoctors(): Doctor[] {
             return cleanDoctor as Doctor;
           });
         if (filtered.length >= 10) {
-          return filtered;
+          return sortDoctorsAlphabetically(filtered);
         }
       }
     }
   } catch (e) {
     console.error('Error loading doctors from storage:', e);
   }
-  return INITIAL_DOCTORS;
+  return sortDoctorsAlphabetically(INITIAL_DOCTORS);
 }
 
 export function saveDoctors(doctors: Doctor[]): void {

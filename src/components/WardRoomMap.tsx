@@ -42,6 +42,7 @@ import { DiseaseStatisticsBar, DiseaseFilterType, matchPatientDisease } from './
 import { DutyRosterBar } from './DutyRosterBar';
 import { DutyRosterModal } from './DutyRosterModal';
 import { DEFAULT_ROOM_DOCTORS, getDoctorShortName, GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS } from '../data/mockData';
+import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 
 interface WardRoomMapProps {
   rooms: DepartmentRoom[];
@@ -148,16 +149,9 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
       (doc) =>
         !['00101', '00199'].includes(doc.id) &&
         !/tuế|quyên/i.test(doc.name) &&
-        (doc.shiftStatus !== 'Nghỉ' || (doctorPatientCounts[doc.id] || 0) > 0)
+        (doctorPatientCounts[doc.id] || 0) > 0
     );
-    return valid.sort((a, b) => {
-      const getRank = (id: string, name: string) => {
-        if (GROUP_1_DOCTOR_IDS.includes(id) || /ngọc|trung|huyền|thiên|ánh|bình chi/i.test(name)) return 1;
-        if (GROUP_2_DOCTOR_IDS.includes(id) || /linh|hoài|mai|ngoan|nguyễn thị phương chi/i.test(name)) return 2;
-        return 3;
-      };
-      return getRank(a.id, a.name) - getRank(b.id, b.name);
-    });
+    return sortDoctorsAlphabetically(valid);
   }, [doctors, doctorPatientCounts]);
 
   // Distinct room groups defined by user
@@ -181,6 +175,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
       critical: active.filter((p) => p.severity === 'CRITICAL').length,
       moderate: active.filter((p) => p.severity === 'MODERATE').length,
       stable: active.filter((p) => p.severity === 'STABLE').length,
+      unclassified: active.filter((p) => p.severity === 'UNCLASSIFIED' || !p.severity).length,
       admittedToday: active.filter((p) => p.admissionStatus === 'ADMITTED_TODAY').length,
       admittedYesterday: active.filter((p) => p.admissionStatus === 'ADMITTED_YESTERDAY').length,
       dischargeToday: active.filter((p) => p.admissionStatus === 'DISCHARGE_TODAY').length,
@@ -404,6 +399,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                   const isCritical = patient.severity === 'CRITICAL';
                   const isModerate = patient.severity === 'MODERATE';
                   const isStable = patient.severity === 'STABLE';
+                  const isUnclassified = patient.severity === 'UNCLASSIFIED' || !patient.severity;
 
                   return (
                     <div
@@ -413,7 +409,9 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                           ? 'bg-rose-50/90 border-rose-300 border-l-4 border-l-rose-600 hover:bg-rose-100/90'
                           : isModerate
                           ? 'bg-amber-50/90 border-amber-300 border-l-4 border-l-amber-500 hover:bg-amber-100/90'
-                          : 'bg-emerald-50/80 border-emerald-300 border-l-4 border-l-emerald-500 hover:bg-emerald-100/90'
+                          : isStable
+                          ? 'bg-emerald-50/80 border-emerald-300 border-l-4 border-l-emerald-500 hover:bg-emerald-100/90'
+                          : 'bg-slate-50/90 border-slate-300 border-l-4 border-l-slate-400 hover:bg-slate-100/90'
                       } ${isAnyFilterActive && !isMatched ? 'opacity-30 grayscale' : 'opacity-100'}`}
                     >
                       {/* Bed & Patient Name */}
@@ -489,6 +487,9 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                           )}
                           {isModerate && !patient.admissionStatus && (
                             <span className="text-[8px] font-bold px-1 rounded bg-amber-500 text-white">TB</span>
+                          )}
+                          {isUnclassified && !patient.admissionStatus && (
+                            <span className="text-[8px] font-bold px-1 rounded bg-slate-200 text-slate-700 border border-slate-300">Chưa PL</span>
                           )}
                         </div>
 
@@ -736,6 +737,18 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block" />
             <span>Ổn định ({stats.stable})</span>
+          </button>
+
+          <button
+            onClick={() => setSelectedSeverityFilter(selectedSeverityFilter === 'UNCLASSIFIED' ? 'ALL' : 'UNCLASSIFIED')}
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md font-bold transition-all ${
+              selectedSeverityFilter === 'UNCLASSIFIED'
+                ? 'bg-slate-700 text-white shadow-2xs'
+                : 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-500 inline-block" />
+            <span>Chưa phân loại ({stats.unclassified})</span>
           </button>
 
           <div className="h-3.5 w-[1px] bg-slate-300 mx-0.5 hidden sm:block" />
@@ -1350,8 +1363,8 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
               </div>
 
               <div className="max-h-60 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
-                {doctors
-                  .filter((d) => 
+                {sortDoctorsAlphabetically(
+                  doctors.filter((d) => 
                     !['00101', '00199'].includes(d.id) &&
                     !/tuế|quyên/i.test(d.name) &&
                     (!doctorSearchInModal.trim() || 
@@ -1359,15 +1372,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                     (d.specialty && d.specialty.toLowerCase().includes(doctorSearchInModal.toLowerCase())) ||
                     d.role.toLowerCase().includes(doctorSearchInModal.toLowerCase()))
                   )
-                  .sort((a, b) => {
-                    const getRank = (id: string, name: string) => {
-                      if (GROUP_1_DOCTOR_IDS.includes(id) || /ngọc|trung|huyền|thiên|ánh|bình chi/i.test(name)) return 1;
-                      if (GROUP_2_DOCTOR_IDS.includes(id) || /linh|hoài|mai|ngoan|nguyễn thị phương chi/i.test(name)) return 2;
-                      return 3;
-                    };
-                    return getRank(a.id, a.name) - getRank(b.id, b.name);
-                  })
-                  .map((doc) => {
+                ).map((doc) => {
                     const isCurrent = (roomDoctorState[roomToChangeDoctor] || DEFAULT_ROOM_DOCTORS[roomToChangeDoctor]) === doc.id;
                     const patientCount = doctorPatientCounts[doc.id] || 0;
                     const shortName = getDoctorShortName(doc);
