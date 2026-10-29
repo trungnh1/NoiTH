@@ -201,6 +201,16 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
     };
   }, [patients]);
 
+  // Total bed capacity and department census
+  const totalBedsCount = useMemo(() => {
+    return rooms.reduce((acc, r) => acc + r.totalBeds, 0);
+  }, [rooms]);
+
+  const availableBedsCount = Math.max(0, totalBedsCount - stats.total);
+  const totalOccupancyPercent = totalBedsCount > 0 
+    ? Math.min(100, Math.round((stats.total / totalBedsCount) * 100)) 
+    : 0;
+
   // Helper to determine if a patient passes the active filters
   const matchesFilters = (patient?: Patient | null): boolean => {
     if (!patient) return false;
@@ -335,33 +345,92 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
           const doc = assignedDocId ? doctorMap.get(assignedDocId) : null;
           const shortName = doc ? getDoctorShortName(doc) : 'Chọn BS';
 
+          // Calculate bed occupancy for this room
+          const roomPatients = patients.filter((p) => {
+            if (p.status !== 'ACTIVE') return false;
+            const pRoom = p.roomNumber.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim();
+            return pRoom === room.number;
+          });
+          const occupiedCount = roomPatients.length;
+          const totalBeds = room.totalBeds;
+          const occupancyPercent = totalBeds > 0 ? Math.min(100, Math.round((occupiedCount / totalBeds) * 100)) : 0;
+          const isFull = occupiedCount >= totalBeds;
+          const isNearlyFull = !isFull && occupiedCount > 0 && occupancyPercent >= 66;
+
           return (
-            <div key={room.id} className="bg-white rounded-xl border border-slate-300 shadow-2xs overflow-hidden flex flex-col">
-              {/* Room Header */}
-              <div className={`px-2 py-1.5 flex items-center justify-between border-b ${
-                isAcute ? 'bg-amber-900 text-amber-100' : isVip ? 'bg-indigo-950 text-indigo-100' : 'bg-slate-800 text-slate-100'
+            <div key={room.id} className="bg-white rounded-xl border border-slate-300 shadow-2xs hover:shadow-sm transition-all overflow-hidden flex flex-col">
+              {/* Room Header with Occupancy & Progress Bar */}
+              <div className={`px-2 py-1.5 flex flex-col border-b ${
+                isAcute 
+                  ? 'bg-gradient-to-r from-amber-900 to-amber-950 text-amber-100 border-amber-800' 
+                  : isVip 
+                    ? 'bg-gradient-to-r from-indigo-900 to-indigo-950 text-indigo-100 border-indigo-800' 
+                    : CARDIO_ROOM_NUMBERS.includes(room.number)
+                      ? 'bg-gradient-to-r from-slate-900 to-slate-800 text-slate-100 border-slate-700'
+                      : 'bg-gradient-to-r from-slate-800 to-slate-700 text-slate-100 border-slate-600'
               }`}>
-                <span className="text-xs font-black tracking-tight">P.{room.number}</span>
-                {is6Bed ? (
-                  <span className="text-[9px] font-extrabold px-1 py-0.2 rounded bg-amber-500/30 text-amber-200 border border-amber-400/50">6G</span>
-                ) : (
-                  <span className="text-[9px] opacity-60">3G</span>
-                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black tracking-tight">P.{room.number}</span>
+                    {is6Bed ? (
+                      <span className="text-[9px] font-extrabold px-1 py-0.2 rounded bg-amber-500/30 text-amber-200 border border-amber-400/50">6G</span>
+                    ) : (
+                      <span className="text-[9px] opacity-75 font-semibold">3G</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded leading-none transition-colors ${
+                      isFull 
+                        ? 'bg-rose-500 text-white shadow-2xs font-black animate-pulse' 
+                        : isNearlyFull
+                          ? 'bg-amber-500/90 text-white'
+                          : occupiedCount > 0 
+                            ? 'bg-emerald-500/40 text-emerald-200 border border-emerald-400/40' 
+                            : 'bg-white/10 text-slate-300'
+                    }`}>
+                      {occupiedCount}/{totalBeds} {isFull ? '(Đầy)' : occupiedCount === 0 ? '(Trống)' : ''}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Mini Occupancy Progress Bar */}
+                <div 
+                  className="w-full bg-black/40 rounded-full h-1 mt-1 overflow-hidden" 
+                  title={`Công suất buồng: ${occupiedCount}/${totalBeds} giường (${occupancyPercent}%)`}
+                >
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      isFull 
+                        ? 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.9)]' 
+                        : isNearlyFull 
+                          ? 'bg-amber-400' 
+                          : occupiedCount > 0 
+                            ? 'bg-emerald-400' 
+                            : 'bg-transparent'
+                    }`}
+                    style={{ width: `${occupancyPercent}%` }}
+                  />
+                </div>
               </div>
 
-              {/* Doctor In Charge */}
-              <div className="bg-slate-50 px-2.5 py-1.5 border-b border-slate-200 text-center">
+              {/* Doctor In Charge - Modernized & Balanced */}
+              <div className="bg-slate-50 px-2 py-1 border-b border-slate-200 text-center">
                 <button
                   type="button"
                   onClick={() => {
                     setDoctorSearchInModal('');
                     setRoomToChangeDoctor(room.number);
                   }}
-                  className="group inline-flex items-center justify-center gap-1.5 px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all w-full text-center shadow-2xs"
+                  className="group inline-flex items-center justify-between gap-1 px-2 py-0.5 rounded-md bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 transition-all w-full text-center shadow-2xs"
                   title={`Đổi BS phụ trách Phòng ${room.number}`}
                 >
-                  <span className="font-black text-rose-700 text-sm tracking-tight truncate">{shortName}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-rose-500 group-hover:text-rose-700 shrink-0" />
+                  <div className="flex items-center gap-1 truncate">
+                    <Stethoscope className="w-3 h-3 text-slate-400 group-hover:text-rose-600 transition-colors shrink-0" />
+                    <span className="font-extrabold text-slate-700 group-hover:text-rose-700 text-xs tracking-tight truncate">
+                      {shortName}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3 h-3 text-slate-400 group-hover:text-slate-600 shrink-0" />
                 </button>
               </div>
 
@@ -395,10 +464,14 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                       <div
                         key={bedIndex}
                         onClick={() => onAdmitToBed(room.number, bedNumFormatted)}
-                        className="h-[68px] rounded-lg border border-dashed border-slate-300 hover:border-rose-400 bg-white hover:bg-rose-50/50 transition-all cursor-pointer flex flex-col items-center justify-center p-1 text-slate-400 hover:text-rose-600 group"
+                        className="h-[68px] rounded-lg border border-dashed border-slate-300 hover:border-emerald-400 bg-white/70 hover:bg-emerald-50/60 transition-all cursor-pointer flex flex-col items-center justify-center p-1 text-slate-400 hover:text-emerald-700 group shadow-2xs"
+                        title={`Bấm để tiếp nhận bệnh nhân vào ${bedNumFormatted} P.${room.number}`}
                       >
-                        <PlusCircle className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-transform mb-0.5" />
-                        <span className="text-[10px] font-semibold">Trống</span>
+                        <div className="flex items-center gap-1 mb-0.5">
+                          <PlusCircle className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-transform text-emerald-600" />
+                          <span className="text-[10px] font-bold text-slate-500 group-hover:text-emerald-700">G.{bedIndex < 10 ? '0' + bedIndex : bedIndex}</span>
+                        </div>
+                        <span className="text-[9px] font-medium text-slate-400 group-hover:text-emerald-600">Trống (Nhận BN)</span>
                       </div>
                     );
                   }
@@ -407,6 +480,14 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                   const isModerate = patient.severity === 'MODERATE';
                   const isStable = patient.severity === 'STABLE';
                   const isUnclassified = patient.severity === 'UNCLASSIFIED' || !patient.severity;
+
+                  const latestVital = patient.vitals?.[0];
+                  const hasVital = !!latestVital && (latestVital.bpSystolic > 0 || latestVital.heartRate > 0 || latestVital.spO2 > 0);
+                  const isVitalAlert = latestVital && (
+                    (latestVital.bpSystolic > 0 && (latestVital.bpSystolic < 90 || latestVital.bpSystolic >= 160)) ||
+                    (latestVital.spO2 > 0 && latestVital.spO2 < 92) ||
+                    (latestVital.heartRate > 0 && (latestVital.heartRate < 50 || latestVital.heartRate > 120))
+                  );
 
                   return (
                     <div
@@ -424,7 +505,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                       {/* Bed & Patient Name */}
                       <div className="flex items-start justify-between gap-1">
                         <div 
-                          className="flex items-baseline gap-1 truncate cursor-pointer"
+                          className="flex items-baseline gap-1 truncate cursor-pointer flex-1"
                           onClick={() => onSelectPatient(patient)}
                           onMouseEnter={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
@@ -436,6 +517,9 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                           }}
                           onMouseLeave={() => setHoveredPatientData(null)}
                         >
+                          <span className="text-[9px] font-black px-1 py-0.2 rounded bg-slate-200/80 text-slate-700 shrink-0">
+                            G.{bedIndex < 10 ? '0' + bedIndex : bedIndex}
+                          </span>
                           <span 
                             className="font-extrabold text-[12px] text-slate-900 group-hover:text-rose-700 leading-tight truncate underline decoration-dotted decoration-slate-300"
                             title={patient.fullName}
@@ -453,21 +537,23 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                               onTransferPatient(patient);
                             }}
                             className="p-0.5 rounded text-slate-500 hover:text-blue-700 hover:bg-blue-100 transition-colors"
-                            title="Chuyển phòng"
+                            title="Chuyển phòng / đổi giường"
                           >
                             <ArrowRightLeft className="w-2.5 h-2.5" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPatientToDelete(patient);
-                            }}
-                            className="p-0.5 rounded text-slate-400 hover:text-rose-700 hover:bg-rose-100 transition-colors"
-                            title="Xóa bệnh nhân"
-                          >
-                            <Trash2 className="w-2.5 h-2.5" />
-                          </button>
+                          {onDeletePatient && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPatientToDelete(patient);
+                              }}
+                              className="p-0.5 rounded text-slate-400 hover:text-rose-700 hover:bg-rose-100 transition-colors"
+                              title="Xóa bệnh nhân"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -477,14 +563,34 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                         className="my-0.5 cursor-pointer"
                         title={patient.primaryDiagnosis}
                       >
-                        <p className="text-[9px] text-slate-700 font-medium leading-tight line-clamp-2">
+                        <p className="text-[9px] text-slate-700 font-medium leading-tight line-clamp-1">
                           {patient.primaryDiagnosis}
                         </p>
                       </div>
 
+                      {/* Vital Signs Mini Snapshot (HA, Mạch, SpO2) */}
+                      {hasVital && (
+                        <div 
+                          onClick={() => onSelectPatient(patient)}
+                          className={`flex items-center gap-1 text-[8.5px] font-bold px-1 py-0.5 rounded cursor-pointer leading-none my-0.5 ${
+                            isVitalAlert 
+                              ? 'bg-rose-100 text-rose-800 border border-rose-300 font-extrabold' 
+                              : 'bg-slate-100/90 text-slate-700'
+                          }`}
+                          title={`Sinh hiệu gần nhất: HA ${latestVital.bpSystolic}/${latestVital.bpDiastolic} mmHg, Mạch ${latestVital.heartRate} l/p, SpO2 ${latestVital.spO2}%`}
+                        >
+                          <Activity className={`w-2.5 h-2.5 shrink-0 ${isVitalAlert ? 'text-rose-600 animate-pulse' : 'text-slate-500'}`} />
+                          <span>HA: {latestVital.bpSystolic}/{latestVital.bpDiastolic}</span>
+                          <span className="text-slate-300">|</span>
+                          <span>M: {latestVital.heartRate}</span>
+                          <span className="text-slate-300">|</span>
+                          <span>SpO2: {latestVital.spO2}%</span>
+                        </div>
+                      )}
+
                       {/* Status badge & Tags */}
-                      <div className="flex items-center justify-between text-[9px] pt-1 border-t border-slate-200/60 mt-0.5">
-                        <div className="flex items-center gap-1 flex-wrap">
+                      <div className="flex items-center justify-between text-[9px] pt-0.5 border-t border-slate-200/60 mt-0.5">
+                        <div className="flex items-center gap-0.5 flex-wrap">
                           {renderSmallStatusBadge(patient.admissionStatus)}
                           {isCritical && (
                             <span className="text-[8px] font-extrabold px-1 rounded bg-rose-600 text-white flex items-center gap-0.5">
@@ -543,6 +649,148 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
           }
         }}
       />
+
+      {/* 🏥 HOSPITAL CENSUS BANNER: THANH THỐNG KÊ TỔNG LỰC TOÀN KHOA */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl border border-slate-700/60 shadow-md p-3 sm:p-4 w-full">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
+          
+          {/* Cụm 1: Công suất giường & Quân số toàn khoa */}
+          <div className="flex items-center gap-3.5 sm:border-r border-slate-700/60 sm:pr-4">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white shadow-inner shrink-0">
+              <BedDouble className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">
+                  CÔNG SUẤT BUỒNG GIƯỜNG
+                </span>
+                <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                  totalOccupancyPercent >= 90
+                    ? 'bg-rose-500 text-white animate-pulse'
+                    : totalOccupancyPercent >= 75
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-emerald-500 text-white'
+                }`}>
+                  {totalOccupancyPercent}%
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2 mt-0.5">
+                <span className="text-2xl font-black tracking-tight text-white font-mono">
+                  {stats.total}
+                </span>
+                <span className="text-xs text-slate-300 font-medium">
+                  / {totalBedsCount} giường (<strong className="text-emerald-400">{availableBedsCount}</strong> giường trống)
+                </span>
+              </div>
+              {/* Progress bar */}
+              <div className="w-48 bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden border border-slate-700/50">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    totalOccupancyPercent >= 90 ? 'bg-rose-400' : totalOccupancyPercent >= 75 ? 'bg-amber-400' : 'bg-emerald-400'
+                  }`}
+                  style={{ width: `${totalOccupancyPercent}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Cụm 2: Phân tầng nguy cơ lâm sàng (Click để lọc nhanh) */}
+          <div className="flex items-center gap-2 flex-wrap sm:border-r border-slate-700/60 sm:pr-4">
+            <button
+              onClick={() => setSelectedSeverityFilter(selectedSeverityFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer border ${
+                selectedSeverityFilter === 'CRITICAL'
+                  ? 'bg-rose-500/30 border-rose-400 text-white ring-2 ring-rose-400'
+                  : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-200'
+              }`}
+              title="Xem danh sách bệnh nhân NẶNG / Nguy kịch"
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+              <div className="text-left">
+                <div className="text-[10px] text-rose-300 font-bold uppercase tracking-wider">NGUY KỊCH</div>
+                <div className="text-base font-black text-rose-100 leading-tight font-mono">{stats.critical} <span className="text-[10px] font-normal opacity-75">BN</span></div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setSelectedSeverityFilter(selectedSeverityFilter === 'MODERATE' ? 'ALL' : 'MODERATE')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer border ${
+                selectedSeverityFilter === 'MODERATE'
+                  ? 'bg-amber-500/30 border-amber-400 text-white ring-2 ring-amber-400'
+                  : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-200'
+              }`}
+              title="Xem danh sách bệnh nhân TRUNG BÌNH"
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+              <div className="text-left">
+                <div className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">TRUNG BÌNH</div>
+                <div className="text-base font-black text-amber-100 leading-tight font-mono">{stats.moderate} <span className="text-[10px] font-normal opacity-75">BN</span></div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setSelectedSeverityFilter(selectedSeverityFilter === 'STABLE' ? 'ALL' : 'STABLE')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer border ${
+                selectedSeverityFilter === 'STABLE'
+                  ? 'bg-emerald-500/30 border-emerald-400 text-white ring-2 ring-emerald-400'
+                  : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-200'
+              }`}
+              title="Xem danh sách bệnh nhân ỔN ĐỊNH"
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+              <div className="text-left">
+                <div className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">ỔN ĐỊNH</div>
+                <div className="text-base font-black text-emerald-100 leading-tight font-mono">{stats.stable} <span className="text-[10px] font-normal opacity-75">BN</span></div>
+              </div>
+            </button>
+          </div>
+
+          {/* Cụm 3: Can thiệp Hồi sức Trọng yếu & Lưu chuyển */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setSelectedTagFilter(selectedTagFilter === 'O2_CANULA' ? 'ALL' : 'O2_CANULA')}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                selectedTagFilter === 'O2_CANULA'
+                  ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200'
+                  : 'bg-slate-800/50 hover:bg-slate-800 border-slate-700 text-cyan-300'
+              }`}
+              title="Thở Oxy Canula + Mask"
+            >
+              <Wind className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Oxy: <strong className="text-white font-mono">{stats.canulaCount + stats.maskCount}</strong></span>
+            </button>
+
+            <button
+              onClick={() => setSelectedTagFilter(selectedTagFilter === 'VASOPRESSOR' ? 'ALL' : 'VASOPRESSOR')}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                selectedTagFilter === 'VASOPRESSOR'
+                  ? 'bg-rose-500/30 border-rose-400 text-rose-200'
+                  : stats.vasoCount > 0
+                    ? 'bg-rose-950/60 border-rose-700 text-rose-300 animate-pulse'
+                    : 'bg-slate-800/50 hover:bg-slate-800 border-slate-700 text-slate-300'
+              }`}
+              title="Đang dùng vận mạch (Noradrenalin, Dopamin...)"
+            >
+              <HeartPulse className="w-3.5 h-3.5 text-rose-400" />
+              <span>Vận mạch: <strong className="text-white font-mono">{stats.vasoCount}</strong></span>
+            </button>
+
+            <div className="h-6 w-[1px] bg-slate-700/80 mx-1 hidden sm:block" />
+
+            <div className="flex items-center gap-2 text-xs">
+              <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-950/60 border border-emerald-700/60 text-emerald-300" title="Bệnh nhân mới vào viện hôm nay">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                Vào: <strong className="text-white font-mono">+{stats.admittedToday}</strong>
+              </span>
+              <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-purple-950/60 border border-purple-700/60 text-purple-300" title="Bệnh nhân ra viện hôm nay">
+                <LogOut className="w-3 h-3 text-purple-400" />
+                Ra: <strong className="text-white font-mono">{stats.dischargeToday}</strong>
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div>
 
       {/* Top Bar: View Mode Switcher, Bed Rows Toggle & Quick Filters (Compact) */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden w-full mb-2">
@@ -1032,31 +1280,70 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
               const doc = assignedDocId ? doctorMap.get(assignedDocId) : null;
               const shortName = doc ? getDoctorShortName(doc) : 'Chưa phân';
 
+              // Calculate room occupancy
+              const roomPatients = patients.filter((p) => {
+                if (p.status !== 'ACTIVE') return false;
+                const pRoom = p.roomNumber.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim();
+                return pRoom === room.number;
+              });
+              const occupiedCount = roomPatients.length;
+              const totalBeds = room.totalBeds;
+              const occupancyPercent = totalBeds > 0 ? Math.min(100, Math.round((occupiedCount / totalBeds) * 100)) : 0;
+              const isFull = occupiedCount >= totalBeds;
+              const isNearlyFull = !isFull && occupiedCount > 0 && occupancyPercent >= 66;
+
               return (
                 <div 
                   key={room.id}
                   className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col justify-between"
                 >
-                  <div className="p-3 bg-slate-900 text-white flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-base">Phòng {room.number}</span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/20">
-                          {room.totalBeds} giường
-                        </span>
+                  <div className="p-3 bg-slate-900 text-white flex flex-col justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-base">Phòng {room.number}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            isFull 
+                              ? 'bg-rose-500 text-white font-black animate-pulse' 
+                              : isNearlyFull
+                                ? 'bg-amber-500 text-white'
+                                : occupiedCount > 0
+                                  ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30'
+                                  : 'bg-white/20 text-slate-200'
+                          }`}>
+                            {occupiedCount}/{room.totalBeds} giường {isFull ? '(Đầy)' : occupiedCount === 0 ? '(Trống)' : ''}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 truncate max-w-[180px]">
+                          {room.name}
+                        </p>
                       </div>
-                      <p className="text-[11px] text-slate-300 truncate max-w-[180px]">
-                        {room.name}
-                      </p>
+
+                      <button
+                        onClick={() => setRoomToChangeDoctor(room.number)}
+                        className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold transition-colors flex items-center gap-1"
+                        title="Đổi bác sĩ phụ trách buồng"
+                      >
+                        <Stethoscope className="w-3 h-3 text-rose-300" />
+                        <span>{shortName}</span>
+                      </button>
                     </div>
 
-                    <button
-                      onClick={() => setRoomToChangeDoctor(room.number)}
-                      className="px-2 py-1 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-white text-xs font-bold transition-colors"
-                      title="Đổi bác sĩ phụ trách buồng"
-                    >
-                      {shortName}
-                    </button>
+                    {/* Progress Bar */}
+                    <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden" title={`Công suất buồng: ${occupiedCount}/${totalBeds} giường (${occupancyPercent}%)`}>
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isFull 
+                            ? 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.9)]' 
+                            : isNearlyFull 
+                              ? 'bg-amber-400' 
+                              : occupiedCount > 0 
+                                ? 'bg-emerald-400' 
+                                : 'bg-transparent'
+                        }`}
+                        style={{ width: `${occupancyPercent}%` }}
+                      />
+                    </div>
                   </div>
 
                   <div className="p-2.5 space-y-2 flex-1">
