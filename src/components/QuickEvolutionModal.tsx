@@ -153,6 +153,54 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
     setTimeout(() => setToastMsg(null), 2500);
   };
 
+  const handleCopyLatestClinicalNote = () => {
+    const latest = patient.evolutions?.[0]?.clinicalNote;
+    if (latest) {
+      setClinicalNote(latest);
+      setToastMsg('Đã sao chép diễn biến lâm sàng gần nhất!');
+      setTimeout(() => setToastMsg(null), 2500);
+    } else {
+      setToastMsg('Chưa có lịch sử diễn biến trước đó để sao chép.');
+      setTimeout(() => setToastMsg(null), 2500);
+    }
+  };
+
+  const handleCopyLatestTreatmentAction = () => {
+    const latest = patient.evolutions?.[0]?.treatmentAction || patient.treatmentPlan;
+    if (latest) {
+      setTreatmentAction(latest);
+      setToastMsg('Đã sao chép hướng xử trí gần nhất!');
+      setTimeout(() => setToastMsg(null), 2500);
+    } else {
+      setToastMsg('Chưa có hướng xử trí trước đó để sao chép.');
+      setTimeout(() => setToastMsg(null), 2500);
+    }
+  };
+
+  const handleCopyLatestHandover = () => {
+    const latest = patient.handoverNotes || patient.evolutions?.[0]?.notes;
+    if (latest) {
+      setHandoverNotes(latest);
+      setToastMsg('Đã sao chép bàn giao gần nhất!');
+      setTimeout(() => setToastMsg(null), 2500);
+    } else {
+      setToastMsg('Chưa có nội dung bàn giao trước đó để sao chép.');
+      setTimeout(() => setToastMsg(null), 2500);
+    }
+  };
+
+  const handleCopyLatestDailyNotes = () => {
+    const latest = patient.evolutions?.[0]?.notes;
+    if (latest) {
+      setDailyNotes(latest);
+      setToastMsg('Đã sao chép ghi chú gần nhất!');
+      setTimeout(() => setToastMsg(null), 2500);
+    } else {
+      setToastMsg('Chưa có ghi chú trước đó để sao chép.');
+      setTimeout(() => setToastMsg(null), 2500);
+    }
+  };
+
   // Bật/tắt gắn nhãn thẻ lâm sàng đặc biệt
   const handleToggleTag = (tag: ClinicalTag) => {
     setSelectedTags((prev) => 
@@ -657,10 +705,18 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
 
               {/* 1. Diễn biến lâm sàng trong ngày */}
               <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
-                <label className="font-extrabold text-slate-900 text-xs flex items-center justify-between">
-                  <span className="uppercase text-slate-800 font-black">Diễn Biến Lâm Sàng Trong Ngày <span className="text-rose-500">*</span></span>
-                  <span className="text-[10px] text-slate-400 font-normal">Triệu chứng, đáp ứng...</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <span className="uppercase text-slate-800 font-black text-xs">Diễn Biến Lâm Sàng <span className="text-rose-500">*</span></span>
+                  <button
+                    type="button"
+                    onClick={handleCopyLatestClinicalNote}
+                    className="text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Sao chép diễn biến lâm sàng gần nhất"
+                  >
+                    <Copy className="w-2.5 h-2.5 text-indigo-600" />
+                    <span>Sao chép gần nhất</span>
+                  </button>
+                </div>
                 <textarea
                   rows={3}
                   value={clinicalNote}
@@ -674,11 +730,48 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                 />
               </div>
 
+              {/* 2. Hướng Xử Trí / Kế hoạch điều trị tiếp theo */}
+              <div className="bg-indigo-50/40 p-3 rounded-xl border border-indigo-200 space-y-1.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="uppercase font-black text-indigo-950 text-xs flex items-center gap-1.5">
+                    <Stethoscope className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Hướng Xử Trí / Y Lệnh</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyLatestTreatmentAction}
+                    className="text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Sao chép hướng xử trí gần nhất"
+                  >
+                    <Copy className="w-2.5 h-2.5 text-indigo-600" />
+                    <span>Sao chép gần nhất</span>
+                  </button>
+                </div>
+                <textarea
+                  rows={2}
+                  value={treatmentAction}
+                  onChange={(e) => setTreatmentAction(e.target.value)}
+                  placeholder="Ví dụ: Tiếp tục kháng sinh, hạ áp, giảm đau, theo dõi sát SpO2, chuẩn bị chụp CT..."
+                  className="w-full p-2 bg-white border border-indigo-300 rounded-lg font-medium text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+                />
+              </div>
+
               {/* 3. Bàn giao bệnh */}
               <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-200 space-y-1.5 shadow-2xs">
-                <div className="flex items-center gap-1.5 text-amber-900 font-black text-xs uppercase">
-                  <ArrowRightLeft className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Bàn Giao Bệnh</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-amber-900 font-black text-xs uppercase">
+                    <ArrowRightLeft className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Bàn Giao Bệnh</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyLatestHandover}
+                    className="text-[10px] font-bold text-amber-800 bg-amber-100/80 hover:bg-amber-200 px-2 py-0.5 rounded border border-amber-300 flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Sao chép nội dung bàn giao gần nhất"
+                  >
+                    <Copy className="w-2.5 h-2.5 text-amber-700" />
+                    <span>Sao chép gần nhất</span>
+                  </button>
                 </div>
                 <textarea
                   rows={2}
@@ -691,10 +784,21 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
 
               {/* 1.5 Ghi chú trong ngày (Moved to bottom) */}
               <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
-                <label className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                   <FileText className="w-3.5 h-3.5 text-slate-500" />
-                   <span className="uppercase text-slate-800 font-black">Ghi Chú Trong Ngày</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <span className="uppercase text-slate-800 font-black text-xs flex items-center gap-1.5">
+                     <FileText className="w-3.5 h-3.5 text-slate-500" />
+                     <span>Ghi Chú Trong Ngày</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyLatestDailyNotes}
+                    className="text-[10px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded border border-slate-300 flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Sao chép ghi chú gần nhất"
+                  >
+                    <Copy className="w-2.5 h-2.5 text-slate-600" />
+                    <span>Sao chép gần nhất</span>
+                  </button>
+                </div>
                 <textarea
                   rows={2}
                   value={dailyNotes}
