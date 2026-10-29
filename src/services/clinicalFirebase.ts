@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+﻿import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getFirestore, 
   collection, 
@@ -20,6 +20,7 @@ import {
   User 
 } from 'firebase/auth';
 import { Patient, Doctor, DepartmentRoom, VitalSign, ClinicalEvolution, SeverityLevel } from '../types/patient';
+import { DEFAULT_ROOM_DOCTORS } from '../data/mockData';
 
 // 1. Cấu hình kết nối Firebase vệ tinh
 const firebaseConfig = {
@@ -369,6 +370,83 @@ export function cleanSatelliteTreatmentPlan(rawPlan?: string): string {
 /**
  * Chuyển đổi an toàn từ 1 bản ghi vệ tinh chuẩn Schema sang đối tượng Patient bệnh viện
  */
+
+/**
+ * Trích xuất đầy đủ Diễn tiến lâm sàng và Thăm khám từ bệnh án vệ tinh.
+ * Bao gồm: Thăm khám lâm sàng (toàn thân, các cơ quan, triệu chứng) và diễn tiến bệnh.
+ */
+export function extractFullClinicalCourse(record: ClinicalRecord): string {
+  const parts: string[] = [];
+  const anyRec = record as any;
+
+  // 1. Thu thập thông tin Thăm khám lâm sàng (Physical Examination)
+  const examItems: string[] = [];
+
+  const directExam = (anyRec.physicalExam || anyRec.examination || anyRec.kham || anyRec.khamLamSang || anyRec.thamKham || anyRec.examNote || '').trim();
+  if (directExam) {
+    examItems.push(directExam);
+  }
+
+  if (anyRec.khamToanThan && typeof anyRec.khamToanThan === 'string' && anyRec.khamToanThan.trim()) {
+    examItems.push(`- Toàn thân: ${anyRec.khamToanThan.trim()}`);
+  }
+  if (anyRec.khamCacCoQuan && typeof anyRec.khamCacCoQuan === 'string' && anyRec.khamCacCoQuan.trim()) {
+    examItems.push(`- Các cơ quan: ${anyRec.khamCacCoQuan.trim()}`);
+  }
+
+  // Đọc từ clinicalDataJson nếu có
+  if (record.clinicalDataJson) {
+    try {
+      const parsed = typeof record.clinicalDataJson === 'string'
+        ? JSON.parse(record.clinicalDataJson)
+        : record.clinicalDataJson;
+
+      if (parsed && typeof parsed === 'object') {
+        const jsonExam = (parsed.physicalExam || parsed.examination || parsed.khamLamSang || parsed.thamKham || parsed.examNote || parsed.kham || '').trim();
+        if (jsonExam && !examItems.some(i => i.includes(jsonExam))) {
+          examItems.push(jsonExam);
+        }
+        if (parsed.toanThan && !examItems.some(i => i.includes(parsed.toanThan))) {
+          examItems.push(`- Toàn thân: ${String(parsed.toanThan).trim()}`);
+        }
+        if (parsed.cacCoQuan && !examItems.some(i => i.includes(parsed.cacCoQuan))) {
+          examItems.push(`- Các cơ quan: ${String(parsed.cacCoQuan).trim()}`);
+        }
+        if (parsed.trieuChung && !examItems.some(i => i.includes(parsed.trieuChung))) {
+          examItems.push(`- Triệu chứng: ${String(parsed.trieuChung).trim()}`);
+        }
+
+        // Diễn tiến từ JSON nếu có
+        const jsonCourse = (parsed.clinicalCourse || parsed.dienTien || parsed.clinicalNote || '').trim();
+        if (jsonCourse && !parts.includes(jsonCourse)) {
+          parts.push(jsonCourse);
+        }
+      }
+    } catch {
+      // ignore JSON parse error
+    }
+  }
+
+  // 2. Diễn tiến lâm sàng chính
+  const mainCourse = (record.clinicalCourse || record.clinicalNote || anyRec.dienTien || anyRec.dienTienLamSang || '').trim();
+
+  // Ghép Thăm khám vào đầu
+  if (examItems.length > 0) {
+    const examCombined = examItems.join('\n');
+    parts.unshift(`【Thăm Khám Lâm Sàng】:\n${examCombined}`);
+  }
+
+  // Ghép Diễn tiến lâm sàng
+  if (mainCourse && !parts.some(p => p.includes(mainCourse))) {
+    if (examItems.length > 0) {
+      parts.push(`【Diễn Tiến Lâm Sàng】:\n${mainCourse}`);
+    } else {
+      parts.push(mainCourse);
+    }
+  }
+
+  return parts.join('\n\n').trim();
+}
 export function mapClinicalRecordToPatient(
   record: ClinicalRecord,
   doctors: Doctor[],
@@ -405,10 +483,16 @@ export function mapClinicalRecordToPatient(
   
   const matchedRoom = rooms.find(r => r.number === rawRoom || r.number.replace(/\D/g, '') === rawRoom.replace(/\D/g, ''));
   const roomNumber = matchedRoom ? matchedRoom.number : (rawRoom || (rooms[0]?.number || '703'));
-
-  // Bác sĩ phụ trách: Với bệnh nhân tự động lấy từ BN vệ tinh, để trống bác sĩ điều trị
-  const doctor = doctors.find(d => d.id === defaultDoctorId);
-  const attendingDoctorId = '';
+  // Bác sĩ phụ trách: Bác sĩ điều trị là bác sĩ có sẵn ở buồng phòng đó
+  let attendingDoctorId = '';
+  if (matchedRoom && (matchedRoom as any).assignedDoctorId) {
+    attendingDoctorId = (matchedRoom as any).assignedDoctorId;
+  } else if (DEFAULT_ROOM_DOCTORS[roomNumber]) {
+    attendingDoctorId = DEFAULT_ROOM_DOCTORS[roomNumber];
+  } else if (defaultDoctorId) {
+    attendingDoctorId = defaultDoctorId;
+  }
+  const doctor = doctors.find(d => d.id === attendingDoctorId) || doctors.find(d => d.id === defaultDoctorId);
 
   // Sinh hiệu
   const vitalsText = record.vitalSigns || '';
@@ -444,25 +528,8 @@ export function mapClinicalRecordToPatient(
   const clsHtml = record.clsHtml || record.labsHtml || '';
   const initialLabsText = stripHtmlTags(clsHtml);
 
-  // Khám lâm sàng & Diễn tiến
-  let clinicalCourseText = (record.clinicalCourse || record.clinicalNote || '').trim();
-
-  // Đọc thêm từ clinicalDataJson nếu có thông tin khám lâm sàng chi tiết
-  if (record.clinicalDataJson) {
-    try {
-      const parsed = JSON.parse(record.clinicalDataJson);
-      if (parsed.physicalExam || parsed.examNote || parsed.examination) {
-        const examText = String(parsed.physicalExam || parsed.examNote || parsed.examination).trim();
-        if (examText && !clinicalCourseText.includes(examText)) {
-          clinicalCourseText = clinicalCourseText 
-            ? `${clinicalCourseText}\nKhám lâm sàng: ${examText}` 
-            : `Khám lâm sàng: ${examText}`;
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
+    // Khám lâm sàng & Diễn tiến đầy đủ
+  const clinicalCourseText = extractFullClinicalCourse(record);
 
   // Kết hợp Khám lâm sàng và Sinh hiệu vào Nhật Ký Diễn Tiến Lâm Sàng & Sinh Hiệu
   const fullEvoNoteParts: string[] = [];

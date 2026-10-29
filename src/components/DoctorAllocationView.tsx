@@ -290,6 +290,10 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
     () => activePatients.filter((p) => p.severity === 'STABLE').length,
     [activePatients]
   );
+  const totalUnclassified = useMemo(
+    () => activePatients.filter((p) => p.severity === 'UNCLASSIFIED' || !p.severity).length,
+    [activePatients]
+  );
   const totalOxygen = useMemo(
     () => activePatients.filter((p) => p.tags?.some((t) => t === 'O2' || t === 'O2_CANULA' || t === 'O2_MASK')).length,
     [activePatients]
@@ -305,44 +309,48 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
         </div>
       )}
 
-      {/* SECTION 1: THỐNG KÊ TỔNG SỐ BỆNH NHÂN CỦA MỖI BÁC SĨ */}
-      <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pb-3 mb-3 border-b border-slate-100">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="p-1.5 rounded-lg bg-rose-50 text-rose-700">
-                <Stethoscope className="w-4 h-4" />
+            {/* SECTION 1: THỐNG KÊ TỔNG SỐ BỆNH NHÂN CỦA MỖI BÁC SĨ (TỐI ƯU NHỎ GỌN, CHIẾM ÍT DIỆN TÍCH) */}
+      <div className="bg-white rounded-xl border border-slate-200/90 p-2.5 sm:p-3 shadow-2xs space-y-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <div className="flex items-center gap-1.5 mr-1 shrink-0">
+              <div className="p-1 rounded-md bg-rose-50 text-rose-700">
+                <Stethoscope className="w-3.5 h-3.5" />
               </div>
-              <h2 className="text-sm font-black text-slate-800 whitespace-nowrap">
-                Phân Công &amp; Thống Kê Bác Sĩ
+              <h2 className="text-xs font-black text-slate-800 uppercase tracking-tight whitespace-nowrap">
+                Phân Công & Thống Kê Bác Sĩ
               </h2>
             </div>
 
-            {/* Department Summary Badges Row */}
-            <div className="flex flex-wrap items-center gap-1.5 text-xs">
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-900 text-white rounded-md font-bold shadow-2xs">
-                <span>Nội trú:</span>
-                <span className="text-amber-300 font-extrabold">{totalActivePatients} BN</span>
-              </div>
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-800 border border-rose-200 rounded-md font-bold">
-                <span>Nặng:</span>
-                <span className="text-rose-700 font-extrabold">{totalCritical}</span>
-              </div>
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-md font-bold">
-                <span>Vừa:</span>
-                <span className="text-amber-700 font-extrabold">{totalModerate}</span>
-              </div>
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md font-bold">
-                <span>Ổn:</span>
-                <span className="text-emerald-700 font-extrabold">{totalStable}</span>
-              </div>
-              {totalOxygen > 0 && (
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-50 text-cyan-800 border border-cyan-200 rounded-md font-bold">
-                  <span>Oxy:</span>
-                  <span className="text-cyan-700 font-extrabold">{totalOxygen}</span>
-                </div>
-              )}
-            </div>
+            {/* Department Summary Badges */}
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-900 text-white rounded-md font-bold text-[11px] shadow-2xs">
+              <span>Nội trú:</span>
+              <span className="text-amber-300 font-black font-mono">{totalActivePatients} BN</span>
+            </span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-50 text-rose-800 border border-rose-200 rounded-md font-bold text-[11px]">
+              <span>Nặng:</span>
+              <span className="text-rose-700 font-black font-mono">{totalCritical}</span>
+            </span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-md font-bold text-[11px]">
+              <span>Vừa:</span>
+              <span className="text-amber-700 font-black font-mono">{totalModerate}</span>
+            </span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md font-bold text-[11px]">
+              <span>Ổn:</span>
+              <span className="text-emerald-700 font-black font-mono">{totalStable}</span>
+            </span>
+            {totalUnclassified > 0 && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-md font-bold text-[11px]">
+                <span>Chưa PL:</span>
+                <span className="font-mono">{totalUnclassified}</span>
+              </span>
+            )}
+            {totalOxygen > 0 && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-cyan-50 text-cyan-800 border border-cyan-200 rounded-md font-bold text-[11px]">
+                <span>Oxy:</span>
+                <span className="text-cyan-700 font-black font-mono">{totalOxygen}</span>
+              </span>
+            )}
           </div>
 
           <div className="flex items-center justify-between sm:justify-end gap-2 text-xs shrink-0">
@@ -350,19 +358,19 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedDoctorFilter(null)}
-                className="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 font-bold hover:bg-rose-200 transition-colors"
+                className="px-2 py-0.5 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-[11px] transition-colors cursor-pointer"
               >
                 ✕ Bỏ lọc bác sĩ
               </button>
             )}
-            <span className="text-slate-500 font-medium whitespace-nowrap">
-              Hiển thị {doctorStats.length} bác sĩ có bệnh nhân
+            <span className="text-slate-500 font-semibold text-[11px] whitespace-nowrap">
+              Hiển thị <strong className="text-slate-800 font-bold font-mono">{doctorStats.length}</strong> bác sĩ có bệnh nhân
             </span>
           </div>
         </div>
 
-        {/* Doctor Grid / Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-2.5">
+        {/* Doctor Grid / Micro-Cards (Thiết kế nằm ngang nhỏ gọn, tiết kiệm diện tích) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-1.5">
           {doctorStats.map(({ doctor, totalPatients, criticalCount, moderateCount, stableCount, o2Count }) => {
             const isSelected = selectedDoctorFilter === doctor.id;
             const docGivenName = getDoctorGivenName(doctor.name);
@@ -372,65 +380,44 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
               <button
                 key={doctor.id}
                 type="button"
-                onClick={() =>
-                  setSelectedDoctorFilter(isSelected ? null : doctor.id)
-                }
-                className={`text-left p-2.5 rounded-xl border transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
+                onClick={() => setSelectedDoctorFilter(isSelected ? null : doctor.id)}
+                className={`text-left p-1.5 px-2 rounded-xl border transition-all flex items-center justify-between gap-1.5 cursor-pointer shadow-2xs ${
                   isSelected
-                    ? 'border-rose-500 bg-rose-50/60 shadow-xs ring-2 ring-rose-200'
-                    : 'border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 hover:shadow-2xs'
+                    ? 'border-rose-500 bg-rose-50 ring-2 ring-rose-200'
+                    : 'border-slate-200 bg-slate-50/70 hover:bg-white hover:border-slate-300 hover:shadow-xs'
                 }`}
+                title={`${doctor.name} - Tổng bệnh: ${totalPatients} BN (${criticalCount} nặng, ${moderateCount} vừa, ${stableCount} ổn)`}
               >
-                {/* Header: Avatar + Doctor Name */}
-                <div className="flex items-center gap-2 min-w-0">
+                {/* Left: Avatar + Tên Bác sĩ */}
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   <div
-                    className={`w-7 h-7 rounded-lg ${doctor.avatarColor || 'bg-rose-700'} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}
+                    className={`w-6 h-6 rounded-lg ${doctor.avatarColor || 'bg-rose-700'} text-white flex items-center justify-center font-black text-[11px] shrink-0 shadow-2xs`}
                   >
                     {docGivenName[0]}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-extrabold text-xs text-slate-800 truncate" title={doctor.name}>
+                  <div className="min-w-0 truncate">
+                    <span className="font-black text-xs text-slate-900 truncate block leading-tight">
                       {displayName}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Patient Count */}
-                <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-200/60">
-                  <span className="text-[11px] font-semibold text-slate-600 whitespace-nowrap">Tổng bệnh:</span>
-                  <div className="flex items-baseline gap-0.5 whitespace-nowrap">
-                    <span className="text-sm sm:text-base font-black text-rose-700 leading-none">
-                      {totalPatients}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-bold">BN</span>
+                    {/* Mini Severity breakdown */}
+                    {(criticalCount > 0 || moderateCount > 0 || stableCount > 0) ? (
+                      <div className="flex items-center gap-1 text-[9.5px] leading-none mt-0.5 font-bold">
+                        {criticalCount > 0 && <span className="text-rose-600 font-extrabold">{criticalCount} nặng</span>}
+                        {moderateCount > 0 && <span className="text-amber-600 font-extrabold">{moderateCount} vừa</span>}
+                        {stableCount > 0 && <span className="text-emerald-600 font-extrabold">{stableCount} ổn</span>}
+                      </div>
+                    ) : (
+                      <span className="text-[9.5px] text-slate-400 font-medium leading-none block mt-0.5">Khoa Nội</span>
+                    )}
                   </div>
                 </div>
 
-                {/* Mini Severity Breakdown & Oxygen */}
-                {totalPatients > 0 && (
-                  <div className="flex items-center gap-1 mt-1.5 flex-wrap text-[10px]">
-                    {criticalCount > 0 && (
-                      <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-bold whitespace-nowrap" title="Ca nặng">
-                        {criticalCount} nặng
-                      </span>
-                    )}
-                    {moderateCount > 0 && (
-                      <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold whitespace-nowrap" title="Ca vừa">
-                        {moderateCount} vừa
-                      </span>
-                    )}
-                    {stableCount > 0 && (
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold whitespace-nowrap" title="Ca ổn định">
-                        {stableCount} ổn
-                      </span>
-                    )}
-                    {o2Count > 0 && (
-                      <span className="px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800 font-bold whitespace-nowrap" title="Thở Oxy">
-                        {o2Count} oxy
-                      </span>
-                    )}
-                  </div>
-                )}
+                {/* Right: Tổng số BN */}
+                <div className="shrink-0 text-right">
+                  <span className="inline-flex items-baseline gap-0.5 bg-rose-50 border border-rose-200 text-rose-700 font-black px-1.5 py-0.5 rounded-lg text-xs font-mono shadow-2xs">
+                    {totalPatients} <span className="text-[9px] font-bold text-slate-500">BN</span>
+                  </span>
+                </div>
               </button>
             );
           })}

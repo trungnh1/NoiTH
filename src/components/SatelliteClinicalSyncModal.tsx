@@ -41,7 +41,8 @@ import {
   parseAgeNumber,
   deleteSatelliteRecord,
   formatSatelliteDateTime,
-  cleanSatelliteTreatmentPlan
+  cleanSatelliteTreatmentPlan,
+  extractFullClinicalCourse
 } from '../services/clinicalFirebase';
 import { getCriticalLabAlerts } from '../utils/labAlerts';
 import { formatPatientDisplayName } from '../utils/storage';
@@ -258,6 +259,13 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
   // Action: Direct Import
   const handleImportDirect = (record: ClinicalRecord) => {
     const patientObj = mapClinicalRecordToPatient(record, doctors, rooms, currentUser?.id);
+    // Bác sĩ điều trị: Giữ nguyên bác sĩ có sẵn của phòng hoặc của bệnh nhân nếu đã có trong khoa
+    const existing = currentPatients.find(
+      (p) => p.patientCode === record.id || p.fullName.toLowerCase() === (record.patientName || '').toLowerCase()
+    );
+    if (existing && existing.attendingDoctorId) {
+      patientObj.attendingDoctorId = existing.attendingDoctorId;
+    }
     onImportPatientDirect(patientObj);
     setImportedIds((prev) => new Set(prev).add(record.id));
     setNotification({
@@ -280,8 +288,14 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
     }
 
     const newPatientsList = candidates.map((rec) => {
-      const p = mapClinicalRecordToPatient(rec, doctors, rooms, '');
-      p.attendingDoctorId = '';
+      // Bác sĩ điều trị: Bác sĩ có sẵn ở phòng đó (không được thay đổi bác sĩ phòng đó)
+      const p = mapClinicalRecordToPatient(rec, doctors, rooms, currentUser?.id);
+      const existing = currentPatients.find(
+        (cur) => cur.patientCode === rec.id || cur.fullName.toLowerCase() === (rec.patientName || '').toLowerCase()
+      );
+      if (existing && existing.attendingDoctorId) {
+        p.attendingDoctorId = existing.attendingDoctorId;
+      }
       return p;
     });
 
@@ -626,7 +640,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                 const admissionDate = record.admissionDate || record.createdAt || 'Hôm nay';
                 const diagnosis = record.diagnosis || 'Theo dõi bệnh nội khoa';
                 const history = record.medicalHistory;
-                const clinicalCourse = record.clinicalCourse || record.clinicalNote;
+                const clinicalCourse = extractFullClinicalCourse(record) || record.clinicalCourse || record.clinicalNote;
                 const treatmentPlan = record.treatmentPlan;
                 const clsHtml = record.clsHtml || record.labsHtml;
                 const vitalSignsText = record.vitalSigns || '';
@@ -807,9 +821,9 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                           <div className="space-y-1 bg-white p-3 rounded-xl border border-slate-200">
                             <div className="text-[11px] font-black uppercase text-indigo-700 flex items-center gap-1.5">
                               <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                              <span>Diễn tiến lâm sàng (clinicalCourse):</span>
+                              <span>Diễn tiến lâm sàng & Thăm khám (clinicalCourse):</span>
                             </div>
-                            <p className="text-slate-700 leading-relaxed font-medium">
+                            <p className="text-slate-700 leading-relaxed font-medium whitespace-pre-wrap">
                               {clinicalCourse}
                             </p>
                           </div>
