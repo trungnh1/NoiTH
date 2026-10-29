@@ -117,6 +117,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
     return false;
   });
   const [allergyDetails, setAllergyDetails] = useState(patientToEdit?.allergies || '');
+  const [mobileTab, setMobileTab] = useState<'admin' | 'clinical'>('admin');
 
   // Diễn tiến lâm sàng lúc tiếp nhận (tùy chọn)
   const [admissionClinicalNote, setAdmissionClinicalNote] = useState(() => {
@@ -476,12 +477,12 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
       />
 
       {/* Right-side sliding drawer panel */}
-      <div className="relative w-full sm:w-[96vw] md:w-[95vw] lg:w-[94vw] max-w-[1850px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
+      <div className="relative w-full sm:w-[96vw] md:w-[95vw] lg:w-[94vw] max-w-[1850px] bg-white h-full shadow-2xl border-l-0 sm:border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
         
         {/* Header - Phong cách BV Hùng Vương Gia Lai */}
-        <div className="px-6 py-3.5 bg-[#0b4d8c] text-white flex items-center justify-between border-b border-[#083a69] shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-white border border-white/20">
+        <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 bg-[#0b4d8c] text-white flex items-center justify-between border-b border-[#083a69] shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-lg bg-white/10 flex items-center justify-center text-white border border-white/20 shrink-0">
               {isEditing ? (
                 <FileEdit className="w-4 h-4 text-white" />
               ) : (
@@ -489,15 +490,15 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
               )}
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <h3 className="text-sm sm:text-base font-black tracking-tight text-white">
-                  {isEditing ? `Chỉnh Sửa Bệnh Nhân: ${formatPatientDisplayName(patientToEdit?.fullName || "")}` : 'Tiếp Nhận Bệnh Nhân Nội Trú Mới'}
+                  {isEditing ? `Chỉnh Sửa Bệnh Nhân: ${formatPatientDisplayName(patientToEdit?.fullName || "")}` : 'Tiếp Nhận Bệnh Nhân Mới'}
                 </h3>
-                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-white/15 text-white border border-white/20">
+                <span className="text-[10px] uppercase font-bold px-1.5 sm:px-2 py-0.5 rounded bg-white/15 text-white border border-white/20 hidden sm:inline-block">
                   BV Đa Khoa Hùng Vương Gia Lai
                 </span>
               </div>
-              <p className="text-xs text-blue-100">
+              <p className="text-xs text-blue-100 hidden sm:block">
                 {isEditing
                   ? 'Cập nhật thông tin hành chính, sinh hiệu, chẩn đoán và điều trị'
                   : 'Nhập thông tin hành chính, sinh hiệu, chẩn đoán và bàn giao'}
@@ -520,8 +521,38 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
           </div>
         </div>
 
+        {/* Mobile Segmented Tab Switch: Hành chính vs Lâm sàng */}
+        <div className="flex lg:hidden p-1.5 bg-slate-100 border-b border-slate-200 shrink-0">
+          <div className="grid grid-cols-2 gap-1 w-full bg-white p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setMobileTab('admin')}
+              className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                mobileTab === 'admin'
+                  ? 'bg-[#0b4d8c] text-white shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>1. Hành Chính & Phòng</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('clinical')}
+              className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                mobileTab === 'clinical'
+                  ? 'bg-[#0b4d8c] text-white shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Stethoscope className="w-3.5 h-3.5" />
+              <span>2. Lâm Sàng & Y Lệnh</span>
+            </button>
+          </div>
+        </div>
+
         {/* Form Body - 2 Cột khoa học, rộng rãi */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-6 overflow-y-auto space-y-4 flex-1 text-xs">
           
           {errorMsg && (
             <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-rose-900 font-bold flex items-center gap-2 animate-in fade-in">
@@ -534,7 +565,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             
             {/* CỘT TRÁI (4.5 cols): Dán nhanh HIS, Buồng phòng, Hành chính & Sinh hiệu ban đầu */}
-            <div className="lg:col-span-4 xl:col-span-4 space-y-3.5">
+            <div className={`lg:col-span-4 xl:col-span-4 space-y-3.5 ${mobileTab === 'admin' ? 'block' : 'hidden lg:block'}`}>
               
               {/* Dán Nhanh Bệnh Án Cũ / HIS & AI Clinical Intake */}
               <div className="bg-slate-50 p-3.5 rounded-xl border border-blue-200/80 space-y-2.5 shadow-2xs">
@@ -1005,11 +1036,33 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                 );
               })()}
 
+              {/* Chuyển nhanh sang tab Lâm sàng trên Mobile */}
+              <div className="lg:hidden pt-2">
+                <button
+                  type="button"
+                  onClick={() => setMobileTab('clinical')}
+                  className="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-[#0b4d8c] border border-blue-200 font-black rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-2xs active:scale-98 transition-all"
+                >
+                  <span>Tiếp tục: Sang Lâm Sàng & Y Lệnh ➜</span>
+                </button>
+              </div>
+
             </div>
 
             {/* CỘT PHẢI (7.5 cols / 8 cols): Chẩn đoán, Tiền sử & Dị ứng, Diễn tiến, Bác sĩ, Y lệnh, Bàn giao & Ghi chú */}
-            <div className="lg:col-span-8 xl:col-span-8 space-y-3.5">
+            <div className={`lg:col-span-8 xl:col-span-8 space-y-3.5 ${mobileTab === 'clinical' ? 'block' : 'hidden lg:block'}`}>
               
+              {/* Nút quay lại tab Hành chính trên Mobile */}
+              <div className="lg:hidden pb-1">
+                <button
+                  type="button"
+                  onClick={() => setMobileTab('admin')}
+                  className="text-xs text-[#0b4d8c] hover:text-[#083a69] font-black flex items-center gap-1.5 py-1 cursor-pointer"
+                >
+                  <span>⬅ Quay lại Hành chính & Buồng phòng</span>
+                </button>
+              </div>
+
               {/* 4. Chẩn Đoán Lâm Sàng & Mức Độ */}
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2 shadow-2xs">
                 <div className="flex items-center justify-between">

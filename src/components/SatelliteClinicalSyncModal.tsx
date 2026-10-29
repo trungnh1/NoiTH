@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   RefreshCw, 
@@ -347,26 +347,26 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
-      <div className="bg-white rounded-2xl w-[96vw] max-w-[96vw] shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 animate-in fade-in">
+      <div className="bg-white rounded-none sm:rounded-2xl w-full sm:w-[96vw] sm:max-w-[96vw] h-full sm:h-auto sm:max-h-[92vh] shadow-2xl border-0 sm:border border-slate-200 overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div className="px-5 py-3.5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between border-b border-indigo-900/50 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shadow-xs">
-              <Database className="w-5 h-5" />
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3.5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between border-b border-indigo-900/50 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shadow-xs shrink-0">
+              <Database className="w-4 sm:w-5 h-4 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-black tracking-tight text-white uppercase">
-                  Đồng Bộ Bệnh Án Từ Cloud Lâm Sàng Vệ Tinh
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h3 className="text-xs sm:text-base font-black tracking-tight text-white uppercase truncate">
+                  Đồng Bộ Bệnh Án Từ Cloud Vệ Tinh
                 </h3>
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/20 border border-emerald-400/30 text-emerald-300">
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/20 border border-emerald-400/30 text-emerald-300">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                   <span>Real-time OnSnapshot</span>
                 </span>
               </div>
-              <p className="text-xs text-indigo-200/90 font-mono mt-0.5 flex items-center gap-1.5 truncate max-w-xl">
+              <p className="text-[11px] sm:text-xs text-indigo-200/90 font-mono mt-0.5 hidden sm:flex items-center gap-1.5 truncate max-w-xl">
                 <span>Database:</span>
                 <span className="text-white font-bold bg-white/10 px-1.5 py-0.2 rounded text-[11px] truncate">
                   {CLINICAL_DATABASE_ID}
@@ -379,15 +379,15 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {satelliteAuthUser ? (
-              <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xl border border-white/15 text-xs text-indigo-100">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="font-bold truncate max-w-[130px]">{satelliteAuthUser.email}</span>
+              <div className="flex items-center gap-1.5 bg-white/10 px-2 sm:px-2.5 py-1 rounded-xl border border-white/15 text-xs text-indigo-100">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="font-bold truncate max-w-[80px] sm:max-w-[130px]">{satelliteAuthUser.email}</span>
                 <button
                   type="button"
                   onClick={handleGoogleLogout}
-                  className="text-rose-300 hover:text-white p-0.5 ml-1 cursor-pointer"
+                  className="text-rose-300 hover:text-white p-0.5 ml-0.5 cursor-pointer"
                   title="Đăng xuất tài khoản Google"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -398,11 +398,11 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                 type="button"
                 onClick={handleGoogleLogin}
                 disabled={isLoggingIn}
-                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
                 title="Đăng nhập Google nếu Firestore yêu cầu xác thực người dùng"
               >
                 <KeyRound className="w-3.5 h-3.5" />
-                <span>{isLoggingIn ? 'Đang xác thực...' : 'Đăng Nhập Google Vệ Tinh'}</span>
+                <span>{isLoggingIn ? 'Đang...' : (<><span className="hidden sm:inline">Đăng Nhập Google Vệ Tinh</span><span className="sm:hidden">Đăng Nhập</span></>)}</span>
               </button>
             )}
 
@@ -413,11 +413,11 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                   onClose();
                   onOpenExcelImport();
                 }}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
                 title="Tải file Excel để ghép nối tự động số phòng với bệnh nhân vệ tinh"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>Nhập File Excel</span>
+                <span><span className="hidden sm:inline">Nhập File Excel</span><span className="sm:hidden">Excel</span></span>
               </button>
             )}
 
@@ -425,7 +425,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
               type="button"
               onClick={handleManualRefresh}
               disabled={isRefreshing}
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 border border-white/15"
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 border border-white/15"
               title="Lấy dữ liệu mới nhất từ Firestore vệ tinh (Fetch on demand)"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-indigo-300' : ''}`} />
@@ -435,7 +435,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+              className="p-1 sm:p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
               title="Đóng (Esc)"
             >
               <X className="w-5 h-5" />
@@ -466,7 +466,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
         )}
 
         {/* Search & Filter Toolbar */}
-        <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+        <div className="px-3 sm:px-5 py-2 sm:py-3 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 shrink-0">
           
           {/* Search Input */}
           <div className="relative w-full sm:w-96">
@@ -476,7 +476,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Tìm theo Tên bệnh nhân, Buồng/Phòng, Ngày vào viện..."
-              className="w-full pl-9 pr-8 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 shadow-2xs"
+              className="w-full pl-9 pr-8 py-1.5 sm:py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 shadow-2xs"
             />
             {searchTerm && (
               <button
@@ -490,12 +490,12 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
           </div>
 
           {/* Quick Filters */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-            <div className="inline-flex bg-slate-200/80 p-0.5 rounded-xl text-xs font-bold text-slate-700">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end overflow-x-auto">
+            <div className="inline-flex bg-slate-200/80 p-0.5 rounded-xl text-xs font-bold text-slate-700 shrink-0">
               <button
                 type="button"
                 onClick={() => setFilterMode('all')}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${
                   filterMode === 'all' 
                     ? 'bg-white text-indigo-700 font-extrabold shadow-2xs' 
                     : 'hover:text-slate-900'
@@ -506,7 +506,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
               <button
                 type="button"
                 onClick={() => setFilterMode('pending')}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
                   filterMode === 'pending' 
                     ? 'bg-amber-500 text-white font-extrabold shadow-2xs' 
                     : 'hover:text-slate-900 text-amber-800'
@@ -522,17 +522,17 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
               <button
                 type="button"
                 onClick={() => setFilterMode('critical')}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${
                   filterMode === 'critical' 
                     ? 'bg-rose-600 text-white font-extrabold shadow-2xs' 
                     : 'hover:text-slate-900'
                 }`}
               >
-                Ca Nặng / Cấp cứu
+                Ca Nặng
               </button>
             </div>
 
-                        <span className="text-[11px] text-slate-500 font-medium hidden md:inline">
+            <span className="text-[11px] text-slate-500 font-medium hidden md:inline">
               Hiển thị: <strong className="text-slate-900 font-bold">{filteredRecords.length}</strong> ca
             </span>
 
@@ -540,11 +540,11 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
               <button
                 type="button"
                 onClick={handleImportAll}
-                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+                className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
                 title="Nhập toàn bộ các bệnh nhân trong danh sách hiển thị vào khoa"
               >
                 <CloudDownload className="w-3.5 h-3.5" />
-                <span>Nhập Tất Cả BN ({filteredRecords.filter((r) => !importedIds.has(r.id)).length})</span>
+                <span><span className="hidden sm:inline">Nhập Tất Cả BN</span><span className="sm:hidden">Nhập Hết</span> ({filteredRecords.filter((r) => !importedIds.has(r.id)).length})</span>
               </button>
             )}
           </div>
@@ -552,7 +552,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
         </div>
 
         {/* Content list */}
-        <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1 bg-slate-100/60">
+        <div className="p-2.5 sm:p-5 overflow-y-auto space-y-3 sm:space-y-4 flex-1 bg-slate-100/60">
           
           {/* Permission error warning banner */}
           {errorMessage && (
@@ -678,7 +678,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                     )}
 
                     {/* Top Case Bar */}
-                    <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100">
+                    <div className="p-3 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3 border-b border-slate-100">
                       
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -774,7 +774,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                     </div>
 
                     {/* Case Details Body */}
-                    <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-12 gap-4 text-xs">
+                    <div className="p-3 sm:p-5 grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 text-xs">
                       
                       {/* Left: Vitals, History & Evolution (7 cols) */}
                       <div className="md:col-span-7 space-y-3">

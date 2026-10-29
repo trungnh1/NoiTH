@@ -66,6 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileMetricsOpen, setIsMobileMetricsOpen] = useState(false);
 
   const activePatients = patients.filter((p) => p.status === 'ACTIVE');
   const criticalCount = activePatients.filter((p) => p.severity === 'CRITICAL').length;
@@ -324,7 +325,7 @@ export const Header: React.FC<HeaderProps> = ({
                     if (onManualPushToCloud) onManualPushToCloud();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="px-2 py-0.5 rounded bg-blue-100 text-[#0b4d8c] font-black text-[10px] hover:bg-blue-200"
+                  className="px-2 py-0.5 rounded bg-blue-100 text-[#0b4d8c] font-black text-[10px] hover:bg-blue-200 cursor-pointer"
                 >
                   Đồng bộ ngay
                 </button>
@@ -339,7 +340,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onOpenSatelliteSync();
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left"
+                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
                   >
                     <Database className="w-4 h-4 text-[#0b4d8c]" />
                     <span>Lấy dữ liệu BN vệ tinh</span>
@@ -358,7 +359,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onOpenSettings();
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left"
+                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
                   >
                     <Settings className="w-4 h-4 text-slate-600" />
                     <span>Cài đặt giao diện & cỡ chữ</span>
@@ -372,7 +373,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onOpenChangePassword();
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left"
+                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
                   >
                     <KeyRound className="w-4 h-4 text-slate-600" />
                     <span>Đổi mật khẩu tài khoản</span>
@@ -386,7 +387,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onLogout();
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-rose-50 text-rose-700 font-bold transition-colors text-left pt-2 border-t border-slate-100"
+                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-rose-50 text-rose-700 font-bold transition-colors text-left pt-2 border-t border-slate-100 cursor-pointer"
                   >
                     <LogOut className="w-4 h-4 text-rose-600" />
                     <span>Đăng xuất khỏi hệ thống</span>
@@ -399,7 +400,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* ============================================================== */}
-      {/* 3. SUB-HEADER: TABS & LIVE METRICS (RESPONSIVE CHUẨN DI ĐỘNG) */}
+      {/* 3. SUB-HEADER: TABS & LIVE METRICS (MENU THÔNG MINH, KHÔNG CUỘN) */}
       {/* ============================================================== */}
       <div className="px-2.5 sm:px-6 py-1.5 sm:py-2 bg-slate-50/95 border-t border-slate-100">
         
@@ -484,7 +485,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* MOBILE VIEW: SIÊU GỌN GÀNG (1 DÒNG DUY NHẤT CHO CẢ TABS & METRICS) */}
+        {/* MOBILE VIEW: MENU THÔNG MINH, KHÔNG CẦN DÒNG CUỘN (TẤT CẢ VỪA VẶN TRONG 1 HÀNG) */}
         <div className="flex sm:hidden items-center justify-between gap-1.5">
           {/* Segmented Mini Tabs */}
           <div className="inline-flex p-0.5 bg-white rounded-lg border border-slate-200 text-[11px] font-bold shadow-2xs shrink-0">
@@ -515,45 +516,103 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {/* Single-Line Horizontal Scrolling Metrics Strip */}
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 text-[10.5px] font-mono shrink min-w-0">
-            {/* Tổng BN */}
-            <span className="inline-flex items-center gap-0.5 bg-slate-900 text-white font-black px-1.5 py-0.5 rounded-md shadow-2xs shrink-0">
-              <span className="font-sans font-medium text-[9.5px]">Nội trú:</span>
-              <span>{activePatients.length}</span>
-            </span>
-
-            {/* Nặng */}
-            <span className="inline-flex items-center gap-0.5 bg-rose-50 border border-rose-200 text-rose-700 font-black px-1.5 py-0.5 rounded-md shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping shrink-0" />
-              <span>{criticalCount} nặng</span>
-            </span>
-
-            {/* Vừa */}
-            <span className="inline-flex items-center gap-0.5 bg-amber-50 border border-amber-200 text-amber-800 font-bold px-1.5 py-0.5 rounded-md shrink-0">
-              <span>{moderateCount} vừa</span>
-            </span>
-
-            {/* Ổn */}
-            <span className="inline-flex items-center gap-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold px-1.5 py-0.5 rounded-md shrink-0">
-              <span>{stableCount} ổn</span>
-            </span>
-
-            {/* Oxy nếu có */}
-            {o2Count > 0 && (
-              <span className="inline-flex items-center gap-0.5 bg-cyan-50 border border-cyan-200 text-cyan-800 font-bold px-1.5 py-0.5 rounded-md shrink-0">
-                <span>{o2Count} oxy</span>
-              </span>
+          {/* Smart Metrics Pill on Mobile: Không cuộn, bấm vào xem chi tiết toàn bộ trong popup */}
+          <button
+            type="button"
+            onClick={() => setIsMobileMetricsOpen(true)}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-800 text-[10.5px] font-bold shadow-2xs hover:bg-slate-50 transition-all cursor-pointer shrink-0"
+            title="Bấm để xem chi tiết thống kê lâm sàng toàn khoa"
+          >
+            <span className="font-black text-[#0b4d8c]">{activePatients.length} BN</span>
+            {criticalCount > 0 && (
+              <span className="text-rose-600 font-black">• {criticalCount} nặng</span>
             )}
-
-            {/* Dự RV nếu có */}
-            {dischargeTomorrowCount > 0 && (
-              <span className="inline-flex items-center gap-0.5 bg-blue-50 border border-blue-200 text-blue-800 font-bold px-1.5 py-0.5 rounded-md shrink-0">
-                <span>{dischargeTomorrowCount} RV mai</span>
-              </span>
+            {moderateCount > 0 && (
+              <span className="text-amber-600 font-black">• {moderateCount} vừa</span>
             )}
-          </div>
+            <ChevronDown className="w-3 h-3 text-slate-400" />
+          </button>
         </div>
+
+        {/* MOBILE METRICS DETAIL MODAL POPOVER */}
+        {isMobileMetricsOpen && (
+          <>
+            <div 
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-40 cursor-pointer"
+              onClick={() => setIsMobileMetricsOpen(false)}
+            />
+            <div className="fixed top-24 left-4 right-4 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3 max-w-sm mx-auto">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center">
+                    <HeartPulse className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-xs uppercase tracking-tight text-slate-900">
+                      Thống Kê Lâm Sàng Toàn Khoa
+                    </h4>
+                    <p className="text-[10px] text-slate-500">Khoa Nội Tổng Hợp - BV Hùng Vương</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMetricsOpen(false)}
+                  className="p-1 rounded-md text-slate-400 hover:text-slate-700 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Grid 6 metric cards */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <span className="text-[10.5px] font-bold text-slate-500 block">Nội trú</span>
+                  <span className="text-base font-black text-[#0b4d8c] font-mono">{activePatients.length} <span className="text-[10px] text-slate-500 font-sans font-medium">BN</span></span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200">
+                  <span className="text-[10.5px] font-bold text-rose-700 block">Ca Nặng</span>
+                  <span className="text-base font-black text-rose-700 font-mono">{criticalCount} <span className="text-[10px] text-rose-500 font-sans font-medium">BN</span></span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200">
+                  <span className="text-[10.5px] font-bold text-amber-800 block">Ca Vừa</span>
+                  <span className="text-base font-black text-amber-800 font-mono">{moderateCount} <span className="text-[10px] text-amber-600 font-sans font-medium">BN</span></span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                  <span className="text-[10.5px] font-bold text-emerald-800 block">Ca Ổn</span>
+                  <span className="text-base font-black text-emerald-800 font-mono">{stableCount} <span className="text-[10px] text-emerald-600 font-sans font-medium">BN</span></span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-cyan-50 border border-cyan-200">
+                  <span className="text-[10.5px] font-bold text-cyan-800 block">Thở Oxy</span>
+                  <span className="text-base font-black text-cyan-800 font-mono">{o2Count} <span className="text-[10px] text-cyan-600 font-sans font-medium">BN</span></span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-pink-50 border border-pink-200">
+                  <span className="text-[10.5px] font-bold text-pink-800 block">Vận Mạch</span>
+                  <span className="text-base font-black text-pink-800 font-mono">{vasopressorCount} <span className="text-[10px] text-pink-600 font-sans font-medium">BN</span></span>
+                </div>
+              </div>
+
+              {dischargeTomorrowCount > 0 && (
+                <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-[11px] font-bold flex items-center justify-between">
+                  <span>Dự kiến ra viện vào ngày mai:</span>
+                  <span className="font-mono font-black text-blue-800">{dischargeTomorrowCount} BN</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsMobileMetricsOpen(false)}
+                className="w-full py-2 bg-[#0b4d8c] hover:bg-[#083a69] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          </>
+        )}
 
       </div>
 

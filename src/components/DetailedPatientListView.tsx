@@ -9,6 +9,9 @@ import {
   CLINICAL_TAGS_META 
 } from '../types/patient';
 import { 
+  ChevronDown,
+  X,
+  Building2,
   Search, 
   UserPlus, 
   FileEdit, 
@@ -407,6 +410,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const [statusFilter, setStatusFilter] = useState<'ALL' | SeverityLevel | 'DISCHARGE_TODAY' | 'DISCHARGE_TOMORROW'>('ALL');
   const [doctorFilter, setDoctorFilter] = useState<string>('ALL');
   const [tagFilter, setTagFilter] = useState<'ALL' | 'NEW' | 'ALLERGY' | ClinicalTag>('ALL');
+  const [isMobileGroupMenuOpen, setIsMobileGroupMenuOpen] = useState(false);
+  const [isMobileFilterMenuOpen, setIsMobileFilterMenuOpen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [hoveredPatientId, setHoveredPatientId] = useState<string | null>(null);
 
@@ -697,7 +702,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         </div>
       )}
 
-      {/* Top Action Bar & Quick Filters (Tối ưu gọn gàng cho Mobile & Desktop) */}
+      {/* Top Action Bar & Quick Filters (Menu Thông Minh Cho Mobile & Đầy Đủ Cho Desktop) */}
       <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs sm:shadow-sm p-2 sm:p-4 space-y-2 sm:space-y-3.5">
         
         {/* Row 1: Clinical Group Selector & Primary Actions */}
@@ -711,12 +716,12 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               </h2>
             </div>
 
-            {/* Clinical Group Tabs (Tất cả, Nhóm 1, Nhóm 2, Nhóm TM) - Vuốt ngang mượt mà trên Mobile */}
-            <div className="flex items-center overflow-x-auto no-scrollbar bg-slate-100/90 p-0.5 sm:p-1 rounded-xl border border-slate-200 text-xs font-semibold gap-1 max-w-full">
+            {/* DESKTOP VIEW: Clinical Group Tabs */}
+            <div className="hidden sm:inline-flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 text-xs font-semibold gap-1">
               <button
                 type="button"
                 onClick={() => setSelectedGroup('ALL')}
-                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   selectedGroup === 'ALL'
                     ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
@@ -728,7 +733,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setSelectedGroup('GROUP_1')}
-                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   selectedGroup === 'GROUP_1'
                     ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
@@ -740,7 +745,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setSelectedGroup('GROUP_2')}
-                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   selectedGroup === 'GROUP_2'
                     ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
@@ -752,7 +757,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setSelectedGroup('CARDIO')}
-                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   selectedGroup === 'CARDIO'
                     ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
@@ -761,6 +766,57 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               >
                 <span>Nhóm TM (6P)</span>
               </button>
+            </div>
+
+            {/* MOBILE VIEW: SMART GROUP MENU (Menu thông minh, không cần cuộn ngang) */}
+            <div className="relative sm:hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileGroupMenuOpen(!isMobileGroupMenuOpen);
+                  setIsMobileFilterMenuOpen(false);
+                }}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-[11px] flex items-center gap-1 border border-slate-200 shadow-2xs cursor-pointer"
+              >
+                <Building2 className="w-3 h-3 text-[#0b4d8c]" />
+                <span>
+                  {selectedGroup === 'ALL' ? 'Tất cả (28P)' : selectedGroup === 'GROUP_1' ? 'Nhóm 1 (16P)' : selectedGroup === 'GROUP_2' ? 'Nhóm 2 (6P)' : 'Nhóm TM (6P)'}
+                </span>
+                <ChevronDown className="w-3 h-3 text-slate-500" />
+              </button>
+
+              {isMobileGroupMenuOpen && (
+                <>
+                  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-40" onClick={() => setIsMobileGroupMenuOpen(false)} />
+                  <div className="absolute top-8 left-0 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 space-y-1">
+                    <div className="text-[10px] font-black uppercase text-slate-400 px-2 py-0.5">Chọn Phân Khu Buồng Bệnh:</div>
+                    {[
+                      { id: 'ALL', label: 'Tất cả các phòng', desc: 'Toàn khoa (28 phòng)', count: '28P' },
+                      { id: 'GROUP_1', label: 'Nhóm 1', desc: 'P.703 - 731 & 733', count: '16P' },
+                      { id: 'GROUP_2', label: 'Nhóm 2', desc: 'P.747 - 757', count: '6P' },
+                      { id: 'CARDIO', label: 'Nhóm Tim Mạch', desc: 'P.735 - 745', count: '6P' },
+                    ].map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedGroup(g.id as any);
+                          setIsMobileGroupMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold transition-colors text-left cursor-pointer ${
+                          selectedGroup === g.id ? 'bg-[#0b4d8c] text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div>
+                          <div>{g.label}</div>
+                          <div className={`text-[10px] font-medium ${selectedGroup === g.id ? 'text-blue-200' : 'text-slate-400'}`}>{g.desc}</div>
+                        </div>
+                        <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded ${selectedGroup === g.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>{g.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             <span className="text-[10.5px] sm:text-xs px-2 py-0.5 sm:py-1 rounded-lg bg-blue-50 text-[#0b4d8c] border border-blue-200 font-black shrink-0">
@@ -824,22 +880,21 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
           </div>
         </div>
 
-        {/* Row 2: BỘ LỌC NHANH & TÌM KIẾM (Gọn gàng 1 dòng cuộn ngang trên mobile) */}
+        {/* Row 2: BỘ LỌC NHANH & TÌM KIẾM */}
         <div className="pt-2 sm:pt-2.5 border-t border-slate-100">
           <div className="bg-slate-50/90 border border-slate-200 rounded-xl p-2 sm:p-2.5 space-y-1.5 sm:space-y-2">
             
-            {/* Filter Pills Row - Vuốt ngang mượt mà trên mobile, không bị nhảy dòng */}
-            <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs">
+            {/* DESKTOP FILTER PILLS ROW (Hiển thị đầy đủ cho màn hình lớn) */}
+            <div className="hidden sm:flex items-center gap-1.5 flex-wrap text-xs">
               <div className="flex items-center gap-1 text-[#0b4d8c] font-bold shrink-0 pr-1.5 border-r border-slate-200">
                 <Filter className="w-3 h-3 text-[#0b4d8c]" />
-                <span className="text-[11px] uppercase tracking-wide hidden sm:inline">Bộ lọc:</span>
+                <span className="text-[11px] uppercase tracking-wide">Bộ lọc:</span>
               </div>
 
-              {/* Status Filters */}
               <button
                 type="button"
                 onClick={() => setStatusFilter('ALL')}
-                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer shrink-0 ${
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                   statusFilter === 'ALL' && tagFilter === 'ALL'
                     ? 'bg-[#0b4d8c] text-white shadow-2xs font-black'
                     : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
@@ -851,7 +906,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setStatusFilter(statusFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')}
-                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
                   statusFilter === 'CRITICAL'
                     ? 'bg-rose-600 text-white shadow-2xs font-black'
                     : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
@@ -864,7 +919,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setStatusFilter(statusFilter === 'MODERATE' ? 'ALL' : 'MODERATE')}
-                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
                   statusFilter === 'MODERATE'
                     ? 'bg-amber-500 text-white shadow-2xs font-black'
                     : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
@@ -876,7 +931,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setStatusFilter(statusFilter === 'STABLE' ? 'ALL' : 'STABLE')}
-                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
                   statusFilter === 'STABLE'
                     ? 'bg-emerald-600 text-white shadow-2xs font-black'
                     : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
@@ -888,7 +943,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setStatusFilter(statusFilter === 'UNCLASSIFIED' ? 'ALL' : 'UNCLASSIFIED')}
-                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
                   statusFilter === 'UNCLASSIFIED'
                     ? 'bg-slate-700 text-white shadow-2xs font-black'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
@@ -897,13 +952,12 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 <span>Chưa PL ({unclassifiedCount})</span>
               </button>
 
-              <div className="h-4 w-px bg-slate-300 shrink-0 mx-0.5" />
+              <div className="h-4 w-px bg-slate-300 mx-0.5" />
 
-              {/* Doctor Filter */}
               <select
                 value={doctorFilter}
                 onChange={(e) => setDoctorFilter(e.target.value)}
-                className={`bg-white font-bold text-[11px] sm:text-xs px-2 py-1 rounded-lg border focus:outline-hidden cursor-pointer transition-all shrink-0 ${
+                className={`bg-white font-bold text-xs px-2 py-1 rounded-lg border focus:outline-hidden cursor-pointer transition-all ${
                   doctorFilter !== 'ALL'
                     ? 'border-[#0b4d8c] text-[#0b4d8c] bg-blue-50/70 font-black'
                     : 'border-slate-200 text-slate-700 hover:border-slate-300'
@@ -923,13 +977,12 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 })}
               </select>
 
-              <div className="h-4 w-px bg-slate-300 shrink-0 mx-0.5" />
+              <div className="h-4 w-px bg-slate-300 mx-0.5" />
 
-              {/* Special Tags */}
               <button
                 type="button"
                 onClick={() => setTagFilter(tagFilter === 'NEW' ? 'ALL' : 'NEW')}
-                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
                   tagFilter === 'NEW'
                     ? 'bg-rose-600 text-white shadow-2xs'
                     : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
@@ -943,7 +996,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setTagFilter(tagFilter === 'ALLERGY' ? 'ALL' : 'ALLERGY')}
-                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
                   tagFilter === 'ALLERGY'
                     ? 'bg-amber-500 text-white shadow-2xs'
                     : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
@@ -953,7 +1006,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 <span>Dị ứng ({allergyCount})</span>
               </button>
 
-              {/* Reset Filters */}
               {(statusFilter !== 'ALL' || doctorFilter !== 'ALL' || tagFilter !== 'ALL' || searchTerm.trim()) && (
                 <button
                   type="button"
@@ -963,7 +1015,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     setTagFilter('ALL');
                     setSearchTerm('');
                   }}
-                  className="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ml-auto"
+                  className="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ml-auto"
                   title="Xóa tất cả các bộ lọc hiện tại"
                 >
                   <span>✕ Đặt lại</span>
@@ -971,15 +1023,182 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               )}
             </div>
 
-            {/* Search Input Field */}
-            <div className="relative">
-              <Search className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-slate-400 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2" />
+            {/* MOBILE FILTER & SEARCH ROW (MENU THÔNG MINH, KHÔNG CUỘN) */}
+            <div className="flex sm:hidden items-center gap-1.5">
+              
+              {/* Smart Mobile Filter Dropdown Button */}
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileFilterMenuOpen(!isMobileFilterMenuOpen);
+                    setIsMobileGroupMenuOpen(false);
+                  }}
+                  className={`px-2 py-1.5 rounded-lg font-black text-[11px] flex items-center gap-1 border transition-all cursor-pointer shadow-2xs ${
+                    statusFilter !== 'ALL' || tagFilter !== 'ALL' || doctorFilter !== 'ALL'
+                      ? 'bg-[#0b4d8c] text-white border-[#0b4d8c]'
+                      : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  <Filter className="w-3 h-3" />
+                  <span className="max-w-[100px] truncate">
+                    {statusFilter === 'CRITICAL'
+                      ? `Nặng (${criticalCount})`
+                      : statusFilter === 'MODERATE'
+                      ? `Vừa (${moderateCount})`
+                      : statusFilter === 'STABLE'
+                      ? `Ổn (${stableCount})`
+                      : statusFilter === 'UNCLASSIFIED'
+                      ? `Chưa PL (${unclassifiedCount})`
+                      : tagFilter === 'NEW'
+                      ? `Mới (${newCount})`
+                      : tagFilter === 'ALLERGY'
+                      ? `Dị ứng (${allergyCount})`
+                      : doctorFilter !== 'ALL'
+                      ? 'Theo BS'
+                      : 'Bộ Lọc'}
+                  </span>
+                  <ChevronDown className="w-3 h-3 opacity-70" />
+                </button>
+
+                {/* Reset button if filter is active */}
+                {(statusFilter !== 'ALL' || tagFilter !== 'ALL' || doctorFilter !== 'ALL') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter('ALL');
+                      setTagFilter('ALL');
+                      setDoctorFilter('ALL');
+                    }}
+                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[9px] font-black shadow-xs cursor-pointer"
+                    title="Xóa bộ lọc"
+                  >
+                    ✕
+                  </button>
+                )}
+
+                {/* Mobile Filter Menu Modal Sheet */}
+                {isMobileFilterMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-40" onClick={() => setIsMobileFilterMenuOpen(false)} />
+                    <div className="fixed top-28 left-4 right-4 max-w-sm mx-auto bg-white rounded-2xl shadow-2xl border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 space-y-2 max-h-[75vh] overflow-y-auto">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                        <span className="text-xs font-black uppercase text-slate-800 flex items-center gap-1">
+                          <Filter className="w-3.5 h-3.5 text-[#0b4d8c]" />
+                          <span>Lọc Bệnh Nhân Nhanh</span>
+                        </span>
+                        <button type="button" onClick={() => setIsMobileFilterMenuOpen(false)} className="p-1 text-slate-400 hover:text-slate-700">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1">
+                        {[
+                          { id: 'ALL', type: 'status', label: 'Tất cả bệnh nhân', count: activeGroupPatients.length, color: 'text-slate-800' },
+                          { id: 'CRITICAL', type: 'status', label: '🔴 Ca Bệnh Nặng', count: criticalCount, color: 'text-rose-700 font-black' },
+                          { id: 'MODERATE', type: 'status', label: '🟡 Ca Bệnh Vừa', count: moderateCount, color: 'text-amber-700 font-bold' },
+                          { id: 'STABLE', type: 'status', label: '🟢 Ca Bệnh Ổn Định', count: stableCount, color: 'text-emerald-700 font-bold' },
+                          { id: 'UNCLASSIFIED', type: 'status', label: '⚪ Chưa Phân Loại', count: unclassifiedCount, color: 'text-slate-600 font-semibold' },
+                          { id: 'NEW', type: 'tag', label: '✨ Bệnh Nhân Mới (24h)', count: newCount, color: 'text-rose-600 font-bold' },
+                          { id: 'ALLERGY', type: 'tag', label: '⚠️ Bệnh Nhân Dị Ứng', count: allergyCount, color: 'text-amber-800 font-bold' },
+                        ].map((f) => {
+                          const isSelected = f.type === 'status' ? statusFilter === f.id && tagFilter === 'ALL' : tagFilter === f.id;
+                          return (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => {
+                                if (f.type === 'status') {
+                                  setStatusFilter(f.id as any);
+                                  setTagFilter('ALL');
+                                } else {
+                                  setTagFilter(f.id as any);
+                                  setStatusFilter('ALL');
+                                }
+                                setIsMobileFilterMenuOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between p-2 rounded-xl text-xs transition-colors text-left cursor-pointer ${
+                                isSelected ? 'bg-[#0b4d8c] text-white font-black shadow-xs' : 'hover:bg-slate-100 ' + f.color
+                              }`}
+                            >
+                              <span>{f.label}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700 font-bold'}`}>
+                                {f.count}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Doctor Filter inside popup */}
+                      <div className="pt-2 border-t border-slate-100">
+                        <label className="text-[10px] font-black uppercase text-slate-500 block mb-1">Lọc theo Bác sĩ:</label>
+                        <select
+                          value={doctorFilter}
+                          onChange={(e) => {
+                            setDoctorFilter(e.target.value);
+                            setIsMobileFilterMenuOpen(false);
+                          }}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold"
+                        >
+                          <option value="ALL">BS. Tất cả bác sĩ</option>
+                          {activeDoctorsWithCounts.map((docItem) => (
+                            <option key={docItem.id} value={docItem.id}>
+                              BS. {docItem.name} ({docItem.count} BN)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter('ALL');
+                          setTagFilter('ALL');
+                          setDoctorFilter('ALL');
+                          setIsMobileFilterMenuOpen(false);
+                        }}
+                        className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors text-center cursor-pointer"
+                      >
+                        Đặt lại tất cả bộ lọc
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Search Input Field on Mobile */}
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Tìm phòng (vd: 735), tên BN..."
+                  className="w-full pl-8 pr-7 py-1.5 bg-white text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-[#0b4d8c]/30 font-medium"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 cursor-pointer"
+                    title="Xóa tìm kiếm"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+            </div>
+
+            {/* Desktop Search Input Field */}
+            <div className="relative hidden sm:block">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm nhanh phòng (vd: 735), tên BN, chẩn đoán..."
-                className="w-full pl-8 sm:pl-9 pr-8 py-1.5 bg-white hover:bg-slate-50 focus:bg-white text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-[#0b4d8c]/30 font-medium transition-all"
+                placeholder="Tìm nhanh theo số phòng (vd: 735, 705), tên bệnh nhân, chẩn đoán..."
+                className="w-full pl-9 pr-8 py-1.5 bg-white hover:bg-slate-50 focus:bg-white text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-[#0b4d8c]/30 font-medium transition-all"
               />
               {searchTerm && (
                 <button

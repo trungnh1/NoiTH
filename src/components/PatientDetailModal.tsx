@@ -424,33 +424,33 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
       />
 
       {/* Right-side expansive sliding drawer panel (khung rộng gần hết màn hình) */}
-      <div className="relative w-full sm:w-[98vw] md:w-[96vw] lg:w-[95vw] xl:w-[95vw] max-w-[1900px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
+      <div className="relative w-full sm:w-[98vw] md:w-[96vw] lg:w-[95vw] xl:w-[95vw] max-w-[1900px] bg-white h-full shadow-2xl border-l-0 sm:border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
         
         {/* Modal Top Header - Đậm chất BV Hùng Vương Gia Lai */}
-        <div className={`px-5 py-3 border-b flex flex-wrap items-center justify-between gap-3 shrink-0 ${
+        <div className={`px-3 sm:px-5 py-2 sm:py-3 border-b flex flex-wrap items-center justify-between gap-2 sm:gap-3 shrink-0 ${
           isCritical
             ? 'bg-gradient-to-r from-rose-800 via-rose-900 to-slate-900 text-white'
             : isModerate
             ? 'bg-gradient-to-r from-amber-700 via-amber-800 to-slate-900 text-white'
             : 'bg-gradient-to-r from-[#0b4d8c] via-[#083a69] to-slate-900 text-white'
         }`}>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-lg bg-white/20 text-white font-black text-xs tracking-wider shadow-2xs">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-white/20 text-white font-black text-[11px] sm:text-xs tracking-wider shadow-2xs">
                 Phòng {patient.roomNumber}
               </span>
               {patient.patientCode && (
-                <span className="px-2 py-0.5 rounded bg-white/10 text-white/90 font-mono font-bold text-xs">
+                <span className="px-1.5 sm:px-2 py-0.5 rounded bg-white/10 text-white/90 font-mono font-bold text-[10.5px] sm:text-xs">
                   Mã BN: {patient.patientCode}
                 </span>
               )}
             </div>
 
             <div className="flex items-center gap-2">
-              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-white">
+              <h2 className="text-base sm:text-2xl font-black tracking-tight text-white">
                 {formatPatientDisplayName(patient.fullName)}
               </h2>
-              <span className="text-xs sm:text-sm font-semibold text-white/90 bg-white/10 px-2.5 py-0.5 rounded flex items-center gap-1.5">
+              <span className="text-xs sm:text-sm font-semibold text-white/90 bg-white/10 px-2 sm:px-2.5 py-0.5 rounded flex items-center gap-1">
                 {patient.gender === 'Nam' ? (
                   <span className="text-blue-300 font-extrabold flex items-center gap-0.5"><span>♂</span> Nam</span>
                 ) : (
@@ -460,22 +460,22 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Nút Phân Loại Bệnh Án AI */}
             <button
               type="button"
               onClick={handleRunAiClassification}
-              className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer border border-purple-400/50"
+              className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] sm:text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer border border-purple-400/50"
               title="Tự động phân tích diễn tiến lâm sàng, sinh hiệu, cận lâm sàng để gắn nhãn (New, Dị ứng, Nặng...)"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
-              <span>Phân Loại Bệnh Án AI</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin shrink-0" />
+              <span><span className="hidden sm:inline">Phân Loại Bệnh Án </span>AI</span>
             </button>
 
             <button
               type="button"
               onClick={handlePrint}
-              className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
               title="In trích lục bệnh án"
             >
               <Printer className="w-4 h-4" />
@@ -484,7 +484,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
               title="Đóng bảng chi tiết"
             >
               <X className="w-5 h-5" />
@@ -493,8 +493,8 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
         </div>
 
         {/* Compact Administrative Ribbon: Chiếm ít không gian hơn, đầy đủ thông tin hành chính */}
-        <div className="px-5 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="px-3 sm:px-5 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             {/* BS điều trị */}
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-slate-500">BS điều trị:</span>
@@ -544,41 +544,44 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="px-5 border-b border-slate-200 flex items-center gap-1 overflow-x-auto bg-white no-print">
+        <div className="px-2 sm:px-5 border-b border-slate-200 flex items-center gap-1 overflow-x-auto bg-white no-print scrollbar-none">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`inline-flex items-center gap-1.5 py-3 px-3.5 border-b-2 text-xs font-bold transition-all whitespace-nowrap ${
+            className={`inline-flex items-center gap-1.5 py-2.5 sm:py-3 px-2 sm:px-3.5 border-b-2 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'overview'
                 ? 'border-rose-600 text-rose-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Info className="w-4 h-4" />
-            <span>Hành Chính & Chẩn Đoán</span>
+            <Info className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
+            <span className="sm:hidden">Hành Chính</span>
+            <span className="hidden sm:inline">Hành Chính & Chẩn Đoán</span>
           </button>
 
           <button
             onClick={() => setActiveTab('evolutions')}
-            className={`inline-flex items-center gap-1.5 py-3 px-3.5 border-b-2 text-xs font-bold transition-all whitespace-nowrap ${
+            className={`inline-flex items-center gap-1.5 py-2.5 sm:py-3 px-2 sm:px-3.5 border-b-2 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'evolutions'
                 ? 'border-rose-600 text-rose-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Activity className="w-4 h-4" />
-            <span>Diễn Tiến & Sinh Hiệu ({patient.evolutions.length})</span>
+            <Activity className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
+            <span className="sm:hidden">Diễn Tiến ({patient.evolutions.length})</span>
+            <span className="hidden sm:inline">Diễn Tiến & Sinh Hiệu ({patient.evolutions.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('labs')}
-            className={`inline-flex items-center gap-1.5 py-3 px-3.5 border-b-2 text-xs font-bold transition-all whitespace-nowrap ${
+            className={`inline-flex items-center gap-1.5 py-2.5 sm:py-3 px-2 sm:px-3.5 border-b-2 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'labs'
                 ? 'border-rose-600 text-rose-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <TestTube className="w-4 h-4" />
-            <span>Xét Nghiệm & Cận Lâm Sàng ({patient.labs.length})</span>
+            <TestTube className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
+            <span className="sm:hidden">CLS & XN ({patient.labs.length})</span>
+            <span className="hidden sm:inline">Xét Nghiệm & Cận Lâm Sàng ({patient.labs.length})</span>
             {patient.labs.some((l) => l.isPanicValue) && (
               <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping inline-block" />
             )}
@@ -586,31 +589,32 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
 
           <button
             onClick={() => setActiveTab('medications')}
-            className={`inline-flex items-center gap-1.5 py-3 px-3.5 border-b-2 text-xs font-bold transition-all whitespace-nowrap ${
+            className={`inline-flex items-center gap-1.5 py-2.5 sm:py-3 px-2 sm:px-3.5 border-b-2 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'medications'
                 ? 'border-rose-600 text-rose-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Pill className="w-4 h-4" />
+            <Pill className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
             <span>Y Lệnh Thuốc ({patient.medications.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('ai')}
-            className={`inline-flex items-center gap-1.5 py-3 px-3.5 border-b-2 text-xs font-extrabold transition-all whitespace-nowrap ml-auto ${
+            className={`inline-flex items-center gap-1.5 py-2.5 sm:py-3 px-2 sm:px-3.5 border-b-2 text-xs font-extrabold transition-all whitespace-nowrap ml-auto cursor-pointer ${
               activeTab === 'ai'
                 ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50'
                 : 'border-transparent text-indigo-600 hover:bg-indigo-50/40'
             }`}
           >
-            <Sparkles className="w-4 h-4 text-indigo-600 animate-pulse" />
-            <span>AI Cố Vấn Lâm Sàng & Cảnh Báo</span>
+            <Sparkles className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-indigo-600 animate-pulse shrink-0" />
+            <span className="sm:hidden">AI Cố Vấn</span>
+            <span className="hidden sm:inline">AI Cố Vấn Lâm Sàng & Cảnh Báo</span>
           </button>
         </div>
 
         {/* Tab Content Body */}
-        <div className="p-5 overflow-y-auto flex-1 space-y-5 bg-slate-50/40">
+        <div className="p-3 sm:p-5 overflow-y-auto flex-1 space-y-3.5 sm:space-y-5 bg-slate-50/40">
           
           {/* Thông báo kết quả Phân Loại Bệnh Án AI */}
           {aiClassificationResult && (
@@ -1412,8 +1416,8 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
               )}
 
               {/* Lab table */}
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
-                <table className="w-full text-left text-xs">
+              <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-xs">
+                <table className="w-full text-left text-xs min-w-[550px]">
                   <thead className="bg-slate-100 text-slate-700 uppercase font-bold border-b border-slate-200">
                     <tr>
                       <th className="py-2.5 px-4">Thời gian</th>

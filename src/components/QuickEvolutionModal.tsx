@@ -182,6 +182,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
   // Lọc lịch sử diễn tiến
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [historyShiftFilter, setHistoryShiftFilter] = useState<'ALL' | 'Sáng' | 'Chiều' | 'Đêm / Trực'>('ALL');
+  const [mobileTab, setMobileTab] = useState<'form' | 'history'>('form');
 
   // Error message & feedback toast
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -290,6 +291,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
     if (evo.clinicalNote) setClinicalNote(evo.clinicalNote);
     if (evo.treatmentAction) setTreatmentAction(evo.treatmentAction);
     if (evo.notes) setDailyNotes(evo.notes);
+    setMobileTab('form');
     showToast(`Đã áp dụng dữ liệu ca ${evo.shift} (${evo.timestamp})!`);
   };
 
@@ -458,10 +460,10 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
       />
 
       {/* Main Drawer Panel - Rộng gần hết màn hình theo yêu cầu */}
-      <div className="relative w-full sm:w-[97vw] md:w-[96vw] lg:w-[95vw] max-w-[1920px] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden border-l border-slate-300">
+      <div className="relative w-full sm:w-[97vw] md:w-[96vw] lg:w-[95vw] max-w-[1920px] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden border-l-0 sm:border-l border-slate-300">
         
         {/* HEADER: HIỆN ĐẠI, KHOA HỌC, ĐẬM CHẤT LÂM SÀNG */}
-        <div className="px-5 py-3 bg-gradient-to-r from-slate-900 via-[#0b4d8c] to-[#12589b] text-white flex items-center justify-between border-b border-[#083a69] shrink-0 shadow-xs">
+        <div className="px-3 sm:px-5 py-2 sm:py-3 bg-gradient-to-r from-slate-900 via-[#0b4d8c] to-[#12589b] text-white flex items-center justify-between border-b border-[#083a69] shrink-0 shadow-xs">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white shrink-0 shadow-inner">
               <Stethoscope className="w-5 h-5 text-cyan-300" />
@@ -532,7 +534,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
         </div>
 
         {/* SMART ACTION BAR: NẠP DỮ LIỆU CA TRƯỚC, LÀM MỚI & CẢNH BÁO */}
-        <div className="bg-slate-100/90 border-b border-slate-200 px-5 py-2 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
+        <div className="bg-slate-100/90 border-b border-slate-200 px-3 sm:px-5 py-1.5 sm:py-2 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-extrabold text-slate-700 uppercase tracking-tight flex items-center gap-1 text-[11px]">
               <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
@@ -584,6 +586,36 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
           )}
         </div>
 
+        {/* MOBILE SEGMENTED TAB SWITCH: BÁC SĨ CHỌN XEM FORM HOẶC XEM LỊCH SỬ TRÊN ĐIỆN THOẠI */}
+        <div className="flex sm:hidden p-1.5 bg-slate-100 border-b border-slate-200 shrink-0">
+          <div className="grid grid-cols-2 gap-1 w-full bg-white p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setMobileTab('form')}
+              className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                mobileTab === 'form'
+                  ? 'bg-[#0b4d8c] text-white shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>1. Nhập Diễn Tiến</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('history')}
+              className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                mobileTab === 'history'
+                  ? 'bg-[#0b4d8c] text-white shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>2. Lịch Sử ({patient.evolutions?.length || 0})</span>
+            </button>
+          </div>
+        </div>
+
         {/* 2 CỘT CHÍNH: CỘT TRÁI (NHẬP LIỆU) & CỘT PHẢI (LỊCH SỬ TIMELINE) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
           
@@ -592,7 +624,9 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
           {/* ========================================================================= */}
           <form 
             onSubmit={handleSubmit} 
-            className="lg:col-span-6 xl:col-span-6 p-4 sm:p-5 overflow-y-auto space-y-3.5 border-r border-slate-200 bg-slate-50/60 flex flex-col justify-between text-xs"
+            className={`lg:col-span-6 xl:col-span-6 p-3 sm:p-5 overflow-y-auto space-y-3 sm:space-y-3.5 border-r border-slate-200 bg-slate-50/60 flex flex-col justify-between text-xs ${
+              mobileTab === 'form' ? 'flex' : 'hidden sm:flex'
+            }`}
           >
             <div className="space-y-3.5">
               
@@ -1092,7 +1126,9 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
           {/* ========================================================================= */}
           {/* CỘT PHẢI (6 cols trên LG, 6 cols trên XL): LỊCH SỬ CLINICAL TIMELINE */}
           {/* ========================================================================= */}
-          <div className="lg:col-span-6 xl:col-span-6 p-4 sm:p-5 overflow-y-auto space-y-3 bg-white flex flex-col">
+          <div className={`lg:col-span-6 xl:col-span-6 p-3 sm:p-5 overflow-y-auto space-y-3 bg-white flex flex-col ${
+            mobileTab === 'history' ? 'flex' : 'hidden sm:flex'
+          }`}>
             
             {/* Header Lịch sử + Tìm kiếm & Bộ lọc */}
             <div className="space-y-2 pb-2 border-b border-slate-200 shrink-0">
