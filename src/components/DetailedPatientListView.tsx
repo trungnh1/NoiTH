@@ -56,9 +56,10 @@ export const GROUP_2_ROOM_NUMBERS = [
 ];
 
 export const ALL_ROOM_NUMBERS = [
+  '743',
   ...GROUP_1_ROOM_NUMBERS,
   ...GROUP_2_ROOM_NUMBERS,
-  ...CARDIO_ROOM_NUMBERS,
+  ...CARDIO_ROOM_NUMBERS.filter((r) => r !== '743'),
 ];
 
 /**
@@ -592,6 +593,19 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
       roomsToRender = showEmptyRooms 
         ? currentGroupRoomNumbers 
         : currentGroupRoomNumbers.filter((r) => patientMap.has(r));
+
+      // Bổ sung các phòng có bệnh nhân ngoài danh mục (nếu có)
+      if (selectedGroup === 'ALL') {
+        const extraRooms = Array.from(patientMap.keys()).filter((r) => !roomsToRender.includes(r));
+        if (extraRooms.length > 0) {
+          roomsToRender = [...roomsToRender, ...extraRooms];
+        }
+      }
+    }
+
+    // Đảm bảo ở chế độ hiện tất cả các nhóm (ALL), phòng 743 luôn đứng đầu danh sách
+    if (selectedGroup === 'ALL' && roomsToRender.includes('743')) {
+      roomsToRender = ['743', ...roomsToRender.filter((r) => r !== '743')];
     }
 
     return roomsToRender.map((roomKey) => {

@@ -275,6 +275,17 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
 
       return true;
     });
+
+    // Ở chế độ xem tất cả các nhóm (ALL), đưa phòng 743 lên đầu danh sách
+    if (selectedGroup === 'ALL') {
+      const idx743 = filtered.findIndex((r) => r.number === '743');
+      if (idx743 > -1) {
+        const [r743] = filtered.splice(idx743, 1);
+        filtered.unshift(r743);
+      }
+    }
+
+    return filtered;
   }, [rooms, selectedGroup, selectedDoctorFilter, searchTerm, scheduleMap, doctors, activePatients]);
 
   const totalActivePatients = activePatients.length;

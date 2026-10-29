@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   DepartmentRoom, 
   Doctor, 
@@ -199,6 +199,12 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
     if (selectedGroup === 'CARDIO') return cardioRooms;
     if (selectedGroup === 'GROUP_2') return group2Rooms;
     if (selectedGroup === 'GROUP_1') return group1Rooms;
+
+    // Ở chế độ xem tất cả các nhóm (ALL), đưa phòng 743 lên đầu danh sách
+    const r743 = rooms.find((r) => r.number === '743');
+    if (r743) {
+      return [r743, ...rooms.filter((r) => r.number !== '743')];
+    }
     return rooms;
   }, [rooms, selectedGroup, cardioRooms, group2Rooms, group1Rooms, searchQuery, patients, doctorMap]);
 
