@@ -1,4 +1,5 @@
-﻿import React from 'react';
+import { formatPatientDisplayName } from '../utils/storage';
+import React from 'react';
 import { Patient, Doctor, CLINICAL_TAGS_META } from '../types/patient';
 import { 
   X, 

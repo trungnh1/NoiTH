@@ -1,4 +1,5 @@
-﻿import React, { useState, useMemo } from 'react';
+import { formatPatientDisplayName } from '../utils/storage';
+import React, { useState, useMemo } from 'react';
 import { 
   Patient, 
   Doctor, 
