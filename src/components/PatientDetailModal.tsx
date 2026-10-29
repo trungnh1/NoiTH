@@ -526,27 +526,6 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                 <span className="text-[#0b4d8c] font-bold ml-1">• ĐT {patient.treatmentDays} ngày</span>
               )}
             </div>
-
-            {/* BHYT & SĐT & Địa chỉ */}
-            {patient.insuranceNumber && (
-              <span className="text-slate-600 font-medium hidden sm:inline" title="Số thẻ BHYT">
-                BHYT: <strong className="text-slate-800 font-mono">{patient.insuranceNumber}</strong>
-              </span>
-            )}
-            {patient.phoneNumber && (
-              <span className="text-slate-600 font-medium hidden md:inline" title="Số điện thoại liên hệ">
-                SĐT: <strong className="text-slate-800">{patient.phoneNumber}</strong>
-              </span>
-            )}
-            {patient.address && (
-              <span className="text-slate-500 font-medium truncate max-w-[200px] hidden lg:inline" title={patient.address}>
-                Đ/c: {patient.address}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 text-slate-500">
-            <span>ĐD: <strong className="text-slate-700">{patient.primaryNurse || 'ĐD ca trực'}</strong></span>
           </div>
         </div>
 
@@ -636,91 +615,75 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                   </span>
                 </div>
 
-                {/* Priority clinical badges */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {/* Priority badges as compact inline buttons */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
                   {/* Thở Canula */}
                   <button
+                    type="button"
                     onClick={() => handleToggleTag('O2_CANULA')}
-                    className={`p-2.5 rounded-xl border-2 text-left font-black transition-all flex items-center justify-between cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                       patient.tags.includes('O2_CANULA') || patient.tags.includes('O2')
-                        ? 'bg-cyan-600 text-white border-cyan-700 shadow-md scale-101'
-                        : 'bg-cyan-50/50 text-cyan-800 border-cyan-200 hover:bg-cyan-100'
+                        ? 'bg-cyan-600 text-white shadow-2xs'
+                        : 'bg-cyan-50 text-cyan-800 border border-cyan-200 hover:bg-cyan-100'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <Wind className="w-4 h-4 shrink-0" />
-                      <div>
-                        <span className="block text-xs">Thở Canula</span>
-                        <span className="text-[9px] font-normal opacity-90">Oxy gọng kính</span>
-                      </div>
-                    </div>
-                    {(patient.tags.includes('O2_CANULA') || patient.tags.includes('O2')) && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                    <Wind className="w-3.5 h-3.5 shrink-0" />
+                    <span>Thở Canula</span>
+                    {(patient.tags.includes('O2_CANULA') || patient.tags.includes('O2')) && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
                   </button>
 
                   {/* Thở Mask */}
                   <button
+                    type="button"
                     onClick={() => handleToggleTag('O2_MASK')}
-                    className={`p-2.5 rounded-xl border-2 text-left font-black transition-all flex items-center justify-between cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                       patient.tags.includes('O2_MASK')
-                        ? 'bg-blue-600 text-white border-blue-700 shadow-md scale-101'
-                        : 'bg-blue-50/50 text-blue-800 border-blue-200 hover:bg-blue-100'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <Wind className="w-4 h-4 shrink-0" />
-                      <div>
-                        <span className="block text-xs">Thở Mask</span>
-                        <span className="text-[9px] font-normal opacity-90">Mặt nạ oxy</span>
-                      </div>
-                    </div>
-                    {patient.tags.includes('O2_MASK') && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                    <Wind className="w-3.5 h-3.5 shrink-0" />
+                    <span>Thở Mask</span>
+                    {patient.tags.includes('O2_MASK') && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
                   </button>
 
                   {/* TD dịch nhập/xuất */}
                   <button
+                    type="button"
                     onClick={() => handleToggleTag('FLUID_BALANCE')}
-                    className={`p-2.5 rounded-xl border-2 text-left font-black transition-all flex items-center justify-between cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                       patient.tags.includes('FLUID_BALANCE')
-                        ? 'bg-indigo-600 text-white border-indigo-700 shadow-md scale-101'
-                        : 'bg-indigo-50/50 text-indigo-800 border-indigo-200 hover:bg-indigo-100'
+                        ? 'bg-indigo-600 text-white shadow-2xs'
+                        : 'bg-indigo-50 text-indigo-800 border border-indigo-200 hover:bg-indigo-100'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <Activity className="w-4 h-4 shrink-0" />
-                      <div>
-                        <span className="block text-xs">TD Dịch Nhập/Xuất</span>
-                        <span className="text-[9px] font-normal opacity-90">Vào / Ra 24h</span>
-                      </div>
-                    </div>
-                    {patient.tags.includes('FLUID_BALANCE') && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                    <Activity className="w-3.5 h-3.5 shrink-0" />
+                    <span>TD Dịch Nhập/Xuất</span>
+                    {patient.tags.includes('FLUID_BALANCE') && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
                   </button>
 
-                  {/* Dùng Vận Mạch */}
+                  {/* Vận Mạch */}
                   <button
+                    type="button"
                     onClick={() => handleToggleTag('VASOPRESSOR')}
-                    className={`p-2.5 rounded-xl border-2 text-left font-black transition-all flex items-center justify-between cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                       patient.tags.includes('VASOPRESSOR')
-                        ? 'bg-rose-600 text-white border-rose-700 shadow-md scale-101 animate-pulse'
-                        : 'bg-rose-50/50 text-rose-800 border-rose-200 hover:bg-rose-100'
+                        ? 'bg-rose-600 text-white shadow-2xs animate-pulse'
+                        : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <HeartPulse className="w-4 h-4 shrink-0" />
-                      <div>
-                        <span className="block text-xs">Vận Mạch</span>
-                        <span className="text-[9px] font-normal opacity-90">Noradrenalin...</span>
-                      </div>
-                    </div>
-                    {patient.tags.includes('VASOPRESSOR') && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                    <HeartPulse className="w-3.5 h-3.5 shrink-0" />
+                    <span>Vận Mạch</span>
+                    {patient.tags.includes('VASOPRESSOR') && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
                   </button>
                 </div>
 
                 {/* Other secondary tags */}
-                <div className="pt-2 border-t border-slate-100">
-                  <span className="text-[11px] font-bold text-slate-400 block mb-1.5 uppercase">
+                <div className="pt-1.5 border-t border-slate-100">
+                  <span className="text-[10.5px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">
                     Nhãn lâm sàng bổ trợ khác:
                   </span>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1">
                     {(Object.keys(CLINICAL_TAGS_META) as ClinicalTag[])
                       .filter((t) => t !== 'O2' && t !== 'O2_CANULA' && t !== 'O2_MASK' && t !== 'VASOPRESSOR' && t !== 'FLUID_BALANCE')
                       .map((tagKey) => {
@@ -729,15 +692,16 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                         return (
                           <button
                             key={tagKey}
+                            type="button"
                             onClick={() => handleToggleTag(tagKey)}
-                            className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 ${
+                            className={`text-xs font-semibold px-2 py-0.5 rounded-md border transition-all flex items-center gap-1 cursor-pointer ${
                               isActive
-                                ? `${meta.badgeBg} text-white border-transparent`
-                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                ? `${meta.badgeBg} text-white border-transparent font-bold shadow-2xs`
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                             }`}
                           >
                             <span>{meta.label}</span>
-                            {isActive && <CheckCircle2 className="w-3 h-3 ml-0.5" />}
+                            {isActive && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
                           </button>
                         );
                       })}
@@ -842,9 +806,6 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                   <span>Mã BN: <strong className="font-mono text-slate-900">{patient.patientCode || '---'}</strong></span>
                   <span>Ngày sinh: <strong className="text-slate-900">{patient.dateOfBirth}</strong> ({patient.age}t, {patient.gender})</span>
                   <span>Khoa: <strong className="text-[#0b4d8c]">{patient.department || 'Nội Tổng Hợp'}</strong></span>
-                  <span>BHYT: <strong className="font-mono text-slate-900">{patient.insuranceNumber || '---'}</strong> {patient.insuranceType ? `(${patient.insuranceType})` : ''}</span>
-                  {patient.phoneNumber && <span>SĐT: <strong className="text-slate-900">{patient.phoneNumber}</strong></span>}
-                  {patient.address && <span>Địa chỉ: <strong className="text-slate-900">{patient.address}</strong></span>}
                 </div>
               </div>
             </div>

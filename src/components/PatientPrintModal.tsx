@@ -24,6 +24,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
   const [filterMode, setFilterMode] = useState<'ALL' | 'BY_ROOM' | 'BY_DOCTOR'>('ALL');
   const [selectedRoom, setSelectedRoom] = useState<string>('ALL');
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL');
+  const [includeNotes, setIncludeNotes] = useState<boolean>(true);
 
   // Group 1 doctors (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)
   const group1Doctors = useMemo(() => {
@@ -235,6 +236,19 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
               </div>
             )}
 
+            {/* Toggle Include Notes */}
+            <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-300 cursor-pointer hover:bg-slate-50 transition-all shadow-2xs select-none">
+              <input
+                type="checkbox"
+                checked={includeNotes}
+                onChange={(e) => setIncludeNotes(e.target.checked)}
+                className="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500 cursor-pointer accent-rose-600"
+              />
+              <span className="font-extrabold text-slate-800 text-xs">
+                In kèm Ghi chú / Y lệnh
+              </span>
+            </label>
+
             {/* Print trigger button */}
             <button
               type="button"
@@ -248,7 +262,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
           </div>
         </div>
 
-        {/* Preview & Printable Document Area (List format with write-in space at the bottom of each patient item) */}
+        {/* Preview & Printable Document Area */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100">
           
           <div 
@@ -313,17 +327,23 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Line 2: Chẩn đoán & Ghi chú hiện tại */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-800">
-                        <div>
+                      {/* Line 2: Chẩn đoán & Ghi chú (nếu bật tùy chọn in ghi chú) */}
+                      {includeNotes ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-800">
+                          <div>
+                            <strong className="text-slate-900">Chẩn đoán:</strong> {combinedDiag}
+                          </div>
+                          <div>
+                            <strong className="text-slate-900">Ghi chú/Y lệnh:</strong> {notes}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-slate-800">
                           <strong className="text-slate-900">Chẩn đoán:</strong> {combinedDiag}
                         </div>
-                        <div>
-                          <strong className="text-slate-900">Ghi chú/Y lệnh:</strong> {notes}
-                        </div>
-                      </div>
+                      )}
 
-                      {/* Line 3: Chỗ trống để ghi tay (Write-in space) */}
+                      {/* Line 3: LUÔN CÓ chỗ trống để ghi tay dành cho Bác sĩ / Điều dưỡng */}
                       <div className="pt-2 mt-1 border-t border-dashed border-slate-300 flex items-center gap-2">
                         <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">
                           Ghi chú ghi tay:
@@ -343,7 +363,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
         {/* Footer Actions - Screen Only */}
         <div className="p-3 bg-white border-t border-slate-200 flex items-center justify-between no-print shrink-0 text-xs">
           <span className="text-slate-500 font-semibold">
-            Đang xem trước bản in dạng danh sách (có ô trống ghi tay)
+            Đang xem trước bản in danh sách ({includeNotes ? 'có bao gồm Ghi chú / Y lệnh' : 'chỉ in thông tin hành chính & chẩn đoán, không in ghi chú'})
           </span>
           <div className="flex items-center gap-2">
             <button
