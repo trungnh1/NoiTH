@@ -399,8 +399,8 @@ export function mapClinicalRecordToPatient(
   const medicalHistory = (record.medicalHistory || '').trim();
 
   // Chẩn đoán & Y lệnh
-  const primaryDiagnosis = (record.diagnosis || 'Theo dõi bệnh nội khoa').trim();
-  const treatmentPlan = (record.treatmentPlan || 'Duy trì phác đồ điều trị nội khoa.').trim();
+  const primaryDiagnosis = (record.diagnosis || '').trim();
+  const treatmentPlan = (record.treatmentPlan || '').trim();
 
   // Cận lâm sàng nổi bật (HTML & Plain text)
   const clsHtml = record.clsHtml || record.labsHtml || '';
@@ -416,7 +416,7 @@ export function mapClinicalRecordToPatient(
       doctorName: doctor?.name || 'BS Điều trị',
       shift: 'Sáng',
       clinicalNote: clinicalCourse,
-      treatmentAction: treatmentPlan,
+      treatmentAction: treatmentPlan || '',
       orders: initialLabsText ? `CLS: ${initialLabsText.slice(0, 80)}...` : undefined,
     });
   }
@@ -445,8 +445,8 @@ export function mapClinicalRecordToPatient(
     severity,
     admissionStatus: 'ADMITTED_TODAY',
     tags: parsedVitals.spO2 < 95 ? ['O2_CANULA'] : [],
-    treatmentPlan,
-    importantNotes: 'Hồ sơ lấy từ App tạo slide giao ban',
+    treatmentPlan: treatmentPlan || undefined,
+    importantNotes: '',
     initialLabsText: initialLabsText || undefined,
     vitals: vitalsList,
     evolutions: evolutionsList,

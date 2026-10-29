@@ -38,13 +38,13 @@ export function saveAppSettings(settings: AppSettings): void {
 export function getFontSizeScale(fontSize: AppSettings['fontSize']): string {
   switch (fontSize) {
     case 'small':
-      return 'text-[92%]';
+      return 'text-[100%]';
     case 'large':
-      return 'text-[108%]';
+      return 'text-[125%]';
     case 'xlarge':
-      return 'text-[116%]';
+      return 'text-[138%]';
     case 'normal':
     default:
-      return 'text-[100%]';
+      return 'text-[112%]';
   }
 }

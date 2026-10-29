@@ -14,7 +14,11 @@ import {
   Plus,
   Stethoscope,
   Database,
-  Layers
+  Layers,
+  Calendar,
+  HelpCircle,
+  Eye,
+  Info
 } from 'lucide-react';
 import { Patient, Doctor, DepartmentRoom } from '../types/patient';
 import { ClinicalRecord, mapClinicalRecordToPatient, parseAgeNumber } from '../services/clinicalFirebase';
@@ -43,6 +47,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
   onImportPatientDirect,
 }) => {
   const [excelRows, setExcelRows] = useState<ExcelPatientRow[]>([]);
+  const [detectedColumns, setDetectedColumns] = useState<string[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
@@ -60,10 +65,11 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     reader.onload = (evt) => {
       try {
         const buffer = evt.target?.result as ArrayBuffer;
-        const parsed = parseExcelFile(buffer);
+        const { rows: parsed, detectedHeaders: headers } = parseExcelFile(buffer);
         setExcelRows(parsed);
+        setDetectedColumns(headers);
         setNotification({
-          message: `Đã đọc thành công ${parsed.length} dòng dữ liệu từ file Excel "${file.name}"!`,
+          message: `Đã đọc thành công ${parsed.length} bệnh nhân từ file "${file.name}"! Nhận diện được ${headers.length} cột dữ liệu.`,
           type: 'success',
         });
       } catch (err: any) {
@@ -97,20 +103,25 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       patientAge: sat.patientAge || String(excel.patientAge || ''),
       patientGender: sat.patientGender || excel.patientGender,
       patientRoom: match.proposedRoom,
-      diagnosis: sat.diagnosis || excel.diagnosis,
+      diagnosis: sat.diagnosis || '', // Giữ chẩn đoán lâm sàng của vệ tinh (nếu có), không dùng ICD
       vitalSigns: sat.vitalSigns || excel.vitalSigns,
       medicalHistory: sat.medicalHistory || excel.medicalHistory,
       treatmentPlan: sat.treatmentPlan || excel.treatmentPlan,
     };
 
     const patientObj = mapClinicalRecordToPatient(mergedRecord, doctors, rooms, currentUser?.id);
-    patientObj.importantNotes = `Hồ sơ vệ tinh ghép nối từ Excel [File: ${fileName || 'Excel'}]`;
+    // Mức độ mặc định: CHƯA PHÂN LOẠI
+    patientObj.severity = 'UNCLASSIFIED';
+    if (excel.admissionDate) {
+      patientObj.admissionDate = excel.admissionDate;
+    }
+    patientObj.importantNotes = '';
 
     onImportPatientDirect(patientObj);
     setImportedIds((prev) => new Set(prev).add(sat.id));
 
     setNotification({
-      message: `Đã ghép nối và nhập bệnh nhân "${patientObj.fullName}" vào Phòng ${patientObj.roomNumber}!`,
+      message: `Đã ghép nối bệnh nhân "${patientObj.fullName}" vào Phòng ${patientObj.roomNumber} (Chưa phân loại)!`,
       type: 'success',
     });
     setTimeout(() => setNotification(null), 4000);
@@ -138,7 +149,24 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     const defaultDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     const ageNum = parseAgeNumber(excelRow.patientAge) || 60;
-    const roomClean = String(excelRow.patientRoom || '703').replace(/^(phòng|p\.?|buồng)\s*/i, '').trim();
+    const roomClean = excelRow.patientRoom || '703';
+
+    // Ngày nhập viện: ưu tiên ngày đã parse chuẩn xác từ file Excel
+    const finalAdmissionDate = excelRow.admissionDate && excelRow.admissionDate.trim() 
+      ? excelRow.admissionDate 
+      : defaultDateStr;
+
+    // Tìm bác sĩ phù hợp trong danh sách nếu file có ghi tên BS
+    let matchedDocId = currentUser?.id || doctors[0]?.id || '00979';
+    if (excelRow.doctorName) {
+      const docFound = doctors.find(d => 
+        excelRow.doctorName && (
+          d.name.toLowerCase().includes(excelRow.doctorName.toLowerCase()) || 
+          excelRow.doctorName.toLowerCase().includes(d.name.toLowerCase())
+        )
+      );
+      if (docFound) matchedDocId = docFound.id;
+    }
 
     const newPatient: Patient = {
       id: `EXCEL-${Date.now()}-${index}`,
@@ -146,19 +174,21 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       age: ageNum,
       gender: excelRow.patientGender?.toLowerCase().includes('nữ') ? 'Nữ' : 'Nam',
       dateOfBirth: `${now.getFullYear() - ageNum}-01-01`,
-      roomNumber: roomClean || '703',
+      roomNumber: roomClean,
       bedNumber: excelRow.bedNumber || 'Giường 01',
-      admissionDate: excelRow.admissionDate || defaultDateStr,
-      attendingDoctorId: currentUser?.id || doctors[0]?.id || '00979',
+      admissionDate: finalAdmissionDate,
+      attendingDoctorId: matchedDocId,
       primaryNurse: 'Điều dưỡng phụ trách phòng',
-      // Theo yêu cầu BS: Không lấy chẩn đoán trong file vì đó chỉ là chẩn đoán ICD hành chính
-      primaryDiagnosis: 'Chưa có chẩn đoán lâm sàng',
+      // Theo yêu cầu BS: Bỏ qua chẩn đoán ICD trong file Excel, để trống chờ bác sĩ khám và chẩn đoán lâm sàng
+      primaryDiagnosis: '',
       medicalHistory: excelRow.medicalHistory || undefined,
-      severity: 'STABLE',
+      // Theo yêu cầu BS: khi dán nhãn từ dữ liệu Excel, để CHƯA PHÂN LOẠI
+      severity: 'UNCLASSIFIED',
       admissionStatus: 'ADMITTED_TODAY',
       tags: [],
-      treatmentPlan: excelRow.treatmentPlan || 'Duy trì phác đồ điều trị nội khoa.',
-      importantNotes: `Nhập trực tiếp từ file Excel [${fileName || 'Excel'}] - Bỏ qua chẩn đoán ICD`,
+      // Bỏ hiển thị "Chăm sóc cấp 2, theo dõi sinh hiệu, ăn chế độ bệnh lý"
+      treatmentPlan: excelRow.treatmentPlan || '',
+      importantNotes: '',
       vitals: [],
       evolutions: [],
       labs: [],
@@ -170,7 +200,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     setImportedIds((prev) => new Set(prev).add(`excel-${index}`));
 
     setNotification({
-      message: `Đã nhập bệnh nhân "${newPatient.fullName}" vào Phòng ${newPatient.roomNumber} (Chưa gắn chẩn đoán ICD)!`,
+      message: `Đã nhập bệnh nhân "${newPatient.fullName}" vào Phòng ${newPatient.roomNumber} [Chưa phân loại • Bỏ ICD]!`,
       type: 'success',
     });
     setTimeout(() => setNotification(null), 4000);
@@ -188,14 +218,14 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       }
     });
     setNotification({
-      message: `Đã nhập thành công tất cả ${count} bệnh nhân vào hệ thống! (Đã tự động bỏ qua chẩn đoán ICD)`,
+      message: `Đã nhập thành công tất cả ${count} bệnh nhân vào hệ thống! (Mức độ: Chưa phân loại • Bỏ qua ICD)`,
       type: 'success',
     });
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Header - Phong cách BV Hùng Vương Gia Lai */}
         <div className="px-5 py-4 bg-[#0b4d8c] text-white flex items-center justify-between border-b border-[#083a69] shrink-0">
@@ -205,10 +235,10 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-black tracking-tight text-white uppercase">
-                Nhập File Excel & Ghép Nối Dữ Liệu
+                Nhập Dữ Liệu Excel / File Bệnh Án
               </h3>
               <p className="text-xs text-blue-100 mt-0.5">
-                Quét nhanh danh sách bệnh nhân từ Excel • Tự động bỏ qua mã ICD hành chính
+                Bóc tách ngày nhập viện chuẩn xác • Bỏ qua mã ICD hành chính • Mặc định: Chưa phân loại
               </p>
             </div>
           </div>
@@ -249,8 +279,8 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
         <div className="p-5 overflow-y-auto space-y-5 flex-1 bg-slate-50/70">
           
           {/* File Upload Box */}
-          <div className="bg-white p-5 rounded-2xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 transition-all text-center space-y-3 shadow-xs">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+          <div className="bg-white p-5 rounded-2xl border-2 border-dashed border-[#0b4d8c]/30 hover:border-[#0b4d8c] transition-all text-center space-y-3 shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0b4d8c] flex items-center justify-center mx-auto shadow-xs">
               <Upload className="w-6 h-6" />
             </div>
 
@@ -259,14 +289,14 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                 {fileName ? `File đã chọn: ${fileName}` : 'Kéo thả hoặc Bấm chọn file Excel (.xlsx, .xls, .csv)'}
               </h4>
               <p className="text-xs text-slate-500 mt-1 max-w-lg mx-auto">
-                File Excel chứa các cột: <strong className="text-emerald-800">Họ tên, Tuổi, Giới tính, Phòng/Buồng</strong>. Hệ thống sẽ tự động ghép với Bệnh nhân Vệ tinh thiếu phòng.
+                Hệ thống tự động nhận diện các cột: <strong className="text-slate-800">Họ tên, Ngày vào viện, Tuổi/Năm sinh, Giới tính, Phòng/Buồng</strong>.
               </p>
             </div>
 
             <div className="flex items-center justify-center gap-3">
-              <label className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center gap-2 active:scale-95">
+              <label className="px-5 py-2.5 bg-[#0b4d8c] hover:bg-[#083a69] text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center gap-2 active:scale-95">
                 <FileSpreadsheet className="w-4 h-4" />
-                <span>{fileName ? 'Chọn File Khác' : 'Chọn File Excel Từ Máy Tính'}</span>
+                <span>{fileName ? 'Chọn File Excel Khác' : 'Chọn File Excel (tr.xlsx)'}</span>
                 <input 
                   type="file" 
                   accept=".xlsx, .xls, .csv" 
@@ -275,6 +305,26 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                 />
               </label>
             </div>
+
+            {/* Hiển thị các cột phát hiện được từ file Excel */}
+            {detectedColumns.length > 0 && (
+              <div className="pt-2 border-t border-slate-100 text-left">
+                <div className="text-[11px] font-bold text-slate-600 mb-1.5 flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 text-[#0b4d8c]" />
+                  <span>Các cột phát hiện trong file ({detectedColumns.length} cột):</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+                  {detectedColumns.map((col, idx) => (
+                    <span 
+                      key={idx}
+                      className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10.5px] font-medium text-slate-700"
+                    >
+                      {col}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* SECTION 1: Matched Pairs with Pending Satellite Records */}
@@ -298,7 +348,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                 </button>
               </div>
 
-              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {matchedRecords.map((match, idx) => {
                   const sat = match.satelliteRecord;
                   const excel = match.matchedExcelRow;
@@ -360,33 +410,37 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Database className="w-4 h-4 text-[#0b4d8c]" />
                   <h4 className="text-sm font-black text-slate-900 uppercase">
-                    Danh Sách Đọc Từ File Excel ({excelRows.length} bệnh nhân)
+                    Danh Sách Quét Được Từ Excel ({excelRows.length} bệnh nhân)
                   </h4>
-                  <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    Đã bỏ qua mã ICD
+                  <span className="text-[11px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Mặc định: Chưa phân loại
+                  </span>
+                  <span className="text-[11px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    Đã bỏ qua chẩn đoán ICD
                   </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleImportAllExcelRows}
-                  className="px-3.5 py-1.5 bg-[#0b4d8c] hover:bg-[#083a69] text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <CheckCircle2 className="w-4 h-4" />
                   <span>Nhập tất cả dữ liệu quét được ({excelRows.length} BN)</span>
                 </button>
               </div>
 
-              <div className="overflow-x-auto max-h-72 overflow-y-auto border border-slate-200 rounded-xl">
+              <div className="overflow-x-auto max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="bg-slate-100 text-slate-700 font-extrabold uppercase sticky top-0 border-b border-slate-200">
                     <tr>
                       <th className="p-2.5">#</th>
+                      <th className="p-2.5">Mã BN</th>
                       <th className="p-2.5">Họ Và Tên</th>
-                      <th className="p-2.5">Tuổi</th>
-                      <th className="p-2.5">Giới</th>
-                      <th className="p-2.5">Phòng / Buồng</th>
-                      <th className="p-2.5">Mã Chẩn Đoán ICD (Bỏ qua)</th>
+                      <th className="p-2.5">Tuổi / Giới</th>
+                      <th className="p-2.5">Phòng / Giường</th>
+                      <th className="p-2.5">Ngày Vào Viện</th>
+                      <th className="p-2.5">Chẩn Đoán ICD (Bỏ qua)</th>
                       <th className="p-2.5 text-right">Thao Tác</th>
                     </tr>
                   </thead>
@@ -396,23 +450,49 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                       return (
                         <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
                           <td className="p-2.5 text-slate-400 font-mono">{idx + 1}</td>
-                          <td className="p-2.5 font-black text-slate-900 uppercase">{row.patientName}</td>
-                          <td className="p-2.5 font-semibold text-slate-700">{row.patientAge}</td>
-                          <td className="p-2.5 font-semibold text-slate-700">{row.patientGender}</td>
+                          <td className="p-2.5 font-mono text-slate-600">
+                            {row.patientCode || '---'}
+                          </td>
+                          <td className="p-2.5 font-black text-slate-900 uppercase">
+                            {row.patientName}
+                          </td>
+                          <td className="p-2.5 font-semibold text-slate-700">
+                            {row.patientAge}T • {row.patientGender}
+                          </td>
                           <td className="p-2.5">
                             <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-200 font-black text-blue-900">
                               Phòng {row.patientRoom}
                             </span>
+                            {row.bedNumber && (
+                              <span className="ml-1 text-[11px] text-slate-500 font-medium">
+                                ({row.bedNumber})
+                              </span>
+                            )}
                           </td>
-                          <td className="p-2.5 text-slate-400 italic truncate max-w-[150px] line-through">
-                            {row.diagnosis || 'Không có'}
+                          <td className="p-2.5 text-slate-700 font-medium">
+                            {row.admissionDate ? (
+                              <div className="flex items-center gap-1 text-emerald-800 font-bold">
+                                <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span>{row.admissionDate}</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 italic">Mặc định hôm nay</span>
+                            )}
+                            {row.admissionDateRaw && row.admissionDateRaw !== row.admissionDate && (
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                Gốc: {row.admissionDateRaw}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-2.5 text-slate-400 italic truncate max-w-[170px] line-through" title={row.icdDiagnosis || row.icdCode || 'Không có'}>
+                            {row.icdDiagnosis || row.icdCode || 'Không có mã ICD'}
                           </td>
                           <td className="p-2.5 text-right">
                             <button
                               type="button"
                               onClick={() => handleImportDirectFromExcel(row, idx)}
                               disabled={isImported}
-                              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                 isImported
                                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                   : 'bg-[#0b4d8c] hover:bg-[#083a69] text-white shadow-2xs active:scale-95'
@@ -434,8 +514,9 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
 
         {/* Footer */}
         <div className="px-5 py-3.5 bg-white border-t border-slate-200 flex items-center justify-between text-xs">
-          <div className="text-slate-500 font-medium">
-            Hỗ trợ cấu trúc cột: <strong className="text-slate-700">Họ tên, Tuổi, Giới tính, Phòng/Buồng, Chẩn đoán</strong>.
+          <div className="text-slate-500 font-medium flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>Mặc định mức độ: <strong>Chưa phân loại</strong> • Bỏ qua ICD • Không tự ý thêm y lệnh giả định.</span>
           </div>
 
           <button

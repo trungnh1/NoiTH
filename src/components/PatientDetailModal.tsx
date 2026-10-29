@@ -367,8 +367,16 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   const isModerate = patient.severity === 'MODERATE';
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6">
-      <div className="bg-white rounded-2xl w-full max-w-7xl w-[98vw] shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 overflow-hidden flex justify-end animate-in fade-in duration-150">
+      {/* Light backdrop so the patient list and names on the left stay clearly visible */}
+      <div 
+        onClick={onClose}
+        className="fixed inset-0 bg-slate-900/20 backdrop-blur-2xs transition-opacity cursor-pointer"
+        title="Bấm bên ngoài để đóng bảng chi tiết"
+      />
+
+      {/* Right-side sliding drawer panel */}
+      <div className="relative w-full sm:w-[580px] md:w-[680px] lg:w-[760px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
         
         {/* Modal Top Header */}
         <div className={`px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${

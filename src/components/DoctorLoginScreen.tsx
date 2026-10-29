@@ -108,22 +108,25 @@ export const DoctorLoginScreen: React.FC<DoctorLoginScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 text-slate-800">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/40 to-slate-200/80 flex flex-col justify-center items-center p-4 sm:p-6 text-slate-800">
       <div className="w-full max-w-md space-y-6">
         
         {/* Hospital Branding Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 shadow-xs text-xs font-bold uppercase tracking-wider">
-            <Building2 className="w-4 h-4 text-blue-600" />
-            <span>Bệnh Viện Hùng Vương Gia Lai</span>
+        <div className="text-center space-y-2.5">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0b4d8c] to-[#083a69] flex items-center justify-center text-white mx-auto shadow-md">
+            <Building2 className="w-8 h-8 text-blue-100" />
           </div>
 
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center justify-center gap-2">
-            <span>Khoa Nội Tổng Hợp - Tim Mạch</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white border border-blue-200 text-[#0b4d8c] shadow-xs text-xs font-black uppercase tracking-wider">
+            <span>Bệnh Viện Đa Khoa Hùng Vương Gia Lai</span>
+          </div>
+
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            Khoa Nội Tổng Hợp - Tim Mạch
           </h1>
 
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            Hệ thống Quản lý Bệnh nhân Nội trú & Diễn tiến Lâm sàng
+          <p className="text-xs sm:text-sm text-slate-600 font-semibold">
+            Hệ thống Quản lý Bệnh nhân Nội trú & Diễn biến Lâm sàng
           </p>
         </div>
 

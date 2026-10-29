@@ -289,35 +289,17 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
     onSaveEvolution(updatedPatient);
   };
 
-  // UI - Form structure inside column 1
-  // ...
-  // Inside the <div className="space-y-3.5"> of the form (around line 553):
-  
-  /* 1. Diễn biến lâm sàng trong ngày */
-  /* ... existing code ... */
-  
-  /* ADD THIS: */
-  /* 1.5 Ghi chú trong ngày */
-  <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
-    <label className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-       <FileText className="w-3.5 h-3.5 text-slate-500" />
-       <span className="uppercase text-slate-800 font-black">Ghi Chú Trong Ngày</span>
-    </label>
-    <textarea
-      rows={2}
-      value={dailyNotes}
-      onChange={(e) => setDailyNotes(e.target.value)}
-      placeholder="Ghi chú khác..."
-      className="w-full p-2 bg-white border border-slate-300 rounded-lg font-medium text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 leading-relaxed"
-    />
-  </div>
-
-
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
-      {/* POPUP RỘNG GẦN FULL MÀN HÌNH (max-w-[96vw] / max-w-7xl) */}
-      <div className="bg-white rounded-2xl w-full max-w-[96vw] xl:max-w-7xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[96vh]">
+    <div className="fixed inset-0 z-50 overflow-hidden flex justify-end animate-in fade-in duration-150">
+      {/* Light backdrop so the patient list and names on the left stay clearly visible */}
+      <div 
+        onClick={onClose}
+        className="fixed inset-0 bg-slate-900/20 backdrop-blur-2xs transition-opacity cursor-pointer"
+        title="Bấm bên ngoài để đóng"
+      />
+
+      {/* Right-side sliding drawer panel */}
+      <div className="relative w-full sm:w-[620px] md:w-[720px] lg:w-[840px] xl:w-[960px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
         
         {/* Header - Thông tin Bệnh Nhân Rõ Ràng & Khoa Học - Tone BV Hùng Vương Gia Lai */}
         <div className="px-6 py-3.5 bg-[#0b4d8c] text-white flex items-center justify-between border-b border-[#083a69] shrink-0">

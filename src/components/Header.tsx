@@ -3,7 +3,6 @@ import {
   Building2, 
   HeartPulse, 
   Wind, 
-  Eye, 
   UserPlus, 
   Cloud,
   CheckCircle2,
@@ -11,7 +10,13 @@ import {
   AlertCircle,
   LogOut,
   Database,
-  Settings
+  Settings,
+  ShieldCheck,
+  KeyRound,
+  LayoutGrid,
+  MapPin,
+  TableProperties,
+  UserCheck
 } from 'lucide-react';
 import { Patient, Doctor } from '../types/patient';
 import { SyncStatus } from '../services/firebaseSync';
@@ -59,107 +64,71 @@ export const Header: React.FC<HeaderProps> = ({
   const criticalCount = activePatients.filter((p) => p.severity === 'CRITICAL').length;
   const moderateCount = activePatients.filter((p) => p.severity === 'MODERATE').length;
   const stableCount = activePatients.filter((p) => p.severity === 'STABLE').length;
+  const dischargeTomorrowCount = activePatients.filter((p) => p.admissionStatus === 'DISCHARGE_TOMORROW').length;
   
   const o2Count = activePatients.filter((p) => p.tags.includes('O2') || p.tags.includes('O2_CANULA') || p.tags.includes('O2_MASK')).length;
   const vasopressorCount = activePatients.filter((p) => p.tags.includes('VASOPRESSOR')).length;
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-      <div className="w-full px-3 sm:px-6 py-2 space-y-2">
+    <header className="bg-white border-b border-slate-200 shadow-xs sticky top-0 z-30">
+      {/* Top Banner: BV Hùng Vương Gia Lai Branding & Navigation */}
+      <div className="bg-gradient-to-r from-[#0b4d8c] via-[#0e599e] to-[#083a69] text-white px-3 sm:px-6 py-2.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           
           {/* Brand: Logo & Department Name */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#0b4d8c] flex items-center justify-center text-white shadow-xs shrink-0">
-              <Building2 className="w-5 h-5" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-xs border border-white/20 flex items-center justify-center text-white shadow-inner shrink-0">
+              <Building2 className="w-6 h-6 text-blue-100" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-[#0b4d8c] bg-blue-50 px-2 py-0.5 rounded border border-blue-200 uppercase tracking-wide">
-                  BV Đa Khoa Hùng Vương Gia Lai
+                <span className="text-[11px] font-black text-blue-100 bg-white/15 px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-white/10">
+                  Bệnh Viện Đa Khoa Hùng Vương Gia Lai
                 </span>
+                
+                {/* Real-time Cloud Sync Pill */}
                 <button
                   type="button"
                   onClick={onManualPushToCloud}
-                  className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md border transition-all cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border transition-all cursor-pointer ${
                     syncStatus.errorMessage 
-                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      ? 'bg-rose-500/20 text-rose-200 border-rose-400/40 hover:bg-rose-500/30'
                       : syncStatus.connected 
-                      ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      : 'bg-slate-50 text-slate-500 border-slate-200'
+                      ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30 hover:bg-emerald-500/30'
+                      : 'bg-white/10 text-blue-200 border-white/15'
                   }`}
                   title="Bấm để đồng bộ lại dữ liệu lên Cloud Firestore"
                 >
-                  <Cloud className={`w-3 h-3 ${syncStatus.errorMessage ? 'text-rose-500' : syncStatus.connected ? 'text-emerald-600' : 'text-slate-400 animate-pulse'}`} />
+                  <Cloud className={`w-3.5 h-3.5 ${syncStatus.errorMessage ? 'text-rose-300' : syncStatus.connected ? 'text-emerald-300' : 'text-blue-300 animate-pulse'}`} />
                   <span>
-                    {syncStatus.errorMessage ? 'Lỗi Cloud' : syncStatus.connected ? 'Cloud online' : 'Đang kết nối...'}
+                    {syncStatus.errorMessage ? 'Lỗi Cloud' : isAutoSyncing ? 'Đang đồng bộ...' : syncStatus.connected ? 'Cloud online' : 'Kết nối...'}
                   </span>
+                  {lastAutoSyncTime && (
+                    <span className="text-[10px] text-blue-200/80 font-normal">({lastAutoSyncTime})</span>
+                  )}
                 </button>
-                {syncStatus.errorMessage && (
-                  <div className="text-[10px] text-rose-700 font-medium bg-rose-50 px-2 py-0.5 rounded border border-rose-200 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {syncStatus.errorMessage}
-                  </div>
-                )}
               </div>
-              <h1 className="text-sm sm:text-base font-extrabold text-[#0b4d8c] tracking-tight">
-                Khoa Nội Tổng Hợp - Tim Mạch
+
+              <h1 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2 mt-0.5">
+                <span>KHOA NỘI TỔNG HỢP - TIM MẠCH</span>
+                <span className="text-blue-300 font-normal text-xs sm:text-sm">| Hệ Thống Quản Lý Nội Trú</span>
               </h1>
             </div>
           </div>
 
-          {/* Center: Live Inpatient Status Counters - Tối giản */}
-          <div className="hidden md:flex items-center gap-1.5 text-xs">
-            <div className="bg-slate-100 text-slate-800 border border-slate-200 px-2.5 py-1 rounded-lg font-semibold text-xs flex items-center gap-1.5">
-              <span className="text-slate-500 font-normal">Nội trú:</span>
-              <span>{activePatients.length} BN</span>
-            </div>
-
-            <div className="bg-white border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${criticalCount > 0 ? 'bg-rose-500 animate-pulse' : 'bg-slate-300'}`} />
-              <span className={criticalCount > 0 ? 'font-bold text-rose-700' : 'text-slate-600'}>
-                Nặng: {criticalCount}
-              </span>
-            </div>
-
-            <div className="bg-white border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span>Vừa: {moderateCount}</span>
-            </div>
-
-            <div className="bg-white border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>Ổn: {stableCount}</span>
-            </div>
-
-            {o2Count > 0 && (
-              <div className="bg-white border border-slate-200 text-slate-700 px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-                <Wind className="w-3.5 h-3.5 text-slate-500" />
-                <span>Oxy: {o2Count}</span>
-              </div>
-            )}
-
-            {vasopressorCount > 0 && (
-              <div className="bg-white border border-slate-200 text-slate-700 px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-                <HeartPulse className="w-3.5 h-3.5 text-slate-500" />
-                <span>Vận mạch: {vasopressorCount}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Right Action Area */}
-          <div className="flex items-center gap-1.5">
+          {/* Right Action Area: Satellite Sync, Push Cloud, Doctor Profile & Logout */}
+          <div className="flex items-center gap-2">
             {onOpenSatelliteSync && (
               <button
                 type="button"
                 onClick={onOpenSatelliteSync}
-                className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-xs active:scale-95"
                 title="Lấy dữ liệu bệnh nhân từ Cloud Firestore lâm sàng vệ tinh"
               >
-                <Database className="w-3.5 h-3.5 text-slate-500" />
+                <Database className="w-3.5 h-3.5 text-blue-200" />
                 <span>Lấy dữ liệu BN</span>
                 {Boolean(pendingSatelliteCount && pendingSatelliteCount > 0) && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-slate-900 text-white font-bold text-[9px]">
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] animate-pulse">
                     {pendingSatelliteCount}
                   </span>
                 )}
@@ -170,10 +139,10 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onManualPushToCloud}
-                className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-2xs"
+                className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
                 title="Đẩy toàn bộ dữ liệu nội trú hiện tại lên Cloud Firestore"
               >
-                <Cloud className="w-3.5 h-3.5 text-slate-500" />
+                <Cloud className="w-3.5 h-3.5 text-blue-200" />
                 <span>Đẩy Cloud</span>
               </button>
             )}
@@ -182,36 +151,41 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenSettings}
-                className="p-1.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg transition-all cursor-pointer flex items-center justify-center active:scale-95"
+                className="p-1.5 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-lg transition-all cursor-pointer flex items-center justify-center active:scale-95"
                 title="Cài đặt giao diện & kích thước chữ"
               >
-                <Settings className="w-4 h-4 text-slate-600" />
+                <Settings className="w-4 h-4 text-blue-100" />
               </button>
             )}
 
-            {/* Current Logged-in Doctor badge & Change Password & Logout */}
+            {/* Current Doctor Account Card */}
             {currentDoctor && (
-              <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
+              <div className="flex items-center gap-1.5 pl-2 border-l border-white/20">
                 <div 
-                  className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 px-2 py-1 rounded-lg text-xs border border-slate-200 transition-colors"
-                  title={`Bác sĩ: ${currentDoctor.name} (Mã BS: ${currentDoctor.id})`}
+                  className="flex items-center gap-2 bg-white/15 hover:bg-white/20 px-2.5 py-1 rounded-lg text-xs border border-white/20 transition-colors"
+                  title={`Bác sĩ điều trị: ${currentDoctor.name} (Mã: ${currentDoctor.id})`}
                 >
-                  <div className="w-5 h-5 rounded-md bg-slate-800 flex items-center justify-center text-white text-[10px] font-bold">
+                  <div className="w-6 h-6 rounded-full bg-white text-[#0b4d8c] flex items-center justify-center text-xs font-black shadow-xs">
                     {formatDoctorShortName(currentDoctor.name).slice(0, 1)}
                   </div>
-                  <span className="font-bold text-slate-800 text-xs truncate max-w-[110px]">
-                    BS. {formatDoctorShortName(currentDoctor.name)}
-                  </span>
+                  <div className="text-left">
+                    <div className="font-extrabold text-white text-xs leading-none">
+                      BS. {formatDoctorShortName(currentDoctor.name)}
+                    </div>
+                    <div className="text-[10px] text-blue-200 font-medium leading-tight">
+                      Mã: {currentDoctor.id}
+                    </div>
+                  </div>
                 </div>
 
                 {onOpenChangePassword && (
                   <button
                     type="button"
                     onClick={onOpenChangePassword}
-                    className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer text-xs font-medium"
+                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-blue-100 hover:text-white border border-white/20 transition-all cursor-pointer"
                     title="Đổi mật khẩu tài khoản"
                   >
-                    <span>Đổi MK</span>
+                    <KeyRound className="w-3.5 h-3.5" />
                   </button>
                 )}
 
@@ -219,7 +193,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     type="button"
                     onClick={onLogout}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer flex items-center gap-1 text-xs"
+                    className="p-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-600 text-rose-100 hover:text-white border border-rose-400/30 transition-all cursor-pointer"
                     title="Đăng xuất khỏi hệ thống"
                   >
                     <LogOut className="w-3.5 h-3.5" />
@@ -227,65 +201,128 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
               </div>
             )}
-
           </div>
 
         </div>
+      </div>
 
-        {/* View Switcher Navigation Bar - Tone BV Hùng Vương Gia Lai */}
-        <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs">
-          <div className="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200 text-xs font-medium gap-0.5">
-            <button
-              type="button"
-              onClick={() => onViewChange('detailed_list')}
-              className={`px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeView === 'detailed_list'
-                  ? 'bg-[#0b4d8c] text-white font-semibold shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-              }`}
-            >
-              <span>Danh Sách Bệnh Nhân</span>
-            </button>
+      {/* Sub-Header: Live Clinical Counters & Navigation Tabs */}
+      <div className="px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-3 bg-slate-50/90 border-t border-slate-100">
+        
+        {/* Navigation Tabs */}
+        <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 text-xs font-semibold shadow-2xs gap-1">
+          <button
+            type="button"
+            onClick={() => onViewChange('detailed_list')}
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeView === 'detailed_list'
+                ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
+                : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-blue-50/60'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>Danh Sách Bệnh Nhân</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => onViewChange('map')}
-              className={`px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeView === 'map'
-                  ? 'bg-[#0b4d8c] text-white font-semibold shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-              }`}
-            >
-              <span>Bảng Buồng Phòng</span>
-            </button>
+          <button
+            type="button"
+            onClick={() => onViewChange('map')}
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeView === 'map'
+                ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
+                : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-blue-50/60'
+            }`}
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            <span>Bảng Buồng Phòng</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => onViewChange('table')}
-              className={`px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeView === 'table'
-                  ? 'bg-[#0b4d8c] text-white font-semibold shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-              }`}
-            >
-              <span>Bảng Lưới Chi Tiết</span>
-            </button>
+          <button
+            type="button"
+            onClick={() => onViewChange('table')}
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeView === 'table'
+                ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
+                : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-blue-50/60'
+            }`}
+          >
+            <TableProperties className="w-3.5 h-3.5" />
+            <span>Bảng Lưới Chi Tiết</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => onViewChange('doctors')}
-              className={`px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeView === 'doctors'
-                  ? 'bg-[#0b4d8c] text-white font-semibold shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-              }`}
-            >
-              <span>Phân Công Bác Sĩ Điều Trị</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => onViewChange('doctors')}
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeView === 'doctors'
+                ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
+                : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-blue-50/60'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>Phân Công Bác Sĩ</span>
+          </button>
         </div>
+
+        {/* Live Clinical Summary Indicators */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          
+          {/* Tổng Nội Trú */}
+          <div className="bg-white text-slate-800 border border-slate-200 px-3 py-1 rounded-lg font-bold shadow-2xs flex items-center gap-1.5">
+            <span className="text-slate-500 font-medium">Nội trú:</span>
+            <span className="text-[#0b4d8c] text-sm font-black">{activePatients.length}</span>
+            <span className="text-slate-500 text-[11px]">BN</span>
+          </div>
+
+          {/* Ca Nặng */}
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-1 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5">
+            <span className={`w-2.5 h-2.5 rounded-full ${criticalCount > 0 ? 'bg-rose-600 animate-ping' : 'bg-rose-400'}`} />
+            <span>Nặng:</span>
+            <span className="text-rose-700 text-sm font-black">{criticalCount}</span>
+          </div>
+
+          {/* Ca Vừa */}
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            <span>Vừa:</span>
+            <span className="text-amber-800 text-sm font-black">{moderateCount}</span>
+          </div>
+
+          {/* Ca Ổn */}
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <span>Ổn:</span>
+            <span className="text-emerald-800 text-sm font-black">{stableCount}</span>
+          </div>
+
+          {/* Dự RV mai */}
+          {dischargeTomorrowCount > 0 && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-1 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <span>Dự RV mai:</span>
+              <span className="text-blue-800 text-sm font-black">{dischargeTomorrowCount}</span>
+            </div>
+          )}
+
+          {/* Thở Oxy */}
+          {o2Count > 0 && (
+            <div className="bg-cyan-50 border border-cyan-200 text-cyan-800 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-2xs flex items-center gap-1">
+              <Wind className="w-3.5 h-3.5 text-cyan-600" />
+              <span>Oxy: <strong className="text-cyan-900">{o2Count}</strong></span>
+            </div>
+          )}
+
+          {/* Vận Mạch */}
+          {vasopressorCount > 0 && (
+            <div className="bg-pink-50 border border-pink-200 text-pink-800 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-2xs flex items-center gap-1">
+              <HeartPulse className="w-3.5 h-3.5 text-pink-600 animate-pulse" />
+              <span>Vận mạch: <strong className="text-pink-900">{vasopressorCount}</strong></span>
+            </div>
+          )}
+
+        </div>
+
       </div>
     </header>
   );
 };
-

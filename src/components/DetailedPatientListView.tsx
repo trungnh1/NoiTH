@@ -25,6 +25,7 @@ import {
   Database
 } from 'lucide-react';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
+import { parseExcelAdmissionDate } from '../utils/excelParser';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
 export const GROUP_1_ROOM_NUMBERS = [
@@ -130,17 +131,20 @@ export function formatCombinedDiagnosis(patient: { primaryDiagnosis: string; sec
 export function formatAdmissionDateShort(dateStr: string): string {
   if (!dateStr) return 'NV: --/--';
   try {
+    // Chuẩn hóa trước nếu là định dạng Excel hoặc chuỗi ngày đặc thù
+    const normalized = parseExcelAdmissionDate(dateStr).formatted || dateStr;
+
     // DD/MM/YYYY or DD-MM-YYYY
-    const dmy = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})/);
+    const dmy = normalized.match(/^(\d{1,2})[\/\-](\d{1,2})/);
     if (dmy) {
       return `NV: ${dmy[1].padStart(2, '0')}/${dmy[2].padStart(2, '0')}`;
     }
     // YYYY-MM-DD
-    const ymd = dateStr.match(/^\d{4}[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    const ymd = normalized.match(/^\d{4}[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     if (ymd) {
       return `NV: ${ymd[2].padStart(2, '0')}/${ymd[1].padStart(2, '0')}`;
     }
-    const d = new Date(dateStr.replace(' ', 'T'));
+    const d = new Date(normalized.replace(' ', 'T'));
     if (!isNaN(d.getTime())) {
       const dd = String(d.getDate()).padStart(2, '0');
       const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -149,7 +153,7 @@ export function formatAdmissionDateShort(dateStr: string): string {
   } catch {
     // fallback
   }
-  return `NV: ${dateStr.slice(0, 5)}`;
+  return `NV: ${String(dateStr).slice(0, 5)}`;
 }
 
 /**
@@ -159,12 +163,14 @@ export function formatAdmissionDateShort(dateStr: string): string {
 export function calculateTreatmentDays(admissionDateStr: string): { days: number; label: string } {
   if (!admissionDateStr) return { days: 1, label: 'ngày ĐT: 01' };
   try {
+    const normalized = parseExcelAdmissionDate(admissionDateStr).formatted || admissionDateStr;
     let admDate: Date;
-    if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(admissionDateStr)) {
-      const parts = admissionDateStr.split(/[ /:]/);
+
+    if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(normalized)) {
+      const parts = normalized.split(/[ /\-:]/);
       admDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
     } else {
-      admDate = new Date(admissionDateStr.replace(' ', 'T'));
+      admDate = new Date(normalized.replace(' ', 'T'));
     }
 
     if (isNaN(admDate.getTime())) return { days: 1, label: 'ngày ĐT: 01' };
@@ -211,6 +217,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const [statusFilter, setStatusFilter] = useState<'ALL' | SeverityLevel | 'DISCHARGE_TODAY' | 'DISCHARGE_TOMORROW'>('ALL');
   const [doctorFilter, setDoctorFilter] = useState<string>('ALL');
   const [notification, setNotification] = useState<string | null>(null);
+  const [hoveredPatientId, setHoveredPatientId] = useState<string | null>(null);
 
   // Group 1 doctors (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)
   const group1Doctors = useMemo(() => {
@@ -279,6 +286,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
           if (p.admissionStatus !== 'DISCHARGE_TODAY') return false;
         } else if (statusFilter === 'DISCHARGE_TOMORROW') {
           if (p.admissionStatus !== 'DISCHARGE_TOMORROW') return false;
+        } else if (statusFilter === 'UNCLASSIFIED') {
+          if (p.severity && p.severity !== 'UNCLASSIFIED') return false;
         } else {
           if (p.severity !== statusFilter) return false;
         }
@@ -429,99 +438,103 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         </div>
       )}
 
-      {/* Top Action Bar & Quick Filters (Ultra-Compact) */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs px-3 py-2 space-y-2">
+      {/* Top Action Bar & Quick Filters */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3.5">
         
-        {/* Row 1: Title, Clinical Group Selector & Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        {/* Row 1: Clinical Group Selector & Primary Actions */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
           
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-sm font-black text-slate-900 tracking-tight">
-              Danh Sách Bệnh Nhân
-            </h2>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-6 bg-[#0b4d8c] rounded-full" />
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                Danh Sách Buồng Bệnh
+              </h2>
+            </div>
 
             {/* Clinical Group Tabs (Nhóm 1, Tim Mạch, Nhóm 2, Tất cả) */}
-            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-medium gap-0.5">
+            <div className="inline-flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 text-xs font-semibold gap-1">
               <button
                 type="button"
                 onClick={() => setSelectedGroup('GROUP_1')}
-                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   selectedGroup === 'GROUP_1'
-                    ? 'bg-[#0b4d8c] text-white font-bold shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
+                    : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
                 }`}
                 title="Nhóm 1: Phòng 703 - 731 & 733 (16 phòng)"
               >
-                Nhóm 1 (16P)
+                <span>Nhóm 1 (16P)</span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedGroup('CARDIO')}
-                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   selectedGroup === 'CARDIO'
-                    ? 'bg-[#0b4d8c] text-white font-bold shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
+                    : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
                 }`}
                 title="Nhóm Tim Mạch: Phòng 735 - 745 (6 phòng)"
               >
-                Tim Mạch (6P)
+                <span>Tim Mạch (6P)</span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedGroup('GROUP_2')}
-                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   selectedGroup === 'GROUP_2'
-                    ? 'bg-[#0b4d8c] text-white font-bold shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
+                    : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
                 }`}
                 title="Nhóm 2: Phòng 747 - 757 (6 phòng)"
               >
-                Nhóm 2 (6P)
+                <span>Nhóm 2 (6P)</span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedGroup('ALL')}
-                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   selectedGroup === 'ALL'
-                    ? 'bg-[#0b4d8c] text-white font-bold shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
+                    : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
                 }`}
                 title="Tất cả các phòng trong khoa (28 phòng)"
               >
-                Tất cả (28P)
+                <span>Tất cả (28P)</span>
               </button>
             </div>
 
-            <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-[#0b4d8c] border border-blue-200 font-bold">
+            <span className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 text-[#0b4d8c] border border-blue-200 font-black">
               {activeGroupPatients.length} BN
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {onOpenPrintModal && (
               <button
                 type="button"
                 onClick={onOpenPrintModal}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                 title="In danh sách bệnh nhân"
               >
-                <Printer className="w-3 h-3 text-slate-500" />
+                <Printer className="w-3.5 h-3.5 text-slate-600" />
                 <span>In DS</span>
               </button>
             )}
 
-            {/* Nút Ẩn / Hiện phòng trống */}
+            {/* Toggle Empty Rooms */}
             <button
               type="button"
               onClick={() => setShowEmptyRooms(!showEmptyRooms)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1.5 ${
                 !showEmptyRooms 
-                  ? 'bg-[#0b4d8c] text-white border-[#0b4d8c] shadow-2xs' 
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                  ? 'bg-[#0b4d8c] text-white border-[#0b4d8c] shadow-xs' 
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
               }`}
               title={showEmptyRooms ? 'Ẩn các buồng phòng hiện chưa có bệnh nhân' : 'Hiển thị tất cả các buồng phòng'}
             >
-              <Users className="w-3 h-3 text-slate-500" />
+              <Users className="w-3.5 h-3.5 text-current" />
               <span>{showEmptyRooms ? 'Ẩn phòng trống' : `Hiện phòng trống (${currentGroupRoomNumbers.length})`}</span>
             </button>
 
@@ -529,13 +542,13 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={onOpenSatelliteSync}
-                className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-medium text-xs rounded-lg shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-98"
+                className="px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-[#0b4d8c] border border-blue-200 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-98"
                 title="Lấy dữ liệu bệnh nhân tự động từ Cloud Firestore lâm sàng vệ tinh"
               >
-                <Database className="w-3 h-3 text-slate-500" />
+                <Database className="w-3.5 h-3.5 text-[#0b4d8c]" />
                 <span>Lấy dữ liệu BN</span>
                 {Boolean(pendingSatelliteCount && pendingSatelliteCount > 0) && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-[#0b4d8c] text-white font-bold text-[9px]">
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white font-black text-[10px]">
                     {pendingSatelliteCount}
                   </span>
                 )}
@@ -545,217 +558,162 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
             <button
               type="button"
               onClick={onOpenNewPatient}
-              className="px-3 py-1 bg-[#0b4d8c] hover:bg-[#083a69] text-white font-bold text-xs rounded-lg shadow-xs transition-all flex items-center gap-1 cursor-pointer active:scale-98"
+              className="px-3.5 py-1.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white font-black text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-98"
             >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>+ Nhập BN</span>
+              <UserPlus className="w-4 h-4" />
+              <span>+ Tiếp Nhận BN Mới</span>
             </button>
           </div>
         </div>
 
-        {/* Row 2: Doctor Chips (Compact) & Search */}
-        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-          
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">BS:</span>
-            {activeDoctorsWithCounts.map((docItem) => {
-              const isSelected = doctorFilter === docItem.id;
-              const parts = docItem.name.trim().split(/\s+/);
-              const shortName = parts.length > 2 && /bình chi/i.test(docItem.name) 
-                ? 'Bình Chi' 
-                : parts[parts.length - 1];
+        {/* Row 2: Doctor Filter Chips */}
+        <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-black text-slate-500 uppercase tracking-wide flex items-center gap-1">
+            <Stethoscope className="w-3.5 h-3.5 text-[#0b4d8c]" />
+            Bác sĩ:
+          </span>
+          {activeDoctorsWithCounts.map((docItem) => {
+            const isSelected = doctorFilter === docItem.id;
+            const parts = docItem.name.trim().split(/\s+/);
+            const shortName = parts.length > 2 && /bình chi/i.test(docItem.name) 
+              ? 'Bình Chi' 
+              : parts[parts.length - 1];
 
-              return (
-                <button
-                  key={docItem.id}
-                  type="button"
-                  onClick={() => setDoctorFilter(isSelected ? 'ALL' : docItem.id)}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer border ${
-                    isSelected 
-                      ? 'bg-[#0b4d8c] text-white border-[#0b4d8c] shadow-2xs' 
-                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                  }`}
-                >
-                  <span>{shortName}</span>
-                  <span className={`px-1 py-0.2 rounded text-[9px] font-bold ${
-                    isSelected ? 'bg-[#083a69] text-white' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {docItem.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-
+            return (
+              <button
+                key={docItem.id}
+                type="button"
+                onClick={() => setDoctorFilter(isSelected ? 'ALL' : docItem.id)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                  isSelected 
+                    ? 'bg-[#0b4d8c] text-white border-[#0b4d8c] shadow-xs' 
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+              >
+                <span>BS. {shortName}</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+                }`}>
+                  {docItem.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Filter Bar */}
-        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+        {/* Row 3: Search Bar & Severity Filters */}
+        <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
           
           {/* Search Box */}
-          <div className="relative flex-1 min-w-[220px] max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative flex-1 min-w-[240px] max-w-lg">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Tìm theo tên bệnh nhân, phòng, chẩn đoán, kế hoạch, bác sĩ..."
-              className="w-full pl-9 pr-8 py-1.5 bg-slate-50 hover:bg-slate-100/60 focus:bg-white text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-400 font-medium transition-all"
+              className="w-full pl-10 pr-9 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#0b4d8c]/30 font-medium transition-all"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-0.5 cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 cursor-pointer"
               >
                 ✕
               </button>
             )}
           </div>
 
-          {/* Filter Pills - Tối giản */}
+          {/* Severity & Status Filters */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            
-            {/* Status & Severity Filters */}
-            <div className="inline-flex flex-wrap items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 gap-0.5">
-              <button
-                type="button"
-                onClick={() => setStatusFilter('ALL')}
-                className={`px-2 py-0.5 rounded-md font-medium text-xs transition-colors cursor-pointer ${
-                  statusFilter === 'ALL'
-                    ? 'bg-white text-slate-900 font-bold shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Tất cả ({activeGroupPatients.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('CRITICAL')}
-                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
-                  statusFilter === 'CRITICAL'
-                    ? 'bg-white text-rose-700 font-bold shadow-2xs border border-rose-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                <span>Nặng</span>
-                <span className="text-[10px] text-slate-400 font-semibold">
-                  ({criticalCount})
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('MODERATE')}
-                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
-                  statusFilter === 'MODERATE'
-                    ? 'bg-white text-amber-800 font-bold shadow-2xs border border-amber-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                <span>Vừa</span>
-                <span className="text-[10px] text-slate-400 font-semibold">
-                  ({moderateCount})
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('STABLE')}
-                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
-                  statusFilter === 'STABLE'
-                    ? 'bg-white text-emerald-800 font-bold shadow-2xs border border-emerald-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span>Ổn định</span>
-                <span className="text-[10px] text-slate-400 font-semibold">
-                  ({stableCount})
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('UNCLASSIFIED')}
-                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
-                  statusFilter === 'UNCLASSIFIED'
-                    ? 'bg-white text-slate-800 font-bold shadow-2xs border border-slate-300'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>Chưa phân loại</span>
-                <span className="text-[10px] text-slate-400 font-semibold">
-                  ({unclassifiedCount})
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('DISCHARGE_TODAY')}
-                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
-                  statusFilter === 'DISCHARGE_TODAY'
-                    ? 'bg-white text-purple-700 font-bold shadow-2xs border border-purple-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>RV hôm nay</span>
-                <span className="text-[10px] text-slate-400 font-semibold">
-                  ({dischargeTodayCount})
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('DISCHARGE_TOMORROW')}
-                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
-                  statusFilter === 'DISCHARGE_TOMORROW'
-                    ? 'bg-white text-blue-700 font-bold shadow-2xs border border-blue-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>Dự kiến RV mai</span>
-                <span className="text-[10px] text-slate-400 font-semibold">
-                  ({dischargeTomorrowCount})
-                </span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer border ${
+                statusFilter === 'ALL'
+                  ? 'bg-[#0b4d8c] text-white border-[#0b4d8c] shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              Tất cả ({activeGroupPatients.length})
+            </button>
 
-            {/* Doctor Select Filter - Highlighting Nhóm 1 Doctors */}
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs">
-              <Stethoscope className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <select
-                value={doctorFilter}
-                onChange={(e) => setDoctorFilter(e.target.value)}
-                className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer"
-              >
-                <option value="ALL">Lọc theo Bác sĩ</option>
-                <optgroup label="Bác sĩ Nhóm 1">
-                  {group1Doctors
-                    .filter((d) => activeGroupPatients.some((p) => p.attendingDoctorId === d.id || (d.id === '00708' && p.attendingDoctorId === 'DOC-NGOC')))
-                    .map((d) => (
-                      <option key={d.id} value={d.id}>
-                        BS. {formatDoctorShortName(d.name)}
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="Bác sĩ Nhóm 2">
-                  {group2Doctors
-                    .filter((d) => activeGroupPatients.some((p) => p.attendingDoctorId === d.id))
-                    .map((d) => (
-                      <option key={d.id} value={d.id}>
-                        BS. {formatDoctorShortName(d.name)}
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="Bác sĩ Tim Mạch">
-                  {cardioDoctors
-                    .filter((d) => activeGroupPatients.some((p) => p.attendingDoctorId === d.id))
-                    .map((d) => (
-                      <option key={d.id} value={d.id}>
-                        BS. {formatDoctorShortName(d.name)}
-                      </option>
-                    ))}
-                </optgroup>
-              </select>
-            </div>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('CRITICAL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
+                statusFilter === 'CRITICAL'
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                  : 'bg-white text-rose-700 border-rose-200 hover:bg-rose-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+              <span>Nặng ({criticalCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter('MODERATE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
+                statusFilter === 'MODERATE'
+                  ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                  : 'bg-white text-amber-800 border-amber-200 hover:bg-amber-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span>Vừa ({moderateCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter('STABLE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
+                statusFilter === 'STABLE'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                  : 'bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>Ổn định ({stableCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter('UNCLASSIFIED')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
+                statusFilter === 'UNCLASSIFIED'
+                  ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-slate-400" />
+              <span>Chưa phân loại ({unclassifiedCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter('DISCHARGE_TOMORROW')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
+                statusFilter === 'DISCHARGE_TOMORROW'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              <span>Dự RV mai ({dischargeTomorrowCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter('DISCHARGE_TODAY')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
+                statusFilter === 'DISCHARGE_TODAY'
+                  ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                  : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
+              }`}
+            >
+              <span>RV hôm nay ({dischargeTodayCount})</span>
+            </button>
 
             {(searchTerm || statusFilter !== 'ALL' || doctorFilter !== 'ALL') && (
               <button
@@ -764,12 +722,11 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                   setStatusFilter('ALL');
                   setDoctorFilter('ALL');
                 }}
-                className="text-xs text-rose-600 hover:underline font-bold px-1 cursor-pointer"
+                className="text-xs text-rose-600 hover:underline font-bold px-2 py-1 cursor-pointer"
               >
                 Xóa lọc
               </button>
             )}
-
           </div>
 
         </div>
@@ -777,43 +734,46 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
       {/* Main Vertical List of Rooms */}
       {roomGroups.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 shadow-xs">
-          <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-          <p className="font-extrabold text-slate-700 text-sm">
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 shadow-sm">
+          <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <p className="font-extrabold text-slate-800 text-base">
             Không tìm thấy bệnh nhân nào trong {selectedGroup === 'CARDIO' ? 'Nhóm Tim Mạch' : selectedGroup === 'GROUP_2' ? 'Nhóm 2' : selectedGroup === 'ALL' ? 'Toàn Khoa' : 'Nhóm 1'} theo bộ lọc hiện tại.
           </p>
-          <p className="text-xs text-slate-400 mt-1">
-            Bấm "Hiện phòng trống" để hiển thị tất cả các buồng phòng hoặc bấm "+ Nhập BN".
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Bấm "Hiện phòng trống" để hiển thị tất cả các buồng phòng hoặc bấm "+ Tiếp Nhận BN Mới".
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-6">
           {roomGroups.map((group) => {
             return (
               <div 
                 key={group.roomNumber}
-                className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden"
+                className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs overflow-hidden"
               >
-                {/* 1. Header: Số phòng - Bs điều trị - Tone BV Hùng Vương Gia Lai */}
-                <div className="bg-[#0b4d8c] text-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 border-b border-[#083a69]">
+                {/* 1. Header: Số phòng - Bs điều trị - Màu nhạt nhẹ nhàng, thanh thoát, không đóng khung tối */}
+                <div className="bg-slate-50/80 text-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100">
                   
                   {/* Left: Phòng & Chọn nhanh Bác Sĩ Điều Trị */}
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <span className="text-white font-black text-sm sm:text-base tracking-tight">
-                      Phòng {group.roomNumber}
-                    </span>
-                    <span className="text-blue-200/60 font-light">•</span>
+                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#0b4d8c]" />
+                      <span className="text-[#0b4d8c] font-black text-base sm:text-lg tracking-tight">
+                        Phòng {group.roomNumber}
+                      </span>
+                    </div>
+                    <span className="text-slate-300 font-light">•</span>
                     
                     {/* Quick Doctor Selector */}
-                    <div className="flex items-center gap-1.5 bg-[#083a69] border border-blue-300/30 hover:border-blue-200/50 rounded-md px-2 py-1 transition-colors">
-                      <Stethoscope className="w-3.5 h-3.5 text-blue-200 shrink-0" />
-                      <span className="text-blue-200 text-[11px] font-normal hidden sm:inline">
-                        BS điều trị:
+                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-blue-300 rounded-lg px-2.5 py-1 transition-colors shadow-2xs">
+                      <Stethoscope className="w-4 h-4 text-[#0b4d8c] shrink-0" />
+                      <span className="text-slate-500 text-xs font-semibold hidden sm:inline">
+                        BS phụ trách:
                       </span>
                       <select
                         value={group.assignedDoctorId || ''}
                         onChange={(e) => handleQuickAssignDoctor(group.roomNumber, e.target.value)}
-                        className="bg-transparent text-white font-semibold text-xs focus:outline-hidden cursor-pointer"
+                        className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer"
                         title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber}`}
                       >
                         <option value="" className="text-slate-900 bg-white">-- Chọn BS điều trị --</option>
@@ -842,25 +802,25 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     </div>
 
                     {group.assignedDoctorName && (
-                      <span className="text-[11px] text-blue-100 font-medium hidden md:inline">
-                        (Phụ trách)
+                      <span className="text-xs text-[#0b4d8c] font-bold bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md hidden md:inline">
+                        {group.assignedDoctorName}
                       </span>
                     )}
                   </div>
 
                   {/* Right: Số lượng bệnh nhân & Nút + Thêm BN */}
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-[#083a69] text-blue-100 text-xs font-bold border border-blue-300/20">
+                    <span className="px-2.5 py-1 rounded-lg bg-white text-slate-700 text-xs font-bold border border-slate-200 shadow-2xs">
                       {group.patients.length} bệnh nhân
                     </span>
                     {onOpenNewPatientForRoom && (
                       <button
                         type="button"
                         onClick={() => onOpenNewPatientForRoom(group.roomNumber)}
-                        className="px-2.5 py-1 rounded-md bg-[#083a69] hover:bg-[#062c52] text-white text-xs font-bold border border-blue-300/30 flex items-center gap-1 transition-colors cursor-pointer"
+                        className="px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
                         title={`Tiếp nhận bệnh nhân mới vào Phòng ${group.roomNumber}`}
                       >
-                        <Plus className="w-3.5 h-3.5" />
+                        <Plus className="w-3.5 h-3.5 text-emerald-700" />
                         <span>Thêm BN</span>
                       </button>
                     )}
@@ -869,151 +829,277 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                 {/* 2. 3-Column Patient Grid: 3 cột là 3 bệnh nhân, 6 bệnh nhân là 2 dòng 3 cột */}
                 {group.patients.length === 0 ? (
-                  <div className="p-6 bg-slate-50/50 text-center">
-                    <p className="text-xs text-slate-400 font-medium mb-2">
+                  <div className="p-8 bg-slate-50/70 text-center">
+                    <p className="text-xs sm:text-sm text-slate-500 font-medium mb-3">
                       Phòng {group.roomNumber} hiện chưa có bệnh nhân nội trú.
                     </p>
                     {onOpenNewPatientForRoom && (
                       <button
                         type="button"
                         onClick={() => onOpenNewPatientForRoom(group.roomNumber)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-slate-300 text-slate-700 bg-white hover:bg-slate-100 text-xs font-medium transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-dashed border-[#0b4d8c]/40 text-[#0b4d8c] bg-white hover:bg-blue-50 text-xs sm:text-sm font-bold transition-colors cursor-pointer shadow-2xs"
                       >
-                        <Plus className="w-3.5 h-3.5" />
+                        <Plus className="w-4 h-4" />
                         <span>+ Tiếp nhận bệnh nhân vào Phòng {group.roomNumber}</span>
                       </button>
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 p-3.5 bg-slate-50/60">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-100/50">
                     {group.patients.map((patient) => {
                       const isCritical = patient.severity === 'CRITICAL';
                       const isModerate = patient.severity === 'MODERATE';
                       const isDischargeTomorrow = patient.admissionStatus === 'DISCHARGE_TOMORROW';
+                      const isUnclassified = patient.severity === 'UNCLASSIFIED' || !patient.severity;
+                      const isStable = patient.severity === 'STABLE';
                       const treatmentInfo = calculateTreatmentDays(patient.admissionDate);
                       
-                      // Màu sắc tên Bệnh Nhân phản ánh trực quan tình trạng bệnh theo chuẩn lâm sàng
+                      // Màu sắc tên Bệnh Nhân theo tình trạng bệnh lâm sàng
                       const nameColorClass = isCritical
-                        ? 'text-rose-700 font-black'
+                        ? 'text-rose-700'
                         : isModerate
-                        ? 'text-amber-700 font-black'
+                        ? 'text-amber-700'
                         : isDischargeTomorrow
-                        ? 'text-blue-700 font-black'
-                        : 'text-[#0b4d8c] font-black';
+                        ? 'text-blue-700'
+                        : isUnclassified
+                        ? 'text-slate-800'
+                        : 'text-emerald-800';
 
-                      // Combined unified diagnosis (tất cả các chẩn đoán, không phân biệt bệnh chính / bệnh kèm)
+                      // Card left border accent
+                      const cardBorderAccentClass = isCritical
+                        ? 'border-l-[6px] border-l-rose-500 ring-1 ring-rose-200/70'
+                        : isModerate
+                        ? 'border-l-[6px] border-l-amber-500 ring-1 ring-amber-200/50'
+                        : isDischargeTomorrow
+                        ? 'border-l-[6px] border-l-blue-500 ring-1 ring-blue-200/50'
+                        : isUnclassified
+                        ? 'border-l-[6px] border-l-slate-400 ring-1 ring-slate-200/50'
+                        : 'border-l-[6px] border-l-emerald-500 ring-1 ring-emerald-200/50';
+
+                      // Combined unified diagnosis
                       const combinedDiagnosis = formatCombinedDiagnosis(patient);
 
-                      // Plan of treatment: explicit plan or newest evolution action
+                      // Plan of treatment: explicit plan or newest evolution action (BỎ hoàn toàn dòng Chăm sóc cấp 2 mặc định)
                       const currentPlan = patient.treatmentPlan || 
                         patient.evolutions?.[0]?.treatmentAction || 
                         patient.initialMedicationsText || 
-                        'Chăm sóc cấp 2, theo dõi sinh hiệu, ăn chế độ bệnh lý.';
+                        '';
 
                       // Notes and handover:
                       const currentNotes = patient.importantNotes || 
                         patient.handoverNotes || 
-                        (patient.evolutions?.[0]?.clinicalNote ? `Diễn biến: ${patient.evolutions[0].clinicalNote}` : 'Chưa có ghi chú đặc biệt');
+                        (patient.evolutions?.[0]?.clinicalNote ? `Diễn biến: ${patient.evolutions[0].clinicalNote}` : '');
 
                       return (
                         <div
                           key={patient.id}
-                          className={`bg-white rounded-xl border ${
-                            isCritical 
-                              ? 'border-rose-300 ring-1 ring-rose-200/60 shadow-2xs' 
-                              : isModerate
-                              ? 'border-amber-200 shadow-2xs'
-                              : isDischargeTomorrow
-                              ? 'border-blue-200 shadow-2xs'
-                              : 'border-slate-200 shadow-2xs'
-                          } p-3 flex flex-col justify-between hover:border-slate-300 transition-all duration-150`}
+                          className={`bg-white rounded-2xl border border-slate-200 ${cardBorderAccentClass} p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-150`}
                         >
                           {/* Top Content */}
                           <div>
                             
                             {/* Row 1: Tên Bệnh Nhân - Đổi màu theo tình trạng bệnh & Nhãn trạng thái */}
-                            <div className="pb-2 border-b border-slate-100 flex items-start justify-between gap-1.5">
+                            <div className="pb-3 border-b border-slate-100 flex items-start justify-between gap-2">
                               <div 
                                 onClick={() => onSelectPatient(patient)}
-                                className="cursor-pointer group flex-1 min-w-[120px]"
+                                onMouseEnter={() => setHoveredPatientId(patient.id)}
+                                onMouseLeave={() => setHoveredPatientId(null)}
+                                className="cursor-pointer group flex-1 min-w-[130px] relative"
                               >
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <h4 className={`text-sm tracking-tight uppercase leading-snug group-hover:underline transition-colors ${nameColorClass}`}>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className={`text-base sm:text-lg font-black tracking-tight uppercase leading-snug group-hover:underline transition-colors ${nameColorClass}`}>
                                     {patient.fullName}
                                   </h4>
                                   {isCritical && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black uppercase tracking-wider bg-rose-600 text-white shrink-0 shadow-2xs">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-rose-600 text-white shrink-0 shadow-xs">
                                       Nặng
                                     </span>
                                   )}
                                   {isModerate && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black uppercase tracking-wider bg-amber-500 text-white shrink-0 shadow-2xs">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500 text-white shrink-0 shadow-xs">
                                       Vừa
                                     </span>
                                   )}
                                   {isDischargeTomorrow && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black uppercase tracking-wider bg-blue-600 text-white shrink-0 shadow-2xs">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-blue-600 text-white shrink-0 shadow-xs">
                                       Dự RV mai
                                     </span>
                                   )}
-                                  {!isCritical && !isModerate && !isDischargeTomorrow && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+                                  {isUnclassified && (
+                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-slate-200 text-slate-700 shrink-0">
+                                      Chưa phân loại
+                                    </span>
+                                  )}
+                                  {isStable && (
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shrink-0 shadow-xs">
                                       Ổn
                                     </span>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mt-0.5">
+
+                                <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 font-bold mt-1">
                                   <span>{patient.age} tuổi</span>
                                   <span>•</span>
                                   <span>{patient.gender}</span>
+                                  {patient.bedNumber && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-[#0b4d8c] font-black">{patient.bedNumber}</span>
+                                    </>
+                                  )}
                                 </div>
+
+                                {/* Hover Preview Popover Card: Hiện nhiều nội dung lâm sàng khi lướt vào tên */}
+                                {hoveredPatientId === patient.id && (
+                                  <div className="absolute left-0 top-full mt-2 z-50 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-blue-200 p-4 space-y-2.5 text-xs animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                                      <div>
+                                        <div className={`font-black text-sm uppercase ${nameColorClass}`}>
+                                          {patient.fullName}
+                                        </div>
+                                        <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                                          {patient.gender} • {patient.age} tuổi • Phòng {patient.roomNumber} {patient.bedNumber ? `- ${patient.bedNumber}` : ''}
+                                        </div>
+                                      </div>
+                                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-blue-50 text-[#0b4d8c] border border-blue-200">
+                                        {treatmentInfo.label}
+                                      </span>
+                                    </div>
+
+                                    {/* Chẩn đoán lâm sàng */}
+                                    <div className="space-y-0.5 bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
+                                      <span className="text-[10px] font-black uppercase text-[#0b4d8c] tracking-wider block">
+                                        Chẩn đoán lâm sàng:
+                                      </span>
+                                      <p className="font-bold text-slate-900 leading-snug">
+                                        {combinedDiagnosis}
+                                      </p>
+                                    </div>
+
+                                    {/* Sinh hiệu gần nhất */}
+                                    {patient.vitals && patient.vitals.length > 0 && (
+                                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                                        <div className="text-[10px] font-black uppercase text-slate-500 mb-1.5 flex items-center justify-between">
+                                          <span>Sinh hiệu ({patient.vitals[0].timestamp?.slice(11, 16) || 'Mới nhất'}):</span>
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-1 text-center">
+                                          <div className="bg-white p-1 rounded-lg border border-slate-200">
+                                            <span className="block text-[9px] text-slate-400 font-bold">HA</span>
+                                            <span className="font-black text-slate-800">{patient.vitals[0].bpSystolic}/{patient.vitals[0].bpDiastolic}</span>
+                                          </div>
+                                          <div className="bg-white p-1 rounded-lg border border-slate-200">
+                                            <span className="block text-[9px] text-slate-400 font-bold">Mạch</span>
+                                            <span className="font-black text-slate-800">{patient.vitals[0].heartRate}</span>
+                                          </div>
+                                          <div className="bg-white p-1 rounded-lg border border-slate-200">
+                                            <span className="block text-[9px] text-slate-400 font-bold">SpO2</span>
+                                            <span className="font-black text-slate-800">{patient.vitals[0].spO2}%</span>
+                                          </div>
+                                          <div className="bg-white p-1 rounded-lg border border-slate-200">
+                                            <span className="block text-[9px] text-slate-400 font-bold">Thân nhiệt</span>
+                                            <span className="font-black text-slate-800">{patient.vitals[0].temperature}°C</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Tiền sử & Dị ứng */}
+                                    {(patient.medicalHistory || patient.allergies) && (
+                                      <div className="text-[11px] text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-200 space-y-1">
+                                        {patient.medicalHistory && (
+                                          <p><strong className="text-slate-900 font-bold">Tiền sử:</strong> {patient.medicalHistory}</p>
+                                        )}
+                                        {patient.allergies && (
+                                          <p className="text-rose-700 font-bold"><strong className="text-rose-800">Dị ứng:</strong> {patient.allergies}</p>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Hướng xử trí & Kế hoạch */}
+                                    <div className="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200">
+                                      <span className="block text-[10px] font-black uppercase text-emerald-800 mb-0.5">
+                                        Hướng xử trí & Kế hoạch:
+                                      </span>
+                                      <p className="text-[11px] font-semibold text-slate-800 leading-relaxed line-clamp-3">
+                                        {currentPlan}
+                                      </p>
+                                    </div>
+
+                                    {/* Ghi chú hoặc Diễn biến gần nhất */}
+                                    {patient.evolutions && patient.evolutions.length > 0 && patient.evolutions[0].clinicalNote && (
+                                      <div className="text-[11px] text-slate-700 bg-amber-50/60 p-2 rounded-xl border border-amber-200">
+                                        <span className="block text-[10px] font-black uppercase text-amber-900 mb-0.5">
+                                          Diễn biến gần nhất ({patient.evolutions[0].timestamp?.slice(5, 16) || ''}):
+                                        </span>
+                                        <p className="italic text-slate-800 line-clamp-2">
+                                          "{patient.evolutions[0].clinicalNote}"
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                                      <span>BS: <strong>{doctorMap.get(patient.attendingDoctorId)?.name || 'BS Điều trị'}</strong></span>
+                                      <span className="text-[#0b4d8c] font-bold">Bấm để mở trượt bên phải ➔</span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
                             {/* Row 2: Ngày Vào (NV: DD/MM) & Số Ngày ĐT (ngày ĐT: XX) */}
-                            <div className="flex items-center justify-between text-xs py-1.5 text-slate-600 border-b border-slate-100">
-                              <div className="flex items-center gap-1.5 font-medium text-slate-600">
-                                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <div className="flex items-center justify-between text-xs sm:text-sm py-2 text-slate-700 border-b border-slate-100 font-bold">
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
                                 <span>{formatAdmissionDateShort(patient.admissionDate)}</span>
                               </div>
-                              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium text-[11px] border border-slate-200">
+                              <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-800 font-extrabold text-xs border border-slate-200">
                                 {treatmentInfo.label}
                               </span>
                             </div>
 
-                            {/* Row 3: Chẩn Đoán (Tất cả chẩn đoán, không phân thành bệnh chính, bệnh kèm) */}
-                            <div className="py-2 space-y-1">
-                              <p className="font-semibold text-xs text-slate-900 leading-snug" title={combinedDiagnosis}>
-                                {combinedDiagnosis}
-                              </p>
+                            {/* Row 3: Chẩn Đoán Lâm Sàng */}
+                            <div className="py-2.5">
+                              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 shadow-2xs">
+                                <div className="text-[11px] font-black uppercase text-[#0b4d8c] tracking-wider mb-1 flex items-center gap-1">
+                                  <Activity className="w-3.5 h-3.5" />
+                                  Chẩn đoán:
+                                </div>
+                                <p className="font-bold text-xs sm:text-sm text-slate-900 leading-relaxed" title={combinedDiagnosis}>
+                                  {combinedDiagnosis}
+                                </p>
+                              </div>
                             </div>
 
                             {/* Row 4: Tình Trạng & Nhãn Đặc Biệt */}
-                            <div className="flex flex-wrap items-center gap-1 pb-2">
-                              {/* Mức độ nặng/vừa/ổn định */}
+                            <div className="flex flex-wrap items-center gap-1.5 pb-2.5">
+                              {/* Mức độ nặng/vừa/chưa phân loại/ổn định */}
                               {isCritical ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] bg-rose-50 text-rose-700 border border-rose-200">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-rose-50 text-rose-700 border border-rose-300">
+                                  <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
                                   NẶNG
                                 </span>
                               ) : isModerate ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] bg-amber-50 text-amber-800 border border-amber-200">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-amber-50 text-amber-800 border border-amber-300">
                                   VỪA
                                 </span>
+                              ) : isUnclassified ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-slate-100 text-slate-700 border border-slate-300">
+                                  CHƯA PHÂN LOẠI
+                                </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-emerald-50 text-emerald-800 border border-emerald-300">
                                   ỔN ĐỊNH
                                 </span>
                               )}
 
                               {/* RV hôm nay / Dự kiến RV mai */}
                               {patient.admissionStatus === 'DISCHARGE_TODAY' && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] bg-purple-50 text-purple-700 border border-purple-200">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-purple-50 text-purple-700 border border-purple-300">
                                   RV hôm nay
                                 </span>
                               )}
                               {patient.admissionStatus === 'DISCHARGE_TOMORROW' && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] bg-blue-50 text-blue-700 border border-blue-200">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-blue-50 text-blue-700 border border-blue-300">
                                   Dự kiến RV mai
                                 </span>
                               )}
@@ -1025,7 +1111,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 return (
                                   <span
                                     key={tag}
-                                    className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                                    className="px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200"
                                     title={meta.description}
                                   >
                                     {meta.shortLabel}
@@ -1034,37 +1120,51 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               })}
                             </div>
 
-                            {/* Row 5: Kế Hoạch Điều Trị */}
-                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 mb-2">
-                              <div className="flex items-start gap-1.5">
-                                <Stethoscope className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
-                                <p className="text-xs font-medium text-slate-800 leading-relaxed line-clamp-3" title={currentPlan}>
+                            {/* Row 5: Kế Hoạch & Hướng Xử Trí */}
+                            {currentPlan ? (
+                              <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 mb-2.5 shadow-2xs">
+                                <div className="text-[11px] font-black uppercase text-emerald-800 tracking-wider mb-1 flex items-center gap-1">
+                                  <Stethoscope className="w-3.5 h-3.5" />
+                                  Hướng xử trí & Kế hoạch:
+                                </div>
+                                <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-relaxed line-clamp-3" title={currentPlan}>
                                   {currentPlan}
                                 </p>
                               </div>
-                            </div>
+                            ) : (
+                              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 mb-2.5 shadow-2xs flex items-center justify-between text-slate-500">
+                                <div className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                                  <Stethoscope className="w-3.5 h-3.5 text-slate-400" />
+                                  Kế hoạch:
+                                </div>
+                                <span className="text-xs italic text-slate-400">Chưa có y lệnh điều trị</span>
+                              </div>
+                            )}
 
-                            {/* Row 6: Ghi Chú và Bàn Giao */}
-                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 mb-3">
-                              <div className="flex items-start gap-1.5">
-                                <AlertCircle className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
-                                <p className="text-xs font-normal text-slate-700 leading-relaxed line-clamp-3" title={currentNotes}>
+                            {/* Row 6: Ghi Chú và Bàn Giao (chỉ hiển thị nếu có ghi chú thực tế) */}
+                            {currentNotes && (
+                              <div className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-200/70 mb-3.5 shadow-2xs">
+                                <div className="text-[11px] font-bold text-amber-900 tracking-wider mb-0.5 flex items-center gap-1">
+                                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                                  Ghi chú lâm sàng / bàn giao:
+                                </div>
+                                <p className="text-xs font-medium text-slate-700 leading-relaxed line-clamp-3" title={currentNotes}>
                                   {currentNotes}
                                 </p>
                               </div>
-                            </div>
+                            )}
 
                           </div>
 
-                          {/* Bottom Action Buttons: + Diễn Tiến, Chi Tiết, Sửa, Chuyển, Ra viện, Xóa - Tối giản */}
-                          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 mt-auto">
+                          {/* Bottom Action Buttons: + Diễn Tiến, Chi Tiết, Sửa, Chuyển, Ra viện, Xóa */}
+                          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5 mt-auto">
                             <button
                               type="button"
                               onClick={() => onOpenEvolution(patient)}
-                              className="py-1 px-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-semibold text-xs shadow-2xs flex items-center gap-1 transition-all cursor-pointer active:scale-95 shrink-0"
-                              title="Nhập diễn tiến và kế hoạch điều trị"
+                              className="py-1.5 px-3 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-xl font-black text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                              title="Nhập diễn tiến và hướng xử trí / kế hoạch điều trị"
                             >
-                              <Activity className="w-3 h-3 text-slate-300" />
+                              <Activity className="w-3.5 h-3.5 text-white" />
                               <span>+ Diễn Tiến</span>
                             </button>
 
@@ -1072,10 +1172,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               <button
                                 type="button"
                                 onClick={() => onSelectPatient(patient)}
-                                className="py-1 px-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md font-medium text-[11px] transition-colors cursor-pointer flex items-center gap-0.5"
+                                className="py-1.5 px-2 bg-white hover:bg-blue-50 hover:text-[#0b4d8c] text-slate-700 border border-slate-200 hover:border-blue-300 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
                                 title="Xem chi tiết hồ sơ bệnh nhân"
                               >
-                                <FileEdit className="w-2.5 h-2.5 text-slate-400" />
+                                <FileEdit className="w-3 h-3" />
                                 <span>Chi tiết</span>
                               </button>
 
@@ -1086,10 +1186,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   if (onEditPatient) onEditPatient(patient);
                                   else onSelectPatient(patient);
                                 }}
-                                className="py-1 px-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md font-medium text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                className="py-1.5 px-2 bg-white hover:bg-amber-50 hover:text-amber-800 text-slate-700 border border-slate-200 hover:border-amber-300 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
                                 title="Chỉnh sửa thông tin bệnh nhân"
                               >
-                                <FileEdit className="w-2.5 h-2.5 text-slate-400" />
+                                <FileEdit className="w-3 h-3" />
                                 <span>Sửa</span>
                               </button>
 
@@ -1099,10 +1199,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   e.stopPropagation();
                                   if (onTransferPatient) onTransferPatient(patient);
                                 }}
-                                className="py-1 px-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md font-medium text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                className="py-1.5 px-2 bg-white hover:bg-indigo-50 hover:text-indigo-800 text-slate-700 border border-slate-200 hover:border-indigo-300 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
                                 title="Chuyển bệnh nhân sang buồng phòng khác"
                               >
-                                <ArrowRightLeft className="w-2.5 h-2.5 text-slate-400" />
+                                <ArrowRightLeft className="w-3 h-3" />
                                 <span>Chuyển</span>
                               </button>
 
@@ -1112,10 +1212,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   e.stopPropagation();
                                   if (onDischargePatient) onDischargePatient(patient);
                                 }}
-                                className="py-1 px-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md font-medium text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                className="py-1.5 px-2 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 hover:border-emerald-300 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
                                 title="Bấm đã ra viện (rời khỏi buồng phòng)"
                               >
-                                <LogOut className="w-2.5 h-2.5 text-slate-400" />
+                                <LogOut className="w-3 h-3" />
                                 <span>Ra viện</span>
                               </button>
 
@@ -1125,10 +1225,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   e.stopPropagation();
                                   if (onDeletePatient) onDeletePatient(patient);
                                 }}
-                                className="py-1 px-1.5 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-400 border border-slate-200 rounded-md font-medium text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                className="py-1.5 px-2 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 text-slate-400 border border-slate-200 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
                                 title="Xóa bệnh nhân khỏi hệ thống"
                               >
-                                <Trash2 className="w-2.5 h-2.5" />
+                                <Trash2 className="w-3 h-3" />
                                 <span>Xóa</span>
                               </button>
                             </div>
@@ -1147,21 +1247,25 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
       )}
 
       {/* Summary Footer */}
-      <div className="bg-white rounded-xl border border-slate-200 p-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-slate-600 shadow-sm">
         <div>
-          Buồng phòng Nhóm 1: <strong className="text-slate-800">{filteredPatients.length}</strong> bệnh nhân tại {roomGroups.length} buồng phòng
+          Buồng phòng {selectedGroup === 'CARDIO' ? 'Nhóm Tim Mạch' : selectedGroup === 'GROUP_2' ? 'Nhóm 2' : selectedGroup === 'ALL' ? 'Toàn Khoa' : 'Nhóm 1'}: <strong className="text-slate-900 font-black">{filteredPatients.length}</strong> bệnh nhân tại <strong className="text-slate-900 font-black">{roomGroups.length}</strong> buồng phòng
         </div>
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-rose-600" />
+        <div className="flex items-center gap-3 font-bold">
+          <span className="flex items-center gap-1.5 text-rose-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-600" />
             <span>{criticalCount} ca nặng</span>
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <span className="flex items-center gap-1.5 text-amber-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
             <span>{moderateCount} ca vừa</span>
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-purple-600" />
+          <span className="flex items-center gap-1.5 text-blue-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+            <span>{dischargeTomorrowCount} dự RV mai</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-purple-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-600" />
             <span>{dischargeTodayCount} ra viện hôm nay</span>
           </span>
         </div>
