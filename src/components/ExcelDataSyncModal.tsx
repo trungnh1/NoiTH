@@ -26,10 +26,13 @@ import {
   parseExcelFile, 
   matchExcelWithSatelliteRecords, 
   ExcelPatientRow, 
-  MatchedSatelliteRecord 
+  MatchedSatelliteRecord,
+  normalizeVietnameseString,
+  extractCleanRoomNumber
 } from '../utils/excelParser';
 
 interface ExcelDataSyncModalProps {
+  existingPatients?: Patient[];
   pendingSatelliteRecords: ClinicalRecord[];
   doctors: Doctor[];
   rooms: DepartmentRoom[];
@@ -39,6 +42,7 @@ interface ExcelDataSyncModalProps {
 }
 
 export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
+  existingPatients = [],
   pendingSatelliteRecords,
   doctors,
   rooms,
@@ -85,6 +89,52 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     reader.readAsArrayBuffer(file);
   };
 
+  // Deduplication Helper: Kiểm tra bệnh nhân đã có trong danh sách khoa chưa
+  const checkPatientAlreadyExists = (row: ExcelPatientRow): { exists: boolean; existingRecord?: Patient } => {
+    if (!existingPatients || existingPatients.length === 0) return { exists: false };
+    const excelCode = (row.patientCode || '').trim().toLowerCase();
+    const excelNameNorm = normalizeVietnameseString(row.patientName);
+    const excelRoomNorm = extractCleanRoomNumber(row.patientRoom);
+
+    for (const p of existingPatients) {
+      // 1. Khớp theo mã bệnh nhân (mabn / medicalRecordNumber / id)
+      if (excelCode) {
+        if (
+          (p.patientCode && p.patientCode.trim().toLowerCase() === excelCode) ||
+          (p.medicalRecordNumber && p.medicalRecordNumber.trim().toLowerCase() === excelCode) ||
+          (p.id && p.id.toLowerCase().includes(excelCode))
+        ) {
+          return { exists: true, existingRecord: p };
+        }
+      }
+
+      // 2. Khớp theo họ tên chuẩn hóa và số phòng
+      const pNameNorm = normalizeVietnameseString(p.fullName);
+      const pRoomNorm = extractCleanRoomNumber(p.roomNumber);
+      if (excelNameNorm && pNameNorm && excelNameNorm === pNameNorm) {
+        if (!row.patientRoom || excelRoomNorm === pRoomNorm) {
+          return { exists: true, existingRecord: p };
+        }
+      }
+    }
+
+    return { exists: false };
+  };
+
+  // Thống kê số lượng bệnh nhân đã có và bệnh nhân mới
+  const { existingCount, newCount } = useMemo(() => {
+    let exist = 0;
+    let fresh = 0;
+    excelRows.forEach(row => {
+      if (checkPatientAlreadyExists(row).exists) {
+        exist++;
+      } else {
+        fresh++;
+      }
+    });
+    return { existingCount: exist, newCount: fresh };
+  }, [excelRows, existingPatients]);
+
   // Match Excel rows with incomplete satellite records
   const matchedRecords = useMemo(() => {
     if (excelRows.length === 0 || pendingSatelliteRecords.length === 0) return [];
@@ -115,6 +165,12 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     if (excel.admissionDate) {
       patientObj.admissionDate = excel.admissionDate;
     }
+    if (excel.patientCode) patientObj.patientCode = excel.patientCode;
+    if (excel.phoneNumber) patientObj.phoneNumber = excel.phoneNumber;
+    if (excel.address) patientObj.address = excel.address;
+    if (excel.insuranceNumber) patientObj.insuranceNumber = excel.insuranceNumber;
+    if (excel.insuranceType) patientObj.insuranceType = excel.insuranceType;
+    if (excel.treatmentDays !== undefined) patientObj.treatmentDays = excel.treatmentDays;
     patientObj.importantNotes = '';
 
     onImportPatientDirect(patientObj);
@@ -169,7 +225,8 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     }
 
     const newPatient: Patient = {
-      id: `EXCEL-${Date.now()}-${index}`,
+      id: `EXCEL-${excelRow.patientCode || Date.now()}-${index}`,
+      patientCode: excelRow.patientCode || undefined,
       fullName: excelRow.patientName || 'Bệnh Nhân Excel',
       age: ageNum,
       gender: excelRow.patientGender?.toLowerCase().includes('nữ') ? 'Nữ' : 'Nam',
@@ -179,6 +236,11 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       admissionDate: finalAdmissionDate,
       attendingDoctorId: matchedDocId,
       primaryNurse: 'Điều dưỡng phụ trách phòng',
+      phoneNumber: excelRow.phoneNumber || undefined,
+      address: excelRow.address || undefined,
+      insuranceNumber: excelRow.insuranceNumber || undefined,
+      insuranceType: excelRow.insuranceType || undefined,
+      treatmentDays: excelRow.treatmentDays,
       // Theo yêu cầu BS: Bỏ qua chẩn đoán ICD trong file Excel, để trống chờ bác sĩ khám và chẩn đoán lâm sàng
       primaryDiagnosis: '',
       medicalHistory: excelRow.medicalHistory || undefined,
@@ -206,21 +268,36 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // Action: Nhập tất cả dữ liệu quét được từ file Excel cùng một lúc
+  // Action: Nhập tất cả dữ liệu quét được từ file Excel (Tự động bỏ qua các bệnh nhân ĐÃ CÓ trong dữ liệu khoa)
   const handleImportAllExcelRows = () => {
     if (excelRows.length === 0) return;
     let count = 0;
+    let skippedExisting = 0;
+
     excelRows.forEach((row, idx) => {
       const key = `excel-${idx}`;
+      // Nếu đã có trong dữ liệu khoa -> BỎ QUA KHÔNG NHẬP THÊM
+      if (checkPatientAlreadyExists(row).exists) {
+        skippedExisting++;
+        return;
+      }
       if (!importedIds.has(key)) {
         handleImportDirectFromExcel(row, idx);
         count++;
       }
     });
-    setNotification({
-      message: `Đã nhập thành công tất cả ${count} bệnh nhân vào hệ thống! (Mức độ: Chưa phân loại • Bỏ qua ICD)`,
-      type: 'success',
-    });
+
+    if (count > 0) {
+      setNotification({
+        message: `Đã nhập thành công ${count} bệnh nhân mới vào hệ thống! ${skippedExisting > 0 ? `(Đã tự động bỏ qua ${skippedExisting} bệnh nhân đã có sẵn trong khoa)` : ''}`,
+        type: 'success',
+      });
+    } else {
+      setNotification({
+        message: `Tất cả ${skippedExisting} bệnh nhân trong file đều đã có trong danh sách khoa, đã tự động bỏ qua không nhập trùng.`,
+        type: 'info',
+      });
+    }
   };
 
   return (
@@ -406,33 +483,48 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
           {/* SECTION 2: All Rows Extracted from Excel */}
           {excelRows.length > 0 && (
             <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs">
-              <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-2 gap-2">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Database className="w-4 h-4 text-[#0b4d8c]" />
                   <h4 className="text-sm font-black text-slate-900 uppercase">
-                    Danh Sách Quét Được Từ Excel ({excelRows.length} bệnh nhân)
+                    Danh Sách Quét Được Từ Excel ({excelRows.length} BN)
                   </h4>
-                  <span className="text-[11px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    Mặc định: Chưa phân loại
+                  {existingCount > 0 && (
+                    <span className="text-[11px] text-slate-700 font-bold bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-300">
+                      ✓ Đã có trong khoa: {existingCount} BN (Bỏ qua)
+                    </span>
+                  )}
+                  <span className="text-[11px] text-emerald-800 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    Sẵn sàng nhập: {newCount} BN mới
                   </span>
                   <span className="text-[11px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    Đã bỏ qua chẩn đoán ICD
+                    Bỏ qua mã ICD
                   </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleImportAllExcelRows}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  disabled={newCount === 0}
+                  className={`px-4 py-2 text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                    newCount > 0
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  }`}
+                  title={newCount > 0 ? `Nhập ${newCount} bệnh nhân mới vào hệ thống` : 'Tất cả bệnh nhân trong file đều đã có trong hệ thống'}
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Nhập tất cả dữ liệu quét được ({excelRows.length} BN)</span>
+                  <span>
+                    {newCount > 0
+                      ? `Nhập ${newCount} bệnh nhân mới (Bỏ qua ${existingCount} BN đã có)`
+                      : `Tất cả ${existingCount} BN đã có trong hệ thống`}
+                  </span>
                 </button>
               </div>
 
               <div className="overflow-x-auto max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-slate-100 text-slate-700 font-extrabold uppercase sticky top-0 border-b border-slate-200">
+                  <thead className="bg-slate-100 text-slate-700 font-extrabold uppercase sticky top-0 border-b border-slate-200 z-1">
                     <tr>
                       <th className="p-2.5">#</th>
                       <th className="p-2.5">Mã BN</th>
@@ -441,20 +533,37 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                       <th className="p-2.5">Phòng / Giường</th>
                       <th className="p-2.5">Ngày Vào Viện</th>
                       <th className="p-2.5">Chẩn Đoán ICD (Bỏ qua)</th>
-                      <th className="p-2.5 text-right">Thao Tác</th>
+                      <th className="p-2.5 text-right">Trạng Thái & Thao Tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {excelRows.map((row, idx) => {
                       const isImported = importedIds.has(`excel-${idx}`);
+                      const { exists: alreadyInDept, existingRecord } = checkPatientAlreadyExists(row);
+
                       return (
-                        <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                        <tr 
+                          key={idx} 
+                          className={`transition-colors ${
+                            alreadyInDept 
+                              ? 'bg-slate-50/60 opacity-80' 
+                              : isImported 
+                              ? 'bg-emerald-50/50' 
+                              : 'hover:bg-slate-50/80'
+                          }`}
+                        >
                           <td className="p-2.5 text-slate-400 font-mono">{idx + 1}</td>
-                          <td className="p-2.5 font-mono text-slate-600">
+                          <td className="p-2.5 font-mono text-slate-600 font-bold">
                             {row.patientCode || '---'}
                           </td>
-                          <td className="p-2.5 font-black text-slate-900 uppercase">
-                            {row.patientName}
+                          <td className="p-2.5">
+                            <div className="font-black text-slate-900 uppercase">
+                              {row.patientName}
+                            </div>
+                            <div className="flex items-center gap-2 text-[10.5px] text-slate-400 font-normal">
+                              {row.phoneNumber && <span>SĐT: {row.phoneNumber}</span>}
+                              {row.insuranceNumber && <span>BHYT: {row.insuranceNumber}</span>}
+                            </div>
                           </td>
                           <td className="p-2.5 font-semibold text-slate-700">
                             {row.patientAge}T • {row.patientGender}
@@ -478,9 +587,9 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                             ) : (
                               <span className="text-slate-400 italic">Mặc định hôm nay</span>
                             )}
-                            {row.admissionDateRaw && row.admissionDateRaw !== row.admissionDate && (
-                              <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                                Gốc: {row.admissionDateRaw}
+                            {row.treatmentDays !== undefined && (
+                              <div className="text-[10px] text-blue-700 font-bold">
+                                SNĐT: {row.treatmentDays} ngày
                               </div>
                             )}
                           </td>
@@ -488,18 +597,27 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                             {row.icdDiagnosis || row.icdCode || 'Không có mã ICD'}
                           </td>
                           <td className="p-2.5 text-right">
-                            <button
-                              type="button"
-                              onClick={() => handleImportDirectFromExcel(row, idx)}
-                              disabled={isImported}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                isImported
-                                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                  : 'bg-[#0b4d8c] hover:bg-[#083a69] text-white shadow-2xs active:scale-95'
-                              }`}
-                            >
-                              {isImported ? 'Đã Nhập' : '+ Nhập Viện'}
-                            </button>
+                            {alreadyInDept ? (
+                              <span 
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-300"
+                                title={`Bệnh nhân đã có trong danh sách khoa (${existingRecord?.fullName || ''} - P.${existingRecord?.roomNumber || ''})`}
+                              >
+                                ✓ Đã có trong dữ liệu (Bỏ qua)
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleImportDirectFromExcel(row, idx)}
+                                disabled={isImported}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  isImported
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                    : 'bg-[#0b4d8c] hover:bg-[#083a69] text-white shadow-2xs active:scale-95'
+                                }`}
+                              >
+                                {isImported ? 'Đã Nhập' : '+ Nhập Viện'}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );

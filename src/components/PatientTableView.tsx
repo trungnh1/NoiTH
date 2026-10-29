@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { DiseaseStatisticsBar, DiseaseFilterType, matchPatientDisease } from './DiseaseStatisticsBar';
 import { sortDoctorsAlphabetically, getDoctorGivenName } from '../utils/doctorSorter';
+import { matchesPatientSearch } from '../utils/searchUtils';
 
 interface PatientTableViewProps {
   patients: Patient[];
@@ -64,16 +65,9 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
       // Must be active
       if (patient.status !== 'ACTIVE') return false;
 
-      // Search term
+      // Search term: accurately match room number (e.g. 735), patient name, diagnosis, doctor
       if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
-        const matchName = patient.fullName.toLowerCase().includes(term);
-        const matchDiag = patient.primaryDiagnosis.toLowerCase().includes(term);
-        const matchRoom = patient.roomNumber.toLowerCase().includes(term);
-        const doctor = doctorMap.get(patient.attendingDoctorId);
-        const matchDoctor = doctor?.name.toLowerCase().includes(term);
-
-        if (!matchName && !matchDiag && !matchRoom && !matchDoctor) {
+        if (!matchesPatientSearch(patient, searchTerm, doctorMap)) {
           return false;
         }
       }

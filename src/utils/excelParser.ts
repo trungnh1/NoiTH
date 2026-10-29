@@ -3,7 +3,7 @@ import { ClinicalRecord, parseAgeNumber } from '../services/clinicalFirebase';
 
 export interface ExcelPatientRow {
   id?: string;
-  patientCode?: string; // Mã BN / Mã HSBA
+  patientCode?: string; // Mã BN / Mã HSBA / mabn
   patientName: string;
   patientAge: string | number;
   patientGender: string;
@@ -15,6 +15,11 @@ export interface ExcelPatientRow {
   icdDiagnosis?: string; // Tên chẩn đoán ICD hành chính (không dùng làm chẩn đoán lâm sàng)
   diagnosis?: string; // Chẩn đoán lâm sàng (để trống theo yêu cầu BS)
   doctorName?: string; // Bác sĩ điều trị trong file (nếu có)
+  phoneNumber?: string; // SĐT
+  address?: string; // Địa chỉ
+  insuranceNumber?: string; // Số thẻ BHYT
+  insuranceType?: string; // Đối tượng BHYT / Viện phí
+  treatmentDays?: number; // Số ngày điều trị (SNĐT)
   vitalSigns?: string;
   medicalHistory?: string;
   treatmentPlan?: string;
@@ -133,20 +138,130 @@ export function parseExcelAdmissionDate(rawVal: any): { formatted: string; raw: 
 }
 
 /**
- * Trích xuất số phòng chuẩn từ chuỗi Excel (vd: "Phòng 703", "P703", "Buồng 705", "705")
+ * Trích xuất số phòng chuẩn từ chuỗi Excel (vd: "Phòng 743", "Phòng 705", "Phòng 735", "705")
  */
 export function extractCleanRoomNumber(roomRaw?: string): string {
   if (!roomRaw) return '703';
   const str = String(roomRaw).trim();
-  // Match số phòng 3-4 chữ số (vd: 703, 705, 735, 745)
-  const numMatch = str.match(/\b(7\d{2})\b/);
-  if (numMatch) return numMatch[1];
+  
+  // 1. Match số phòng 3 chữ số bắt đầu bằng 7 (chuẩn Khoa Nội TH - Tim Mạch: 703 -> 757)
+  const match7xx = str.match(/\b(7\d{2})\b/);
+  if (match7xx) return match7xx[1];
 
-  // Làm sạch các tiền tố thông thường
+  // 2. Match bất kỳ số phòng 3 chữ số nào
+  const any3Digit = str.match(/\b(\d{3})\b/);
+  if (any3Digit) return any3Digit[1];
+
+  // 3. Làm sạch các tiền tố thông thường nếu không phải dạng 3 số chuẩn
   const cleaned = str
-    .replace(/^(phòng|buồng|p\.?|b\.?)\s*/i, '')
+    .replace(/^(phòng|buồng|phong|buong|p\.?|b\.?)\s*/i, '')
     .trim();
   return cleaned || '703';
+}
+
+/**
+ * Trích xuất chuẩn xác giá trị phòng từ dòng Excel.
+ * Ưu tiên tuyệt đối cột có tên/mã 'tenphong' theo dữ liệu HIS BV Hùng Vương Gia Lai.
+ * BỎ QUA HOÀN TOÀN các cột mã phòng (maphong, maphongth) vì đó là mã số nội bộ (93, 96, 376...), không phải số phòng.
+ */
+export function findRoomValue(row: Record<string, any>): string {
+  // 1. ƯU TIÊN SỐ 1: Cột có mã 'tenphong' hoặc 'ten phong', 'ten_phong'
+  for (const [rawKey, val] of Object.entries(row)) {
+    const k = normalizeVietnameseString(rawKey).replace(/[^a-z0-9]/g, '');
+    const strVal = String(val ?? '').trim();
+    if (!strVal) continue;
+    if (k === 'tenphong' || k === 'tenbuong') {
+      return strVal;
+    }
+  }
+
+  // 2. ƯU TIÊN SỐ 2: Cột chứa 'tenphong' hoặc 'ten phong'
+  for (const [rawKey, val] of Object.entries(row)) {
+    const k = normalizeVietnameseString(rawKey);
+    const strVal = String(val ?? '').trim();
+    if (!strVal) continue;
+    if (k.includes('tenphong') || k.includes('ten phong') || k.includes('ten buong')) {
+      return strVal;
+    }
+  }
+
+  // 3. ƯU TIÊN SỐ 3: Cột 'phong' hoặc 'buong' hoặc 'so phong', 'so buong', 'room'
+  // BỎ QUA TUYỆT ĐỐI các cột mã phòng (maphong, maphongth, ma phong, mabuong)
+  for (const [rawKey, val] of Object.entries(row)) {
+    const k = normalizeVietnameseString(rawKey);
+    const strVal = String(val ?? '').trim();
+    if (!strVal) continue;
+    
+    // Loại trừ hoàn toàn các cột mã phòng
+    if (k.startsWith('ma') || k.includes('maphong') || k.includes('ma phong') || k.includes('mabuong')) {
+      continue;
+    }
+
+    if (k === 'phong' || k === 'so phong' || k === 'buong' || k === 'so buong' || k === 'room') {
+      return strVal;
+    }
+  }
+
+  // 4. ƯU TIÊN SỐ 4: Bất kỳ cột nào chứa 'phong' hoặc 'buong' nhưng TUYỆT ĐỐI không chứa 'ma'
+  for (const [rawKey, val] of Object.entries(row)) {
+    const k = normalizeVietnameseString(rawKey);
+    const strVal = String(val ?? '').trim();
+    if (!strVal) continue;
+    if (k.startsWith('ma') || k.includes('maphong') || k.includes('ma phong') || k.includes('mabuong')) {
+      continue;
+    }
+    if (k.includes('phong') || k.includes('buong')) {
+      return strVal;
+    }
+  }
+
+  return '';
+}
+
+/**
+ * Trích xuất chuẩn xác giá trị giường từ dòng Excel.
+ * Ưu tiên cột 'sogiuong', 'giuong', 'tengiuong' thay vì 'magiuong' (mã giường nội bộ 286, 44...).
+ */
+export function findBedValue(row: Record<string, any>): string {
+  // 1. Ưu tiên cột 'sogiuong', 'giuong', 'tengiuong'
+  for (const [rawKey, val] of Object.entries(row)) {
+    const k = normalizeVietnameseString(rawKey).replace(/[^a-z0-9]/g, '');
+    const strVal = String(val ?? '').trim();
+    if (!strVal) continue;
+    if (k.startsWith('ma') || k.includes('magiuong') || k.includes('magiuongth')) continue;
+    if (k === 'sogiuong' || k === 'giuong' || k === 'tengiuong' || k === 'bed') {
+      return strVal;
+    }
+  }
+
+  // 2. Cột chứa 'giuong' hoặc 'bed' nhưng không chứa 'ma'
+  for (const [rawKey, val] of Object.entries(row)) {
+    const k = normalizeVietnameseString(rawKey);
+    const strVal = String(val ?? '').trim();
+    if (!strVal) continue;
+    if (k.startsWith('ma') || k.includes('magiuong') || k.includes('magiuongth')) continue;
+    if (k.includes('giuong') || k.includes('bed')) {
+      return strVal;
+    }
+  }
+
+  return '';
+}
+
+/**
+ * Làm sạch số giường từ HIS/Excel (vd: "G743-4_H0516...", "G705-1_H0526..." -> "G743-4" hoặc "Giường 01")
+ */
+export function extractCleanBedNumber(bedRaw?: string): string {
+  if (!bedRaw) return 'Giường 01';
+  const str = String(bedRaw).trim();
+  const gMatch = str.match(/(G\d+[\-_]\d+|G\d+)/i);
+  if (gMatch) return gMatch[1].replace('_', '-');
+  if (str.includes('_')) {
+    const first = str.split('_')[0].trim();
+    if (first) return first;
+  }
+  const cleaned = str.replace(/^(giường|g\.?)\s*/i, 'Giường ').trim();
+  return cleaned || 'Giường 01';
 }
 
 /**
@@ -184,8 +299,9 @@ export function parseExcelFile(fileBuffer: ArrayBuffer | Uint8Array): {
     let ageVal: any = '';
     let birthYearVal: any = '';
     let genderVal = '';
-    let roomVal = '';
-    let bedVal = '';
+    // Lấy số phòng chuẩn từ cột 'tenphong' và số giường từ 'sogiuong'/'giuong'
+    let roomVal = findRoomValue(row);
+    let bedVal = findBedValue(row);
     let admissionDateVal: any = null;
     let fallbackDateVal: any = null;
     let icdCodeVal = '';
@@ -194,8 +310,13 @@ export function parseExcelFile(fileBuffer: ArrayBuffer | Uint8Array): {
     let vitalsVal = '';
     let historyVal = '';
     let planVal = '';
+    let phoneVal = '';
+    let addressVal = '';
+    let insuranceNumberVal = '';
+    let insuranceTypeVal = '';
+    let treatmentDaysVal: number | undefined = undefined;
 
-    // Duyệt qua từng cột trong dòng
+    // Duyệt qua từng cột trong dòng để lấy các thông tin hành chính khác
     Object.entries(row).forEach(([rawKey, val]) => {
       const key = normalizeVietnameseString(rawKey);
       const strVal = String(val ?? '').trim();
@@ -262,30 +383,30 @@ export function parseExcelFile(fileBuffer: ArrayBuffer | Uint8Array): {
         if (strVal && !genderVal) genderVal = strVal;
       }
 
-      // 6. Số phòng / buồng
+      // 6. Số phòng / buồng dự phòng nếu findRoomValue chưa tìm thấy (TUYỆT ĐỐI BỎ QUA maphong)
       else if (
-        key.includes('phong') || 
-        key.includes('buong') || 
-        key.includes('so buong') || 
-        key.includes('so phong') || 
-        key.includes('room')
+        !roomVal &&
+        (key.includes('phong') || key.includes('buong')) &&
+        !key.startsWith('ma') &&
+        !key.includes('maphong')
       ) {
-        if (strVal && !roomVal) roomVal = strVal;
+        if (strVal) roomVal = strVal;
       }
 
-      // 7. Số giường
+      // 7. Số giường dự phòng nếu findBedValue chưa tìm thấy (TUYỆT ĐỐI BỎ QUA magiuong)
       else if (
-        key.includes('giuong') || 
-        key.includes('so giuong') || 
-        key.includes('bed')
+        !bedVal &&
+        (key.includes('giuong') || key.includes('bed')) &&
+        !key.startsWith('ma') &&
+        !key.includes('magiuong')
       ) {
-        if (strVal && !bedVal) bedVal = strVal;
+        if (strVal) bedVal = strVal;
       }
 
       // 8. NGÀY NHẬP VIỆN / NGÀY VÀO VIỆN (Ưu tiên tuyệt đối các cột có chữ "vao vien" hoặc "nhap vien")
       // LOẠI TRỪ: "sinh", "ra vien", "xuat vien", "so ngay", "hen"
       else if (
-        (key.includes('vao vien') || key.includes('nhap vien') || key.includes('ngay vao') || key.includes('ngay nhap') || key.includes('thoi gian vao') || key.includes('thoi gian nhap') || key.includes('admission') || key.includes('admitted')) &&
+        (key.includes('vao vien') || key.includes('nhap vien') || key.includes('ngay vao') || key.includes('ngay nhap') || key.includes('thoi gian vao') || key.includes('thoi gian nhap') || key.includes('admission') || key.includes('admitted') || key === 'ngayvao') &&
         !key.includes('sinh') &&
         !key.includes('ra vien') &&
         !key.includes('xuat vien') &&
@@ -360,7 +481,61 @@ export function parseExcelFile(fileBuffer: ArrayBuffer | Uint8Array): {
       ) {
         if (strVal && !planVal) planVal = strVal;
       }
+
+      // 15. Số điện thoại (Điện thoại / SĐT)
+      else if (
+        key.includes('dien thoai') || 
+        key.includes('sdt') || 
+        key.includes('phone')
+      ) {
+        if (strVal && !phoneVal) phoneVal = strVal;
+      }
+
+      // 16. Địa chỉ
+      else if (
+        key.includes('dia chi') || 
+        key.includes('address')
+      ) {
+        if (strVal && !addressVal) addressVal = strVal;
+      }
+
+      // 17. Số thẻ BHYT
+      else if (
+        key.includes('so the') || 
+        key.includes('sothe') || 
+        key.includes('bhyt') || 
+        key.includes('insurance')
+      ) {
+        if (strVal && !insuranceNumberVal) insuranceNumberVal = strVal;
+      }
+
+      // 18. Đối tượng khám chữa bệnh (BHYT / Viện phí...)
+      else if (
+        key.includes('doi tuong') || 
+        key.includes('doituong')
+      ) {
+        if (strVal && !insuranceTypeVal) insuranceTypeVal = strVal;
+      }
+
+      // 19. Số ngày điều trị (SNĐT / ngaydieutri)
+      else if (
+        key.includes('sndt') || 
+        key.includes('so ngay dieu tri') || 
+        key.includes('ngay dieu tri') ||
+        key.includes('ngaydieutri')
+      ) {
+        const numDays = parseInt(strVal.replace(/\D/g, ''), 10);
+        if (!isNaN(numDays) && treatmentDaysVal === undefined) {
+          treatmentDaysVal = numDays;
+        }
+      }
     });
+
+    // Chuẩn hóa tuổi (nếu chuỗi có kèm "tuổi", vd: "78 tuổi" -> 78)
+    if (ageVal) {
+      const parsedAge = parseAgeNumber(ageVal);
+      if (parsedAge) ageVal = parsedAge;
+    }
 
     // Tính tuổi nếu chỉ có năm sinh
     if (!ageVal && birthYearVal) {
@@ -381,8 +556,9 @@ export function parseExcelFile(fileBuffer: ArrayBuffer | Uint8Array): {
       normalizedGender = 'Nữ';
     }
 
-    // Chuẩn hóa phòng
+    // Chuẩn hóa phòng & giường
     const cleanedRoom = extractCleanRoomNumber(roomVal);
+    const cleanedBed = extractCleanBedNumber(bedVal);
 
     // Chỉ nhận dòng nếu có tên hoặc có phòng (bỏ qua dòng tiêu đề phụ/dòng trống)
     if (nameVal || roomVal) {
@@ -393,7 +569,7 @@ export function parseExcelFile(fileBuffer: ArrayBuffer | Uint8Array): {
         patientAge: ageVal || 60,
         patientGender: normalizedGender,
         patientRoom: cleanedRoom,
-        bedNumber: bedVal || 'Giường 01',
+        bedNumber: cleanedBed,
         admissionDate: parsedAdmissionDate || undefined,
         admissionDateRaw: rawAdmissionDateStr || undefined,
         icdCode: icdCodeVal || undefined,
@@ -401,6 +577,11 @@ export function parseExcelFile(fileBuffer: ArrayBuffer | Uint8Array): {
         // Theo yêu cầu BS: Không lấy chẩn đoán trong file vì đó chỉ là ICD, để trống cho lâm sàng
         diagnosis: '',
         doctorName: doctorVal || undefined,
+        phoneNumber: phoneVal || undefined,
+        address: addressVal || undefined,
+        insuranceNumber: insuranceNumberVal || undefined,
+        insuranceType: insuranceTypeVal || undefined,
+        treatmentDays: treatmentDaysVal,
         vitalSigns: vitalsVal || undefined,
         medicalHistory: historyVal || undefined,
         treatmentPlan: planVal || undefined,

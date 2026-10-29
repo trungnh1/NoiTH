@@ -43,6 +43,7 @@ import { DutyRosterBar } from './DutyRosterBar';
 import { DutyRosterModal } from './DutyRosterModal';
 import { DEFAULT_ROOM_DOCTORS, getDoctorShortName, GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS } from '../data/mockData';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
+import { isRoomNumberMatch, matchesPatientSearch } from '../utils/searchUtils';
 
 interface WardRoomMapProps {
   rooms: DepartmentRoom[];
@@ -159,13 +160,25 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
   const group2Rooms = useMemo(() => rooms.filter(r => GROUP_2_ROOM_NUMBERS.includes(r.number)), [rooms]);
   const group1Rooms = useMemo(() => rooms.filter(r => GROUP_1_ROOM_NUMBERS.includes(r.number)), [rooms]);
 
-  // Filtered rooms based on selected group
+  // Filtered rooms based on selected group or search query
   const filteredRooms = useMemo(() => {
+    if (searchQuery.trim()) {
+      return rooms.filter((r) => {
+        if (isRoomNumberMatch(r.number, searchQuery)) return true;
+        const hasMatchingPatient = patients.some(
+          (p) =>
+            p.status === 'ACTIVE' &&
+            p.roomNumber.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim() === r.number &&
+            matchesPatientSearch(p, searchQuery, doctorMap)
+        );
+        return hasMatchingPatient;
+      });
+    }
     if (selectedGroup === 'CARDIO') return cardioRooms;
     if (selectedGroup === 'GROUP_2') return group2Rooms;
     if (selectedGroup === 'GROUP_1') return group1Rooms;
     return rooms;
-  }, [rooms, selectedGroup, cardioRooms, group2Rooms, group1Rooms]);
+  }, [rooms, selectedGroup, cardioRooms, group2Rooms, group1Rooms, searchQuery, patients, doctorMap]);
 
   // Global counts for filter badges
   const stats = useMemo(() => {
@@ -192,15 +205,9 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
   const matchesFilters = (patient?: Patient | null): boolean => {
     if (!patient) return false;
 
-    // Search query
+    // Search query: room, bed, name, diagnosis, doctor
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      const matchName = patient.fullName.toLowerCase().includes(q);
-      const matchRoom = patient.roomNumber.toLowerCase().includes(q);
-      const matchBed = patient.bedNumber.toLowerCase().includes(q);
-      const matchDx = patient.primaryDiagnosis.toLowerCase().includes(q);
-      const matchMrn = (patient.medicalRecordNumber || '').toLowerCase().includes(q);
-      if (!matchName && !matchRoom && !matchBed && !matchDx && !matchMrn) return false;
+      if (!matchesPatientSearch(patient, searchQuery, doctorMap)) return false;
     }
 
     // Status filter

@@ -950,6 +950,7 @@ export default function App() {
       {/* 9. Excel File Data Import & Auto Match Modal */}
       {isExcelImportOpen && (
         <ExcelDataSyncModal
+          existingPatients={patients}
           pendingSatelliteRecords={pendingSatelliteRecords}
           doctors={doctors}
           rooms={rooms}

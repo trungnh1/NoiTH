@@ -26,6 +26,12 @@ import {
 } from 'lucide-react';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { parseExcelAdmissionDate } from '../utils/excelParser';
+import { 
+  normalizeSearchText, 
+  extractSearchRoomNumber, 
+  isRoomNumberMatch, 
+  matchesPatientSearch 
+} from '../utils/searchUtils';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
 export const GROUP_1_ROOM_NUMBERS = [
@@ -47,6 +53,20 @@ export const ALL_ROOM_NUMBERS = [
   ...CARDIO_ROOM_NUMBERS,
   ...GROUP_2_ROOM_NUMBERS,
 ];
+
+/**
+ * Returns the clinical group badge label and key for any room number
+ */
+export function getRoomGroupName(roomNumber: string): { label: string; groupKey: 'GROUP_1' | 'CARDIO' | 'GROUP_2' } {
+  const clean = roomNumber.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim();
+  if (CARDIO_ROOM_NUMBERS.includes(clean)) {
+    return { label: 'Tim Mạch', groupKey: 'CARDIO' };
+  }
+  if (GROUP_2_ROOM_NUMBERS.includes(clean)) {
+    return { label: 'Nhóm 2', groupKey: 'GROUP_2' };
+  }
+  return { label: 'Nhóm 1', groupKey: 'GROUP_1' };
+}
 
 // 6 Bác sĩ phụ trách Nhóm 1: Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi
 export const GROUP_1_DOCTOR_IDS = [
@@ -268,18 +288,26 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     return GROUP_1_ROOM_NUMBERS;
   }, [selectedGroup]);
 
-  // Active inpatients - Filtered strictly to current group rooms
+  // Active inpatients - Filtered strictly to current group rooms when not searching
   const activeGroupPatients = useMemo(() => {
     return patients.filter((p) => {
       if (p.status !== 'ACTIVE') return false;
-      const cleanRoom = p.roomNumber ? p.roomNumber.replace(/^(phòng|p\.?)\s*/i, '').trim() : '';
+      const cleanRoom = p.roomNumber ? p.roomNumber.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim() : '';
       return currentGroupRoomNumbers.includes(cleanRoom);
     });
   }, [patients, currentGroupRoomNumbers]);
 
+  // When searching, evaluate across ALL rooms so searching e.g. "735" finds room 735 regardless of currently selected group
+  const baseSearchPatients = useMemo(() => {
+    if (searchTerm.trim()) {
+      return patients.filter((p) => p.status === 'ACTIVE');
+    }
+    return activeGroupPatients;
+  }, [patients, activeGroupPatients, searchTerm]);
+
   // Filtered patients based on user search and filters
   const filteredPatients = useMemo(() => {
-    return activeGroupPatients.filter((p) => {
+    return baseSearchPatients.filter((p) => {
       // Status & Severity filter
       if (statusFilter !== 'ALL') {
         if (statusFilter === 'DISCHARGE_TODAY') {
@@ -304,30 +332,21 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         }
       }
 
-      // Search term
+      // Search term: robust matching across room number, bed, patient name (accent-insensitive), diagnosis, doctor, notes
       if (searchTerm.trim()) {
-        const query = searchTerm.toLowerCase().trim();
-        const docName = doctorMap.get(p.attendingDoctorId)?.name.toLowerCase() || '';
-        const matchName = p.fullName.toLowerCase().includes(query);
-        const matchRoom = p.roomNumber.toLowerCase().includes(query) || p.bedNumber.toLowerCase().includes(query);
-        const matchDiagnosis = formatCombinedDiagnosis(p).toLowerCase().includes(query);
-        const matchPlan = (p.treatmentPlan || p.evolutions?.[0]?.treatmentAction || '').toLowerCase().includes(query);
-        const matchNotes = (p.importantNotes || p.handoverNotes || '').toLowerCase().includes(query);
-        const matchDoctor = docName.includes(query);
-
-        return matchName || matchRoom || matchDiagnosis || matchPlan || matchNotes || matchDoctor;
+        return matchesPatientSearch(p, searchTerm, doctorMap);
       }
 
       return true;
     });
-  }, [activeGroupPatients, statusFilter, doctorFilter, searchTerm, doctorMap]);
+  }, [baseSearchPatients, statusFilter, doctorFilter, searchTerm, doctorMap]);
 
-  // Group patients by Room (Vertical List of Rooms for Selected Group)
+  // Group patients by Room (Vertical List of Rooms for Selected Group or Search Results)
   const roomGroups = useMemo(() => {
     const patientMap = new Map<string, Patient[]>();
 
     filteredPatients.forEach((p) => {
-      const cleanNum = p.roomNumber ? p.roomNumber.replace(/^(phòng|p\.?)\s*/i, '').trim() : '';
+      const cleanNum = p.roomNumber ? p.roomNumber.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim() : '';
       if (cleanNum) {
         if (!patientMap.has(cleanNum)) {
           patientMap.set(cleanNum, []);
@@ -336,10 +355,54 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
       }
     });
 
-    // Rooms to display: either all rooms in current group, or only rooms with patients (nút ẩn phòng trống)
-    const roomsToRender = showEmptyRooms 
-      ? currentGroupRoomNumbers 
-      : currentGroupRoomNumbers.filter((r) => patientMap.has(r));
+    let roomsToRender: string[] = [];
+
+    if (searchTerm.trim()) {
+      // Khi đang có từ khóa tìm kiếm:
+      // 1. Kiểm tra phòng trong toàn khoa khớp trực tiếp với từ khóa (VD: gõ "735", "phòng 735", "p735")
+      const matchedDirectRooms = ALL_ROOM_NUMBERS.filter((r) => isRoomNumberMatch(r, searchTerm));
+
+      // 2. Các phòng có bệnh nhân khớp với từ khóa tìm kiếm
+      const roomsWithMatchingPatients = Array.from(patientMap.keys());
+
+      // 3. Nếu tìm kiếm tên Bác sĩ, hiển thị cả phòng có BS phụ trách khớp tên
+      const normQuery = normalizeSearchText(searchTerm);
+      const roomsWithMatchingDoctor = ALL_ROOM_NUMBERS.filter((r) => {
+        const docId = roomDoctorAssignments[r];
+        if (!docId) return false;
+        const doc = doctorMap.get(docId);
+        if (!doc) return false;
+        return normalizeSearchText(doc.name).includes(normQuery);
+      });
+
+      // Hợp nhất danh sách phòng khớp và loại bỏ trùng lặp
+      const combinedRoomsSet = new Set<string>([
+        ...matchedDirectRooms,
+        ...roomsWithMatchingPatients,
+        ...roomsWithMatchingDoctor,
+      ]);
+
+      // Nếu người dùng nhập số phòng cụ thể chưa có trong ALL_ROOM_NUMBERS, vẫn cho phép hiển thị
+      const targetRoom = extractSearchRoomNumber(searchTerm);
+      if (targetRoom) {
+        combinedRoomsSet.add(targetRoom);
+      }
+
+      roomsToRender = Array.from(combinedRoomsSet);
+
+      // Sắp xếp thứ tự phòng chuẩn theo danh mục ALL_ROOM_NUMBERS
+      roomsToRender.sort((a, b) => {
+        const idxA = ALL_ROOM_NUMBERS.indexOf(a);
+        const idxB = ALL_ROOM_NUMBERS.indexOf(b);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        return a.localeCompare(b, undefined, { numeric: true });
+      });
+    } else {
+      // Chế độ xem thông thường theo tab nhóm phòng đã chọn
+      roomsToRender = showEmptyRooms 
+        ? currentGroupRoomNumbers 
+        : currentGroupRoomNumbers.filter((r) => patientMap.has(r));
+    }
 
     return roomsToRender.map((roomKey) => {
       const roomPatientList = patientMap.get(roomKey) || [];
@@ -365,7 +428,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         patients: roomPatientList,
       };
     });
-  }, [filteredPatients, doctorMap, roomDoctorAssignments, showEmptyRooms, currentGroupRoomNumbers]);
+  }, [filteredPatients, doctorMap, roomDoctorAssignments, showEmptyRooms, currentGroupRoomNumbers, searchTerm]);
 
   // Handler for quick doctor assignment
   const handleQuickAssignDoctor = (roomNumber: string, doctorId: string) => {
@@ -611,13 +674,14 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm theo tên bệnh nhân, phòng, chẩn đoán, kế hoạch, bác sĩ..."
+              placeholder="Tìm theo số phòng (vd: 735, 705), tên BN, chẩn đoán, bác sĩ..."
               className="w-full pl-10 pr-9 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#0b4d8c]/30 font-medium transition-all"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 cursor-pointer"
+                title="Xóa tìm kiếm"
               >
                 ✕
               </button>
@@ -732,20 +796,58 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         </div>
       </div>
 
+      {/* Search Result Banner */}
+      {searchTerm.trim() && (
+        <div className="bg-blue-50/90 border border-blue-200 px-4 py-2.5 rounded-2xl flex items-center justify-between gap-3 text-xs text-[#0b4d8c] font-semibold animate-in fade-in">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Search className="w-4 h-4 text-[#0b4d8c] shrink-0" />
+            <span>
+              Kết quả tìm kiếm cho: <span className="font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-blue-200">"{searchTerm}"</span>
+            </span>
+            <span className="text-slate-400">•</span>
+            <span>
+              Tìm thấy <strong className="font-black text-[#0b4d8c]">{roomGroups.length}</strong> phòng, <strong className="font-black text-[#0b4d8c]">{filteredPatients.length}</strong> bệnh nhân
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSearchTerm('')}
+            className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer hover:underline shrink-0"
+          >
+            ✕ Xóa tìm kiếm
+          </button>
+        </div>
+      )}
+
       {/* Main Vertical List of Rooms */}
       {roomGroups.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 shadow-sm">
           <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="font-extrabold text-slate-800 text-base">
-            Không tìm thấy bệnh nhân nào trong {selectedGroup === 'CARDIO' ? 'Nhóm Tim Mạch' : selectedGroup === 'GROUP_2' ? 'Nhóm 2' : selectedGroup === 'ALL' ? 'Toàn Khoa' : 'Nhóm 1'} theo bộ lọc hiện tại.
+            {searchTerm.trim()
+              ? `Không tìm thấy buồng phòng hoặc bệnh nhân nào khớp với từ khóa "${searchTerm}".`
+              : `Không tìm thấy bệnh nhân nào trong ${selectedGroup === 'CARDIO' ? 'Nhóm Tim Mạch' : selectedGroup === 'GROUP_2' ? 'Nhóm 2' : selectedGroup === 'ALL' ? 'Toàn Khoa' : 'Nhóm 1'} theo bộ lọc hiện tại.`
+            }
           </p>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Bấm "Hiện phòng trống" để hiển thị tất cả các buồng phòng hoặc bấm "+ Tiếp Nhận BN Mới".
-          </p>
+          <div className="text-xs sm:text-sm text-slate-500 mt-2">
+            {searchTerm.trim() ? (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0b4d8c] hover:bg-[#083a69] text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+              >
+                <span>Xóa từ khóa tìm kiếm</span>
+              </button>
+            ) : (
+              <span>Bấm "Hiện phòng trống" để hiển thị tất cả các buồng phòng hoặc bấm "+ Tiếp Nhận BN Mới".</span>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-6">
           {roomGroups.map((group) => {
+            const groupInfo = getRoomGroupName(group.roomNumber);
+
             return (
               <div 
                 key={group.roomNumber}
@@ -760,6 +862,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                       <span className="w-2.5 h-2.5 rounded-full bg-[#0b4d8c]" />
                       <span className="text-[#0b4d8c] font-black text-base sm:text-lg tracking-tight">
                         Phòng {group.roomNumber}
+                      </span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-[#0b4d8c] border border-blue-200/60 shrink-0">
+                        {groupInfo.label}
                       </span>
                     </div>
                     <span className="text-slate-300 font-light">•</span>

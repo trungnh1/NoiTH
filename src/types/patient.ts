@@ -295,6 +295,9 @@ export interface Patient {
   dateOfBirth: string; // Ngày sinh
   address?: string; // Địa chỉ (không bắt buộc)
   insuranceNumber?: string; // BHYT (không bắt buộc)
+  insuranceType?: string; // Đối tượng BHYT / Viện phí
+  phoneNumber?: string; // Số điện thoại liên hệ
+  treatmentDays?: number; // Số ngày điều trị (SNĐT)
   admissionDate: string; // Ngày nhập viện YYYY-MM-DD HH:mm
   department?: string; // Khoa (Nội Tổng Hợp)
   roomNumber: string; // Buồng bệnh e.g. "P.301"
