@@ -494,16 +494,17 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
             <button
               onClick={handleCopyTodayToTomorrowAll}
               title="Sao chép bác sĩ hôm nay sang ngày mai cho tất cả các phòng"
-              className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 shrink-0 shadow-2xs transition-colors"
+              className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 shrink-0 shadow-2xs transition-colors cursor-pointer active:scale-95"
             >
               <Copy className="w-3.5 h-3.5 text-slate-500" />
               <span className="hidden sm:inline">Sao chép Hôm nay → Ngày mai</span>
+              <span className="sm:hidden text-[10.5px]">Chép sang mai</span>
             </button>
           </div>
         </div>
 
-        {/* Room Matrix Table */}
-        <div className="overflow-x-auto">
+        {/* Room Matrix Table (Desktop View) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-100/80 text-[11px] font-extrabold uppercase text-slate-600 tracking-wider border-b border-slate-200">
@@ -722,6 +723,214 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* MOBILE VIEW (CARDS): THIẾT KẾ DÀNH RIÊNG CHO MÀN HÌNH NHỎ */}
+        <div className="md:hidden p-2 sm:p-3 space-y-2.5 bg-slate-50/50">
+          {filteredRooms.length === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">
+              Không tìm thấy phòng nào phù hợp với bộ lọc tìm kiếm.
+            </div>
+          ) : (
+            filteredRooms.map((room) => {
+              const schedule = scheduleMap[room.number] || {
+                yesterdayDoctorId: doctors[0]?.id || '',
+                todayDoctorId: doctors[0]?.id || '',
+                tomorrowDoctorId: doctors[0]?.id || '',
+              };
+
+              const roomPatients = activePatients.filter(
+                (p) =>
+                  p.roomNumber === room.number ||
+                  p.roomNumber === `P.${room.number}` ||
+                  p.roomNumber === `Phòng ${room.number}`
+              );
+
+              const groupMeta = (room.group && room.group in WARD_GROUPS_META) 
+                ? WARD_GROUPS_META[room.group as WardRoomGroup] 
+                : null;
+
+              return (
+                <div
+                  key={room.id}
+                  className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden"
+                >
+                  {/* Top Bar: Room Badge & Info */}
+                  <div className="p-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex flex-col items-center justify-center font-black shrink-0 shadow-2xs">
+                        <span className="text-[8px] uppercase tracking-tighter opacity-70">
+                          P.
+                        </span>
+                        <span className="text-xs leading-none">
+                          {room.number}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-black text-xs text-slate-800">{room.name}</span>
+                          {groupMeta && (
+                            <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded ${groupMeta.badgeColor}`}>
+                              {groupMeta.shortName}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium">
+                          {roomPatients.length}/{room.totalBeds} giường có bệnh
+                        </div>
+                      </div>
+                    </div>
+
+                    <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-full border ${
+                      roomPatients.length >= room.totalBeds
+                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                        : roomPatients.length > 0
+                        ? 'bg-blue-50 text-[#0b4d8c] border-blue-200'
+                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                    }`}>
+                      {roomPatients.length} BN
+                    </span>
+                  </div>
+
+                  {/* Body: Doctor Allocation Selectors */}
+                  <div className="p-2.5 space-y-2">
+                    {/* BS Hôm Nay - Trọng tâm lâm sàng */}
+                    <div className="bg-rose-50/70 p-2 rounded-xl border border-rose-300 space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-black text-rose-900 flex items-center gap-1 text-[11px] uppercase">
+                          <Stethoscope className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                          <span>Hôm nay ({dateLabels.today}) • Trực tiếp:</span>
+                        </span>
+                        <span className="text-[10px] text-rose-800 font-bold bg-rose-200/70 px-1.5 py-0.2 rounded">
+                          đang điều trị
+                        </span>
+                      </div>
+
+                      <div className="relative">
+                        <select
+                          value={schedule.todayDoctorId}
+                          onChange={(e) => handleChangeDoctor(room.number, 'today', e.target.value)}
+                          className="w-full pl-2.5 pr-7 py-1.5 bg-white text-rose-950 font-black text-xs border-2 border-rose-400 rounded-lg shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-rose-500 cursor-pointer"
+                        >
+                          {doctors.map((doc) => {
+                            const shortName = getDoctorGivenName(doc.name);
+                            return (
+                              <option key={doc.id} value={doc.id}>
+                                BS. {shortName} ({doc.name})
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+
+                      {roomPatients.length > 0 && (
+                        <div className="text-[10px] text-rose-700 font-semibold pl-1 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                          <span>Phụ trách {roomPatients.length} BN trong buồng</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* BS Hôm Qua & Ngày Mai - 2 Cột gọn gàng */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {/* Hôm qua */}
+                      <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 space-y-1">
+                        <span className="text-[10px] font-bold text-slate-500 block truncate">
+                          Hôm qua ({dateLabels.yesterday})
+                        </span>
+                        <select
+                          value={schedule.yesterdayDoctorId}
+                          onChange={(e) => handleChangeDoctor(room.number, 'yesterday', e.target.value)}
+                          className="w-full p-1.5 bg-white text-slate-700 font-bold text-xs border border-slate-300 rounded-lg cursor-pointer"
+                        >
+                          {doctors.map((doc) => {
+                            const shortName = getDoctorGivenName(doc.name);
+                            return (
+                              <option key={doc.id} value={doc.id}>
+                                {shortName}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+
+                      {/* Ngày mai */}
+                      <div className="bg-indigo-50/50 p-2 rounded-xl border border-indigo-200 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-indigo-900 block truncate">
+                            Ngày mai ({dateLabels.tomorrow})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleChangeDoctor(room.number, 'tomorrow', schedule.todayDoctorId)}
+                            className="text-[10px] text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-0.5 bg-white px-1.5 py-0.2 rounded border border-indigo-200 cursor-pointer shadow-2xs active:scale-95 transition-all"
+                            title="Sao chép từ hôm nay sang mai"
+                          >
+                            <Copy className="w-2.5 h-2.5" />
+                            <span>Chép</span>
+                          </button>
+                        </div>
+                        <select
+                          value={schedule.tomorrowDoctorId}
+                          onChange={(e) => handleChangeDoctor(room.number, 'tomorrow', e.target.value)}
+                          className="w-full p-1.5 bg-white text-indigo-950 font-bold text-xs border border-indigo-300 rounded-lg cursor-pointer"
+                        >
+                          {doctors.map((doc) => {
+                            const shortName = getDoctorGivenName(doc.name);
+                            return (
+                              <option key={doc.id} value={doc.id}>
+                                {shortName}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Danh sách Bệnh nhân trong buồng */}
+                    {roomPatients.length > 0 && (
+                      <div className="pt-1.5 border-t border-slate-100">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">
+                            Bệnh nhân trong phòng:
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-600">
+                            {roomPatients.length} BN
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {roomPatients.map((patient) => {
+                            const displayName = formatPatientName(patient.fullName);
+                            return (
+                              <button
+                                key={patient.id}
+                                type="button"
+                                onClick={() => onSelectPatient(patient)}
+                                className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold border transition-all flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer ${
+                                  patient.severity === 'CRITICAL'
+                                    ? 'bg-rose-50 text-rose-900 border-rose-300'
+                                    : patient.severity === 'MODERATE'
+                                    ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                    : 'bg-white text-slate-800 border-slate-200'
+                                }`}
+                                title={`Xem hồ sơ ${displayName}`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                  patient.severity === 'CRITICAL' ? 'bg-rose-500 animate-pulse' :
+                                  patient.severity === 'MODERATE' ? 'bg-amber-500' : 'bg-emerald-500'
+                                }`} />
+                                <span className="truncate max-w-[120px]">{displayName}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Footer Note */}

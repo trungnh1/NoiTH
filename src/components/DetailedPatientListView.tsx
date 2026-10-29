@@ -1304,15 +1304,15 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     <span className="text-slate-300 font-light">•</span>
                     
                     {/* Quick Doctor Selector */}
-                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-blue-300 rounded-lg px-2.5 py-1 transition-colors shadow-2xs">
-                      <Stethoscope className="w-4 h-4 text-[#0b4d8c] shrink-0" />
+                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-blue-300 rounded-lg px-2 sm:px-2.5 py-1 transition-colors shadow-2xs max-w-[155px] sm:max-w-none">
+                      <Stethoscope className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[#0b4d8c] shrink-0" />
                       <span className="text-slate-500 text-xs font-semibold hidden sm:inline">
                         BS phụ trách:
                       </span>
                       <select
                         value={group.assignedDoctorId || ''}
                         onChange={(e) => handleQuickAssignDoctor(group.roomNumber, e.target.value)}
-                        className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer"
+                        className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer w-full truncate"
                         title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber}`}
                       >
                         <option value="" className="text-slate-900 bg-white">-- Chọn BS điều trị --</option>
