@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { calculateTreatmentDays, formatDoctorShortName } from './DetailedPatientListView';
 import { getSavedDoctorSession } from '../utils/auth';
+import { getCriticalLabAlerts } from '../utils/labAlerts';
 
 // Ngưỡng sinh hiệu tiêu chuẩn lâm sàng
 export type VitalStatus = 'normal' | 'warning' | 'critical' | 'empty';
@@ -774,6 +775,25 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                   placeholder="Ví dụ: Tiếp tục kháng sinh, hạ áp, giảm đau, theo dõi sát SpO2, chuẩn bị chụp CT..."
                   className="w-full p-2 bg-white border border-slate-300 rounded-lg font-medium text-xs text-slate-900 focus:ring-2 focus:ring-slate-400 leading-relaxed"
                 />
+
+                {/* Cảnh báo xét nghiệm bất thường nguy hiểm (Hiển thị trực tiếp phía dưới Hướng xử trí) */}
+                {(() => {
+                  const criticalAlerts = getCriticalLabAlerts(patient);
+                  if (criticalAlerts.length === 0) return null;
+                  return (
+                    <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border-2 border-rose-400 text-rose-950 space-y-1 animate-in fade-in">
+                      <div className="flex items-center gap-1.5 font-black text-xs text-rose-800 uppercase tracking-wide">
+                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
+                        <span>⚠️ Cảnh báo xét nghiệm bất thường nguy hiểm:</span>
+                      </div>
+                      <ul className="list-disc list-inside space-y-0.5 text-xs font-bold text-rose-900 pl-1">
+                        {criticalAlerts.map((alert, idx) => (
+                          <li key={idx}>{alert}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* 3. Bàn giao bệnh */}

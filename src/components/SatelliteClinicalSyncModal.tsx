@@ -43,6 +43,7 @@ import {
   formatSatelliteDateTime,
   cleanSatelliteTreatmentPlan
 } from '../services/clinicalFirebase';
+import { getCriticalLabAlerts } from '../utils/labAlerts';
 import { User as FirebaseUser } from 'firebase/auth';
 
 interface SatelliteClinicalSyncModalProps {
@@ -774,6 +775,26 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                             </p>
                           </div>
                         )}
+
+                        {/* Cảnh báo xét nghiệm bất thường nguy hiểm (Hiển thị ngay phía dưới Hướng xử trí/Kế hoạch) */}
+                        {(() => {
+                          const mappedPat = mapClinicalRecordToPatient(record, doctors, rooms);
+                          const satAlerts = getCriticalLabAlerts(mappedPat);
+                          if (satAlerts.length === 0) return null;
+                          return (
+                            <div className="p-3 rounded-xl bg-rose-50 border-2 border-rose-400 text-rose-950 space-y-1 animate-in fade-in">
+                              <div className="flex items-center gap-1.5 font-black text-xs text-rose-800 uppercase tracking-wide">
+                                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
+                                <span>⚠️ Cảnh báo xét nghiệm bất thường nguy hiểm:</span>
+                              </div>
+                              <ul className="list-disc list-inside space-y-0.5 text-xs font-bold text-rose-900 pl-1">
+                                {satAlerts.map((alert, idx) => (
+                                  <li key={idx}>{alert}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          );
+                        })()}
 
                       </div>
 

@@ -827,21 +827,21 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                   : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
               }`}
             >
-              Tất cả khoa (27 buồng)
+              Tất cả khoa (28 buồng)
             </button>
 
-            {/* Group Tim Mạch: 733, 735, 737, 739, 741, 743, 745 */}
+            {/* Group 1: 703, 707, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731, 733 */}
             <button
-              onClick={() => setSelectedGroup('CARDIO')}
+              onClick={() => setSelectedGroup('GROUP_1')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
-                selectedGroup === 'CARDIO'
-                  ? 'bg-rose-600 text-white shadow-2xs'
-                  : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                selectedGroup === 'GROUP_1'
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-              <span>Nhóm Tim Mạch (P.733 - 745)</span>
-              <span className="text-[10px] opacity-75 font-mono">({cardioRooms.length}P)</span>
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              <span>Nhóm 1 (P.703 - 733)</span>
+              <span className="text-[10px] opacity-75 font-mono">({group1Rooms.length}P)</span>
             </button>
 
             {/* Group 2: 747, 749, 751, 753, 755, 757 */}
@@ -858,18 +858,18 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
               <span className="text-[10px] opacity-75 font-mono">({group2Rooms.length}P)</span>
             </button>
 
-            {/* Group 1: 703, 707, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731 */}
+            {/* Group Tim Mạch: 735, 737, 739, 741, 743, 745 */}
             <button
-              onClick={() => setSelectedGroup('GROUP_1')}
+              onClick={() => setSelectedGroup('CARDIO')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
-                selectedGroup === 'GROUP_1'
-                  ? 'bg-blue-600 text-white shadow-2xs'
-                  : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
+                selectedGroup === 'CARDIO'
+                  ? 'bg-rose-600 text-white shadow-2xs'
+                  : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              <span>Nhóm 1 (P.703 - 731)</span>
-              <span className="text-[10px] opacity-75 font-mono">({group1Rooms.length}P)</span>
+              <span className="w-2 h-2 rounded-full bg-rose-500" />
+              <span>Nhóm TM (P.735 - 745)</span>
+              <span className="text-[10px] opacity-75 font-mono">({cardioRooms.length}P)</span>
             </button>
           </div>
 

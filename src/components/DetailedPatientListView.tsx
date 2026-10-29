@@ -53,20 +53,20 @@ export const GROUP_2_ROOM_NUMBERS = [
 
 export const ALL_ROOM_NUMBERS = [
   ...GROUP_1_ROOM_NUMBERS,
-  ...CARDIO_ROOM_NUMBERS,
   ...GROUP_2_ROOM_NUMBERS,
+  ...CARDIO_ROOM_NUMBERS,
 ];
 
 /**
  * Returns the clinical group badge label and key for any room number
  */
-export function getRoomGroupName(roomNumber: string): { label: string; groupKey: 'GROUP_1' | 'CARDIO' | 'GROUP_2' } {
+export function getRoomGroupName(roomNumber: string): { label: string; groupKey: 'GROUP_1' | 'GROUP_2' | 'CARDIO' } {
   const clean = roomNumber.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim();
-  if (CARDIO_ROOM_NUMBERS.includes(clean)) {
-    return { label: 'Tim Mạch', groupKey: 'CARDIO' };
-  }
   if (GROUP_2_ROOM_NUMBERS.includes(clean)) {
     return { label: 'Nhóm 2', groupKey: 'GROUP_2' };
+  }
+  if (CARDIO_ROOM_NUMBERS.includes(clean)) {
+    return { label: 'Tim Mạch', groupKey: 'CARDIO' };
   }
   return { label: 'Nhóm 1', groupKey: 'GROUP_1' };
 }
@@ -400,7 +400,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   onOpenSatelliteSync,
   pendingSatelliteCount,
 }) => {
-  const [selectedGroup, setSelectedGroup] = useState<'GROUP_1' | 'CARDIO' | 'GROUP_2' | 'ALL'>('GROUP_1');
+  const [selectedGroup, setSelectedGroup] = useState<'ALL' | 'GROUP_1' | 'GROUP_2' | 'CARDIO'>('ALL');
   const [showEmptyRooms, setShowEmptyRooms] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | SeverityLevel | 'DISCHARGE_TODAY' | 'DISCHARGE_TOMORROW'>('ALL');
@@ -452,20 +452,21 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
   // Current room numbers for the selected clinical group
   const currentGroupRoomNumbers = useMemo(() => {
-    if (selectedGroup === 'CARDIO') return CARDIO_ROOM_NUMBERS;
+    if (selectedGroup === 'GROUP_1') return GROUP_1_ROOM_NUMBERS;
     if (selectedGroup === 'GROUP_2') return GROUP_2_ROOM_NUMBERS;
-    if (selectedGroup === 'ALL') return ALL_ROOM_NUMBERS;
-    return GROUP_1_ROOM_NUMBERS;
+    if (selectedGroup === 'CARDIO') return CARDIO_ROOM_NUMBERS;
+    return ALL_ROOM_NUMBERS;
   }, [selectedGroup]);
 
   // Active inpatients - Filtered strictly to current group rooms when not searching
   const activeGroupPatients = useMemo(() => {
     return patients.filter((p) => {
       if (p.status !== 'ACTIVE') return false;
+      if (selectedGroup === 'ALL') return true;
       const cleanRoom = p.roomNumber ? p.roomNumber.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim() : '';
       return currentGroupRoomNumbers.includes(cleanRoom);
     });
-  }, [patients, currentGroupRoomNumbers]);
+  }, [patients, currentGroupRoomNumbers, selectedGroup]);
 
   // When searching, evaluate across ALL rooms so searching e.g. "735" finds room 735 regardless of currently selected group
   const baseSearchPatients = useMemo(() => {
@@ -709,8 +710,20 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               </h2>
             </div>
 
-            {/* Clinical Group Tabs (Nhóm 1, Tim Mạch, Nhóm 2, Tất cả) */}
+            {/* Clinical Group Tabs (Tất cả, Nhóm 1, Nhóm 2, Nhóm TM) */}
             <div className="inline-flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 text-xs font-semibold gap-1">
+              <button
+                type="button"
+                onClick={() => setSelectedGroup('ALL')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedGroup === 'ALL'
+                    ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
+                    : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
+                }`}
+                title="Tất cả các phòng trong khoa (28 phòng)"
+              >
+                <span>Tất cả (28P)</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setSelectedGroup('GROUP_1')}
@@ -722,18 +735,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 title="Nhóm 1: Phòng 703 - 731 & 733 (16 phòng)"
               >
                 <span>Nhóm 1 (16P)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedGroup('CARDIO')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                  selectedGroup === 'CARDIO'
-                    ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
-                    : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
-                }`}
-                title="Nhóm Tim Mạch: Phòng 735 - 745 (6 phòng)"
-              >
-                <span>Tim Mạch (6P)</span>
               </button>
               <button
                 type="button"
@@ -749,15 +750,15 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedGroup('ALL')}
+                onClick={() => setSelectedGroup('CARDIO')}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                  selectedGroup === 'ALL'
+                  selectedGroup === 'CARDIO'
                     ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
                 }`}
-                title="Tất cả các phòng trong khoa (28 phòng)"
+                title="Nhóm Tim Mạch: Phòng 735 - 745 (6 phòng)"
               >
-                <span>Tất cả (28P)</span>
+                <span>Nhóm TM (6P)</span>
               </button>
             </div>
 
@@ -1329,11 +1330,22 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </div>
                             </div>
 
-                            {/* 5. Cảnh báo cận lâm sàng bất thường nặng, nguy hiểm (hiển thị bằng Icon) */}
+                            {/* 5. Hướng xử trí & Kế hoạch điều trị (hiển thị bằng Icon) */}
+                            <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 mb-2.5 shadow-2xs">
+                              <div className="flex items-center gap-1.5 text-emerald-800 mb-1" title="Hướng xử trí & Kế hoạch điều trị">
+                                <Stethoscope className="w-4 h-4 text-emerald-700 shrink-0" />
+                              </div>
+                              <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-line" title={currentPlan || 'Theo dõi diễn tiến'}>
+                                {currentPlan || 'Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa'}
+                              </p>
+                            </div>
+
+                            {/* 6. Cảnh báo xét nghiệm bất thường nguy hiểm (Hiển thị ngay phía dưới Hướng xử trí) */}
                             {criticalAlerts.length > 0 && (
                               <div className="mb-2.5 p-3 rounded-xl bg-rose-50 border-2 border-rose-400 shadow-2xs">
                                 <div className="flex items-center gap-1.5 text-rose-800 mb-1.5" title="Cảnh báo cận lâm sàng bất thường nặng, nguy hiểm">
-                                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 animate-pulse" />
+                                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
+                                  <span className="text-xs font-black uppercase text-rose-900">Cảnh báo xét nghiệm nguy hiểm:</span>
                                 </div>
                                 <ul className="space-y-1">
                                   {criticalAlerts.map((alert, idx) => (
@@ -1345,16 +1357,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 </ul>
                               </div>
                             )}
-
-                            {/* 6. Hướng xử trí & Kế hoạch điều trị (hiển thị bằng Icon) */}
-                            <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 mb-2.5 shadow-2xs">
-                              <div className="flex items-center gap-1.5 text-emerald-800 mb-1" title="Hướng xử trí & Kế hoạch điều trị">
-                                <Stethoscope className="w-4 h-4 text-emerald-700 shrink-0" />
-                              </div>
-                              <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-line" title={currentPlan || 'Theo dõi diễn tiến'}>
-                                {currentPlan || 'Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa'}
-                              </p>
-                            </div>
 
                             {/* 7. Ghi chú của bs (hiển thị bằng Icon) */}
                             {doctorNotes && (

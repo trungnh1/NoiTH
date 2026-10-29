@@ -444,20 +444,52 @@ export function mapClinicalRecordToPatient(
   const clsHtml = record.clsHtml || record.labsHtml || '';
   const initialLabsText = stripHtmlTags(clsHtml);
 
-  // Diễn tiến lâm sàng
-  const clinicalCourse = (record.clinicalCourse || record.clinicalNote || '').trim();
-  const evolutionsList: ClinicalEvolution[] = [];
-  if (clinicalCourse) {
-    evolutionsList.push({
-      id: `EV-SAT-${Date.now()}`,
-      timestamp: record.admissionDate || record.createdAt || defaultDateStr,
-      doctorName: doctor?.name || 'BS Điều trị',
-      shift: 'Sáng',
-      clinicalNote: clinicalCourse,
-      treatmentAction: treatmentPlan || '',
-      orders: initialLabsText ? `CLS: ${initialLabsText.slice(0, 80)}...` : undefined,
-    });
+  // Khám lâm sàng & Diễn tiến
+  let clinicalCourseText = (record.clinicalCourse || record.clinicalNote || '').trim();
+
+  // Đọc thêm từ clinicalDataJson nếu có thông tin khám lâm sàng chi tiết
+  if (record.clinicalDataJson) {
+    try {
+      const parsed = JSON.parse(record.clinicalDataJson);
+      if (parsed.physicalExam || parsed.examNote || parsed.examination) {
+        const examText = String(parsed.physicalExam || parsed.examNote || parsed.examination).trim();
+        if (examText && !clinicalCourseText.includes(examText)) {
+          clinicalCourseText = clinicalCourseText 
+            ? `${clinicalCourseText}\nKhám lâm sàng: ${examText}` 
+            : `Khám lâm sàng: ${examText}`;
+        }
+      }
+    } catch {
+      // ignore
+    }
   }
+
+  // Kết hợp Khám lâm sàng và Sinh hiệu vào Nhật Ký Diễn Tiến Lâm Sàng & Sinh Hiệu
+  const fullEvoNoteParts: string[] = [];
+  
+  if (clinicalCourseText) {
+    fullEvoNoteParts.push(clinicalCourseText);
+  } else {
+    fullEvoNoteParts.push('Khám lâm sàng: Bệnh nhân tiếp nhận vào khoa điều trị nội trú, tỉnh táo, tiếp xúc tốt.');
+  }
+
+  if (vitalsText) {
+    fullEvoNoteParts.push(`[Sinh hiệu: ${vitalsText}]`);
+  } else {
+    fullEvoNoteParts.push(`[Sinh hiệu: Mạch ${parsedVitals.heartRate} l/p • HA ${parsedVitals.bpSystolic}/${parsedVitals.bpDiastolic} mmHg • SpO2 ${parsedVitals.spO2}% • T° ${parsedVitals.temperature}°C]`);
+  }
+
+  const combinedEvoNote = fullEvoNoteParts.join('\n\n');
+
+  const evolutionsList: ClinicalEvolution[] = [{
+    id: `EV-SAT-${Date.now()}`,
+    timestamp: record.admissionDate || record.createdAt || defaultDateStr,
+    doctorName: doctor?.name || 'BS Điều trị',
+    shift: 'Sáng',
+    clinicalNote: combinedEvoNote,
+    treatmentAction: treatmentPlan || '',
+    orders: initialLabsText ? `CLS: ${initialLabsText.slice(0, 120)}...` : undefined,
+  }];
 
   // Mức độ
   let severity: SeverityLevel = 'UNCLASSIFIED';
