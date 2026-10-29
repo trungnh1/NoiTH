@@ -211,6 +211,9 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
         const criticalCount = docPatients.filter((p) => p.severity === 'CRITICAL').length;
         const moderateCount = docPatients.filter((p) => p.severity === 'MODERATE').length;
         const stableCount = docPatients.filter((p) => p.severity === 'STABLE').length;
+        const o2Count = docPatients.filter((p) =>
+          p.tags?.some((t) => t === 'O2' || t === 'O2_CANULA' || t === 'O2_MASK')
+        ).length;
 
         // Find rooms assigned today
         const assignedRooms = rooms
@@ -223,6 +226,7 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
           criticalCount,
           moderateCount,
           stableCount,
+          o2Count,
           assignedRooms,
           patients: docPatients,
         };
@@ -274,6 +278,22 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
   }, [rooms, selectedGroup, selectedDoctorFilter, searchTerm, scheduleMap, doctors, activePatients]);
 
   const totalActivePatients = activePatients.length;
+  const totalCritical = useMemo(
+    () => activePatients.filter((p) => p.severity === 'CRITICAL').length,
+    [activePatients]
+  );
+  const totalModerate = useMemo(
+    () => activePatients.filter((p) => p.severity === 'MODERATE').length,
+    [activePatients]
+  );
+  const totalStable = useMemo(
+    () => activePatients.filter((p) => p.severity === 'STABLE').length,
+    [activePatients]
+  );
+  const totalOxygen = useMemo(
+    () => activePatients.filter((p) => p.tags?.some((t) => t === 'O2' || t === 'O2_CANULA' || t === 'O2_MASK')).length,
+    [activePatients]
+  );
 
   return (
     <div className="space-y-4">
@@ -286,94 +306,127 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
       )}
 
       {/* SECTION 1: THỐNG KÊ TỔNG SỐ BỆNH NHÂN CỦA MỖI BÁC SĨ */}
-      <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-rose-50 text-rose-700">
-              <Stethoscope className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-extrabold text-slate-800">
-                Thống Kê Tổng Số Bệnh Nhân Theo Bác Sĩ
+      <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pb-3 mb-3 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="p-1.5 rounded-lg bg-rose-50 text-rose-700">
+                <Stethoscope className="w-4 h-4" />
+              </div>
+              <h2 className="text-sm font-black text-slate-800 whitespace-nowrap">
+                Phân Công &amp; Thống Kê Bác Sĩ
               </h2>
-              <p className="text-xs text-slate-500">
-                Tổng cộng {totalActivePatients} bệnh nhân đang điều trị nội trú tại khoa
-              </p>
+            </div>
+
+            {/* Department Summary Badges Row */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-900 text-white rounded-md font-bold shadow-2xs">
+                <span>Nội trú:</span>
+                <span className="text-amber-300 font-extrabold">{totalActivePatients} BN</span>
+              </div>
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-800 border border-rose-200 rounded-md font-bold">
+                <span>Nặng:</span>
+                <span className="text-rose-700 font-extrabold">{totalCritical}</span>
+              </div>
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-md font-bold">
+                <span>Vừa:</span>
+                <span className="text-amber-700 font-extrabold">{totalModerate}</span>
+              </div>
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md font-bold">
+                <span>Ổn:</span>
+                <span className="text-emerald-700 font-extrabold">{totalStable}</span>
+              </div>
+              {totalOxygen > 0 && (
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-50 text-cyan-800 border border-cyan-200 rounded-md font-bold">
+                  <span>Oxy:</span>
+                  <span className="text-cyan-700 font-extrabold">{totalOxygen}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center justify-between sm:justify-end gap-2 text-xs shrink-0">
             {selectedDoctorFilter && (
               <button
+                type="button"
                 onClick={() => setSelectedDoctorFilter(null)}
                 className="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 font-bold hover:bg-rose-200 transition-colors"
               >
                 ✕ Bỏ lọc bác sĩ
               </button>
             )}
-            <span className="text-slate-500 font-medium">
+            <span className="text-slate-500 font-medium whitespace-nowrap">
               Hiển thị {doctorStats.length} bác sĩ có bệnh nhân
             </span>
           </div>
         </div>
 
         {/* Doctor Grid / Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
-          {doctorStats.map(({ doctor, totalPatients, criticalCount, moderateCount, stableCount }) => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-2.5">
+          {doctorStats.map(({ doctor, totalPatients, criticalCount, moderateCount, stableCount, o2Count }) => {
             const isSelected = selectedDoctorFilter === doctor.id;
+            const docGivenName = getDoctorGivenName(doctor.name);
+            const displayName = docGivenName.startsWith('BS.') ? docGivenName : `BS. ${docGivenName}`;
+
             return (
               <button
                 key={doctor.id}
+                type="button"
                 onClick={() =>
                   setSelectedDoctorFilter(isSelected ? null : doctor.id)
                 }
-                className={`text-left p-2.5 rounded-xl border transition-all relative overflow-hidden group ${
+                className={`text-left p-2.5 rounded-xl border transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
                   isSelected
-                    ? 'border-rose-500 bg-rose-50/50 shadow-xs ring-2 ring-rose-200'
-                    : 'border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300'
+                    ? 'border-rose-500 bg-rose-50/60 shadow-xs ring-2 ring-rose-200'
+                    : 'border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 hover:shadow-2xs'
                 }`}
               >
-                {/* Header: Avatar + Name */}
-                <div className="flex items-center gap-2 mb-1.5">
+                {/* Header: Avatar + Doctor Name */}
+                <div className="flex items-center gap-2 min-w-0">
                   <div
-                    className={`w-7 h-7 rounded-lg ${doctor.avatarColor} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}
+                    className={`w-7 h-7 rounded-lg ${doctor.avatarColor || 'bg-rose-700'} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}
                   >
-                    {getDoctorGivenName(doctor.name)[0]}
+                    {docGivenName[0]}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-xs text-slate-900 truncate leading-snug" title={doctor.name}>
-                      {getDoctorGivenName(doctor.name)}
+                    <p className="font-extrabold text-xs text-slate-800 truncate" title={doctor.name}>
+                      {displayName}
                     </p>
                   </div>
                 </div>
 
-                {/* Big Patient Count */}
-                <div className="flex items-baseline justify-between mt-1 pt-1 border-t border-slate-200/60">
-                  <span className="text-[11px] font-medium text-slate-600">Tổng bệnh:</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-base font-black text-rose-700">
+                {/* Patient Count */}
+                <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-200/60">
+                  <span className="text-[11px] font-semibold text-slate-600 whitespace-nowrap">Tổng bệnh:</span>
+                  <div className="flex items-baseline gap-0.5 whitespace-nowrap">
+                    <span className="text-sm sm:text-base font-black text-rose-700 leading-none">
                       {totalPatients}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-medium">BN</span>
+                    <span className="text-[10px] text-slate-400 font-bold">BN</span>
                   </div>
                 </div>
 
-                {/* Mini Severity Breakdown */}
+                {/* Mini Severity Breakdown & Oxygen */}
                 {totalPatients > 0 && (
-                  <div className="flex items-center gap-1.5 mt-1 text-[10px]">
+                  <div className="flex items-center gap-1 mt-1.5 flex-wrap text-[10px]">
                     {criticalCount > 0 && (
-                      <span className="px-1 py-0.2 rounded bg-rose-100 text-rose-800 font-bold" title="Ca nặng">
+                      <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-bold whitespace-nowrap" title="Ca nặng">
                         {criticalCount} nặng
                       </span>
                     )}
                     {moderateCount > 0 && (
-                      <span className="px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-medium" title="Ca vừa">
+                      <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold whitespace-nowrap" title="Ca vừa">
                         {moderateCount} vừa
                       </span>
                     )}
                     {stableCount > 0 && (
-                      <span className="px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-medium" title="Ca nhẹ">
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold whitespace-nowrap" title="Ca ổn định">
                         {stableCount} ổn
+                      </span>
+                    )}
+                    {o2Count > 0 && (
+                      <span className="px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800 font-bold whitespace-nowrap" title="Thở Oxy">
+                        {o2Count} oxy
                       </span>
                     )}
                   </div>

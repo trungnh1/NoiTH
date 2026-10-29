@@ -383,6 +383,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   patients,
   doctors,
   rooms = [],
+  roomDoctorAssignments = {},
   currentUser,
   onAssignRoomDoctor,
   onOpenNewPatient,
