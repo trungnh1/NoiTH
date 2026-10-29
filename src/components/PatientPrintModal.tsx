@@ -314,15 +314,15 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                           <span className="font-black text-rose-800 bg-rose-50 px-2.5 py-0.5 rounded border border-rose-200">
                             {roomName}
                           </span>
-                          <h4 className="font-black text-sm uppercase text-slate-900 tracking-tight">
-                            {patient.fullName}
+                          <h4 className="font-black text-sm text-slate-900 tracking-tight">
+                            {formatPatientDisplayName(patient.fullName)}
                           </h4>
                         </div>
                         <div className="flex items-center gap-2 font-semibold text-slate-700">
                           <span>{patient.age} tuổi</span>
                           <span>•</span>
                           <span className={patient.gender === 'Nam' ? 'text-blue-700 font-bold' : 'text-pink-700 font-bold'}>
-                            {patient.gender}
+                            {patient.gender === 'Nam' ? '♂ Nam' : '♀ Nữ'}
                           </span>
                         </div>
                       </div>

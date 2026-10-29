@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { 
   X, 
   FileSpreadsheet, 
@@ -442,7 +442,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-black text-slate-900 uppercase">{sat.patientName || sat.fullName}</span>
+                          <span className="font-black text-slate-900">{formatPatientDisplayName(sat.patientName || sat.fullName)}</span>
                           <span className="text-[11px] font-bold text-slate-500">• Khớp theo {match.matchedField}</span>
                           {isMerged && (
                             <span className="text-[10.5px] px-2 py-0.2 rounded-full bg-emerald-600 text-white font-bold">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { 
   Patient, 
   Doctor, 
@@ -12,6 +12,7 @@ import {
   AdmissionDischargeStatus
 } from '../types/patient';
 import { formatDoctorShortName } from './DetailedPatientListView';
+import { formatPatientDisplayName } from '../utils/storage';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { getCriticalLabAlerts, parseRawLabsText, autoClassifyAndTagPatient } from '../utils/labAlerts';
 import { 
@@ -445,11 +446,15 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-white uppercase">
-                {patient.fullName}
+              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-white">
+                {formatPatientDisplayName(patient.fullName)}
               </h2>
-              <span className="text-xs sm:text-sm font-semibold text-white/80 bg-white/10 px-2 py-0.5 rounded">
-                {patient.gender}, {patient.age} tuổi
+              <span className="text-xs sm:text-sm font-semibold text-white/90 bg-white/10 px-2.5 py-0.5 rounded flex items-center gap-1.5">
+                {patient.gender === 'Nam' ? (
+                  <span className="text-blue-300 font-extrabold flex items-center gap-0.5"><span>♂</span> Nam</span>
+                ) : (
+                  <span className="text-rose-300 font-extrabold flex items-center gap-0.5"><span>♀</span> Nữ</span>
+                )}, {patient.age} tuổi
               </span>
             </div>
           </div>

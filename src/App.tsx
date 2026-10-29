@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Trash2, LogOut } from 'lucide-react';
 import { 
   Patient, 
@@ -309,6 +309,25 @@ export default function App() {
       console.warn('Auto sync new patient error:', err);
       setManualPushMessage(`❌ Lỗi đồng bộ tiếp nhận bệnh nhân mới lên Cloud: ${err.message || String(err)}`);
       setTimeout(() => setManualPushMessage(null), 10000);
+    } finally {
+      setIsAutoSyncing(false);
+    }
+  };
+
+  // Import nhieu benh nhan cung luc tu Cloud ve tinh
+  const handleImportMultiplePatients = async (newPatients: Patient[]) => {
+    if (newPatients.length === 0) return;
+    const updated = [...newPatients, ...patients];
+    setPatients(updated);
+    savePatients(updated);
+    setIsAutoSyncing(true);
+    try {
+      for (const p of newPatients) {
+        await syncPatientToCloud(p);
+      }
+      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+    } catch (err: any) {
+      console.warn('Auto sync multiple patients error:', err);
     } finally {
       setIsAutoSyncing(false);
     }
@@ -738,6 +757,7 @@ export default function App() {
               if (target) handleDeletePatient(target);
             }}
             onReassignDoctorForRoom={handleAssignRoomDoctor}
+            onUpdatePatient={handleUpdatePatient}
           />
         )}
 
@@ -763,6 +783,7 @@ export default function App() {
               }
             }}
             onReassignDoctorForRoom={handleAssignRoomDoctor}
+            onUpdatePatient={handleUpdatePatient}
           />
         )}
       </main>
@@ -938,6 +959,7 @@ export default function App() {
           onImportPatientDirect={(newPat) => {
             handleAddPatient(newPat);
           }}
+          onImportMultiplePatients={handleImportMultiplePatients}
           onOpenEditAdmission={(prefilledPatient) => {
             setSatelliteImportDraft(prefilledPatient);
             setIsSatelliteSyncOpen(false);
@@ -985,6 +1007,7 @@ export default function App() {
           onImportPatientDirect={(newPat) => {
             handleAddPatient(newPat);
           }}
+          onImportMultiplePatients={handleImportMultiplePatients}
         />
       )}
 

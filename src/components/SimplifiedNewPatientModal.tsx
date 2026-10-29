@@ -372,7 +372,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
     const newPatient: Patient = {
       id: `PAT-${Date.now()}`,
       patientCode: `BN-${Date.now().toString().slice(-6)}`,
-      fullName: fullName.trim().toUpperCase(),
+      fullName: formatPatientDisplayName(fullName.trim()),
       gender,
       age: Number(age) || 50,
       dateOfBirth: `${now.getFullYear() - (Number(age) || 50)}-01-01`,
@@ -431,7 +431,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
 
       const updatedPatient: Patient = {
         ...patientToEdit,
-        fullName: fullName.trim().toUpperCase(),
+        fullName: formatPatientDisplayName(fullName.trim()),
         gender,
         age: Number(age) || 50,
         dateOfBirth: `${now.getFullYear() - (Number(age) || 50)}-01-01`,
@@ -490,7 +490,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm sm:text-base font-black tracking-tight text-white">
-                  {isEditing ? `Chỉnh Sửa Bệnh Nhân: ${patientToEdit?.fullName}` : 'Tiếp Nhận Bệnh Nhân Nội Trú Mới'}
+                  {isEditing ? `Chỉnh Sửa Bệnh Nhân: ${formatPatientDisplayName(patientToEdit?.fullName || "")}` : 'Tiếp Nhận Bệnh Nhân Nội Trú Mới'}
                 </h3>
                 <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-white/15 text-white border border-white/20">
                   BV Đa Khoa Hùng Vương Gia Lai
@@ -792,11 +792,11 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                     type="text"
                     value={fullName}
                     onChange={(e) => {
-                      setFullName(e.target.value.toUpperCase());
+                      setFullName(e.target.value);
                       if (errorMsg) setErrorMsg(null);
                     }}
-                    placeholder="VD: NGUYỄN VĂN AN"
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-lg font-black text-xs tracking-wide focus:ring-2 focus:ring-rose-500 uppercase placeholder:normal-case"
+                    placeholder="VD: Nguyễn Văn An"
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-lg font-black text-xs tracking-wide focus:ring-2 focus:ring-rose-500 placeholder:normal-case"
                     required
                   />
                 </div>

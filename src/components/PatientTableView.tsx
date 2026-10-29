@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { 
   Patient, 
   Doctor, 
@@ -416,11 +416,11 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                       >
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-slate-900 group-hover:text-rose-600 transition-colors text-sm">
-                            {patient.fullName}
+                            {formatPatientDisplayName(patient.fullName)}
                           </span>
                         </div>
                         <div className="text-xs text-slate-500 mt-0.5">
-                          <span>{patient.gender}, {patient.age}t ({patient.dateOfBirth})</span>
+                          {patient.gender === "Nam" ? (<span className="text-blue-700 font-extrabold flex items-center gap-0.5"><span>♂</span> Nam</span>) : (<span className="text-rose-600 font-extrabold flex items-center gap-0.5"><span>♀</span> Nữ</span>)}, {patient.age}t ({patient.dateOfBirth})
                         </div>
                         <div className="text-[11px] text-slate-400">
                           Vào viện: {patient.admissionDate.split(' ')[0]}

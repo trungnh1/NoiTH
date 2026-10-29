@@ -1,10 +1,28 @@
-import { Doctor, DepartmentRoom, Patient, AdmissionDischargeStatus } from '../types/patient';
+﻿import { Doctor, DepartmentRoom, Patient, AdmissionDischargeStatus } from '../types/patient';
 import { INITIAL_DOCTORS, INITIAL_ROOMS } from '../data/mockData';
 
 const PATIENTS_KEY = 'hvg_internal_med_patients_v4';
 const DOCTORS_KEY = 'hvg_internal_med_doctors_v6';
 const ROOMS_KEY = 'hvg_internal_med_rooms_v4';
 
+
+/**
+ * Định dạng tên bệnh nhân hiển thị: Chuyển tên viết hoa toàn bộ (ALL CAPS)
+ * thành chữ thường viết hoa chữ cái đầu tự nhiên (Title Case), ví dụ 'NGUYỄN VĂN AN' -> 'Nguyễn Văn An'.
+ */
+export function formatPatientDisplayName(fullName: string): string {
+  if (!fullName) return '';
+  const trimmed = fullName.trim();
+  if (trimmed === trimmed.toUpperCase() && trimmed.length > 1) {
+    return trimmed
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+  return trimmed;
+}
 export function shortenPatientName(fullName: string): string {
   if (!fullName) return '';
   return fullName

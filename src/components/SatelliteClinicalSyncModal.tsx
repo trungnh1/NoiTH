@@ -44,6 +44,7 @@ import {
   cleanSatelliteTreatmentPlan
 } from '../services/clinicalFirebase';
 import { getCriticalLabAlerts } from '../utils/labAlerts';
+import { formatPatientDisplayName } from '../utils/storage';
 import { User as FirebaseUser } from 'firebase/auth';
 
 interface SatelliteClinicalSyncModalProps {
@@ -53,6 +54,7 @@ interface SatelliteClinicalSyncModalProps {
   currentUser?: Doctor | null;
   onClose: () => void;
   onImportPatientDirect: (patient: Patient) => void;
+  onImportMultiplePatients?: (patients: Patient[]) => void;
   onOpenEditAdmission: (prefilledPatient: Patient) => void;
   onOpenExcelImport?: () => void;
 }
@@ -64,6 +66,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
   currentUser,
   onClose,
   onImportPatientDirect,
+  onImportMultiplePatients,
   onOpenEditAdmission,
   onOpenExcelImport,
 }) => {
@@ -259,6 +262,43 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
     setImportedIds((prev) => new Set(prev).add(record.id));
     setNotification({
       message: `Đã nhập thành công bệnh nhân "${patientObj.fullName}" vào Phòng ${patientObj.roomNumber} - ${patientObj.bedNumber}!`,
+      type: 'success',
+    });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  // Action: Nhập Tất Cả BN từ Cloud vệ tinh
+  const handleImportAll = () => {
+    const candidates = filteredRecords.filter((r) => !importedIds.has(r.id));
+    if (candidates.length === 0) {
+      setNotification({
+        message: 'Tất cả các bệnh nhân trong danh sách hiển thị đã được nhập vào hệ thống!',
+        type: 'info',
+      });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    const newPatientsList = candidates.map((rec) => {
+      const p = mapClinicalRecordToPatient(rec, doctors, rooms, '');
+      p.attendingDoctorId = '';
+      return p;
+    });
+
+    if (onImportMultiplePatients) {
+      onImportMultiplePatients(newPatientsList);
+    } else {
+      newPatientsList.forEach((pat) => onImportPatientDirect(pat));
+    }
+
+    setImportedIds((prev) => {
+      const next = new Set(prev);
+      candidates.forEach((r) => next.add(r.id));
+      return next;
+    });
+
+    setNotification({
+      message: `Đã nhập thành công toàn bộ ${candidates.length} bệnh nhân từ Cloud vệ tinh vào khoa!`,
       type: 'success',
     });
     setTimeout(() => setNotification(null), 4000);
@@ -478,9 +518,21 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
               </button>
             </div>
 
-            <span className="text-[11px] text-slate-500 font-medium hidden md:inline">
+                        <span className="text-[11px] text-slate-500 font-medium hidden md:inline">
               Hiển thị: <strong className="text-slate-900 font-bold">{filteredRecords.length}</strong> ca
             </span>
+
+            {filteredRecords.length > 0 && (
+              <button
+                type="button"
+                onClick={handleImportAll}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+                title="Nhập toàn bộ các bệnh nhân trong danh sách hiển thị vào khoa"
+              >
+                <CloudDownload className="w-3.5 h-3.5" />
+                <span>Nhập Tất Cả BN ({filteredRecords.filter((r) => !importedIds.has(r.id)).length})</span>
+              </button>
+            )}
           </div>
 
         </div>
@@ -616,11 +668,11 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                       
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-base font-black text-slate-900 uppercase tracking-tight">
-                            {name}
+                          <h4 className="text-base font-black text-slate-900 tracking-tight">
+                            {formatPatientDisplayName(name)}
                           </h4>
                           <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 font-bold text-slate-700">
-                            {age} tuổi • {isFemale ? 'Nữ' : 'Nam'}
+                            {age} tuổi • {isFemale ? (<span className="text-rose-600 font-extrabold">♀ Nữ</span>) : (<span className="text-blue-700 font-extrabold">♂ Nam</span>)}
                           </span>
                           <span className={`text-xs px-2.5 py-0.5 rounded-md font-black flex items-center gap-1 ${
                             !room || room === 'Chưa xếp phòng'

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Patient, 
   Doctor, 
@@ -796,23 +796,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <span>{showEmptyRooms ? 'Ẩn phòng trống' : `Hiện phòng trống (${currentGroupRoomNumbers.length})`}</span>
             </button>
 
-            {onOpenSatelliteSync && (
-              <button
-                type="button"
-                onClick={onOpenSatelliteSync}
-                className="px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-[#0b4d8c] border border-blue-200 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-98"
-                title="Lấy dữ liệu bệnh nhân tự động từ Cloud Firestore lâm sàng vệ tinh"
-              >
-                <Database className="w-3.5 h-3.5 text-[#0b4d8c]" />
-                <span>Lấy dữ liệu BN</span>
-                {Boolean(pendingSatelliteCount && pendingSatelliteCount > 0) && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white font-black text-[10px]">
-                    {pendingSatelliteCount}
-                  </span>
-                )}
-              </button>
-            )}
-
             {/* Delete All Patients Button - EXCLUSIVE FOR DOCTOR ACCOUNT ID 00979 */}
             {currentUser?.id === '00979' && onDeleteAllPatients && (
               <button
@@ -1231,8 +1214,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 className="cursor-pointer group flex-1 min-w-[130px]"
                               >
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className={`text-base sm:text-lg font-black tracking-tight uppercase leading-snug group-hover:underline transition-colors ${nameColorClass}`}>
-                                    {patient.fullName}
+                                  <h4 className={`text-base sm:text-lg font-black tracking-tight leading-snug group-hover:underline transition-colors ${nameColorClass}`}>
+                                    {formatPatientDisplayName(patient.fullName)}
                                   </h4>
                                   {isNewPatient && (
                                     <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs animate-pulse shrink-0">
@@ -1245,7 +1228,11 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 font-bold mt-1">
                                   <span>{patient.age} tuổi</span>
                                   <span>•</span>
-                                  <span>{patient.gender}</span>
+                                  {patient.gender === 'Nam' ? (
+                                    <span className="inline-flex items-center gap-1 text-blue-700 font-extrabold" title="Nam"><span className="text-sm font-black">♂</span> Nam</span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-rose-600 font-extrabold" title="Nữ"><span className="text-sm font-black">♀</span> Nữ</span>
+                                  )}
                                 </div>
                               </div>
 

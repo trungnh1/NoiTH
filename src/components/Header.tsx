@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { 
   Building2, 
   HeartPulse, 
@@ -132,18 +132,6 @@ export const Header: React.FC<HeaderProps> = ({
                     {pendingSatelliteCount}
                   </span>
                 )}
-              </button>
-            )}
-
-            {onManualPushToCloud && (
-              <button
-                type="button"
-                onClick={onManualPushToCloud}
-                className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
-                title="Đẩy toàn bộ dữ liệu nội trú hiện tại lên Cloud Firestore"
-              >
-                <Cloud className="w-3.5 h-3.5 text-blue-200" />
-                <span>Đẩy Cloud</span>
               </button>
             )}
 

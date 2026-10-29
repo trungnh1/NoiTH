@@ -26,6 +26,7 @@ import {
   Tag
 } from 'lucide-react';
 import { calculateTreatmentDays, formatDoctorShortName } from './DetailedPatientListView';
+import { formatPatientDisplayName } from '../utils/storage';
 import { getSavedDoctorSession } from '../utils/auth';
 import { getCriticalLabAlerts } from '../utils/labAlerts';
 
@@ -310,11 +311,11 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-black tracking-tight uppercase text-white">
-                  {patient.fullName}
+                <h3 className="text-base font-black tracking-tight text-white">
+                  {formatPatientDisplayName(patient.fullName)}
                 </h3>
                 <span className="text-xs px-2 py-0.5 rounded-md bg-white/15 text-white font-semibold border border-white/20">
-                  {patient.age} tuổi • {patient.gender}
+                  {patient.age} tuổi • {patient.gender === "Nam" ? (<span className="text-blue-200 font-extrabold">♂ Nam</span>) : (<span className="text-rose-200 font-extrabold">♀ Nữ</span>)}
                 </span>
                 <span className="text-xs px-2 py-0.5 rounded-md bg-white/15 text-white font-semibold border border-white/20">
                   Phòng {patient.roomNumber}

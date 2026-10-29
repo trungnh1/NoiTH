@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Patient, 
   Doctor, 
@@ -25,6 +25,7 @@ import {
   BellRing
 } from 'lucide-react';
 import { getDoctorShortName } from '../data/mockData';
+import { formatPatientDisplayName } from '../utils/storage';
 
 interface AiCriticalPatientAnalysis {
   patientId: string;
@@ -451,10 +452,10 @@ export const AiCriticalTriageDashboard: React.FC<AiCriticalTriageDashboardProps>
                         P.{patient.roomNumber} - {patient.bedNumber}
                       </span>
                       <span className="font-black text-sm truncate" title={patient.fullName}>
-                        {patient.fullName}
+                        {formatPatientDisplayName(patient.fullName)}
                       </span>
                       <span className="text-xs opacity-90 shrink-0 font-medium">
-                        ({patient.gender}, {patient.age}t)
+                        ({patient.gender === 'Nam' ? '♂ Nam' : '♀ Nữ'}, {patient.age}t)
                       </span>
                     </div>
 

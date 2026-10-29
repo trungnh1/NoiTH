@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Patient, Doctor, CLINICAL_TAGS_META } from '../types/patient';
 import { 
   X, 
@@ -102,7 +102,7 @@ export const ClinicalWatchlistModal: React.FC<ClinicalWatchlistModalProps> = ({
                           }}
                           className="font-black text-slate-900 hover:text-rose-600 cursor-pointer text-sm"
                         >
-                          {patient.fullName} ({patient.gender}, {patient.age}t)
+                          {formatPatientDisplayName(patient.fullName)} ({patient.gender === 'Nam' ? '♂ Nam' : '♀ Nữ'}, {patient.age}t)
                         </h4>
                         <span className="text-xs font-mono text-slate-400">
                           {patient.medicalRecordNumber}

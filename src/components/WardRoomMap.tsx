@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { 
   DepartmentRoom, 
   Doctor, 
@@ -44,6 +44,7 @@ import { DutyRosterModal } from './DutyRosterModal';
 import { DEFAULT_ROOM_DOCTORS, getDoctorShortName, GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS } from '../data/mockData';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { isRoomNumberMatch, matchesPatientSearch } from '../utils/searchUtils';
+import { formatPatientDisplayName } from '../utils/storage';
 
 interface WardRoomMapProps {
   rooms: DepartmentRoom[];
@@ -54,6 +55,7 @@ interface WardRoomMapProps {
   onAdmitToBed: (roomNumber: string, bedNumber: string) => void;
   onDeletePatient?: (patientId: string) => void;
   onReassignDoctorForRoom?: (roomNumber: string, doctorId: string) => void;
+  onUpdatePatient?: (patient: Patient) => void;
 }
 
 export const WardRoomMap: React.FC<WardRoomMapProps> = ({
@@ -65,8 +67,28 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
   onAdmitToBed,
   onDeletePatient,
   onReassignDoctorForRoom,
+  onUpdatePatient,
 }) => {
-  // View mode: 'whiteboard' (Chế độ xem ngắn gọn) or 'detailed' (Thẻ buồng giường)
+  // Cycle severity nhanh khi bấm vào thẻ độ nặng trên khung bệnh nhân
+  const handleCycleSeverity = (e: React.MouseEvent, patient: Patient) => {
+    e.stopPropagation();
+    const current = patient.severity || 'UNCLASSIFIED';
+    const nextMap: Record<SeverityLevel, SeverityLevel> = {
+      CRITICAL: 'MODERATE',
+      MODERATE: 'STABLE',
+      STABLE: 'UNCLASSIFIED',
+      UNCLASSIFIED: 'CRITICAL',
+    };
+    const next = nextMap[current] || 'CRITICAL';
+    if (onUpdatePatient) {
+      onUpdatePatient({
+        ...patient,
+        severity: next,
+      });
+    }
+  };
+
+  // View mode: 'whiteboard'
   const [viewMode, setViewMode] = useState<'whiteboard' | 'detailed'>('whiteboard');
   const [isDutyModalOpen, setIsDutyModalOpen] = useState(false);
 
@@ -524,9 +546,14 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                             className="font-black text-[11px] text-slate-900 group-hover:text-rose-700 leading-tight truncate underline decoration-dotted decoration-slate-300"
                             title={patient.fullName}
                           >
-                            {patient.fullName}
+                            {formatPatientDisplayName(patient.fullName)}
                           </span>
                           <span className="text-[9px] font-bold text-slate-500 shrink-0">{patient.age}t</span>
+                          {patient.gender === 'Nam' ? (
+                            <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-blue-100 text-blue-700 font-black text-[8.5px] shrink-0 leading-none" title="Nam">♂</span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-rose-100 text-rose-600 font-black text-[8.5px] shrink-0 leading-none" title="Nữ">♀</span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-0.5 shrink-0 opacity-80 group-hover:opacity-100">
@@ -592,18 +619,23 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                       <div className="flex items-center justify-between text-[8px] pt-0.5 border-t border-slate-200/60 mt-0.5 leading-none">
                         <div className="flex items-center gap-0.5 flex-wrap">
                           {renderSmallStatusBadge(patient.admissionStatus)}
-                          {isCritical && (
-                            <span className="text-[7.5px] font-extrabold px-1 rounded bg-rose-600 text-white flex items-center gap-0.5">
-                              <span className="w-1 h-1 rounded-full bg-white animate-ping" />
-                              NẶNG
-                            </span>
-                          )}
-                          {isModerate && !patient.admissionStatus && (
-                            <span className="text-[7.5px] font-bold px-1 rounded bg-amber-500 text-white">TB</span>
-                          )}
-                          {isUnclassified && !patient.admissionStatus && (
-                            <span className="text-[7.5px] font-bold px-1 rounded bg-slate-200 text-slate-700 border border-slate-300">Chưa PL</span>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => handleCycleSeverity(e, patient)}
+                            className={`text-[7.5px] font-black px-1.5 py-0.2 rounded transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 flex items-center gap-0.5 ${
+                              isCritical
+                                ? 'bg-rose-600 text-white hover:bg-rose-700'
+                                : isModerate
+                                ? 'bg-amber-500 text-white hover:bg-amber-600'
+                                : isStable
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                : 'bg-slate-200 text-slate-700 border border-slate-300 hover:bg-slate-300'
+                            }`}
+                            title="Bấm để đổi phân loại nhanh: Nặng ➔ Vừa ➔ Ổn ➔ Chưa PL"
+                          >
+                            {isCritical && <span className="w-1 h-1 rounded-full bg-white animate-ping" />}
+                            <span>{isCritical ? 'NẶNG' : isModerate ? 'VỪA' : isStable ? 'ỔN' : 'Chưa PL'}</span>
+                          </button>
                         </div>
 
                         <div className="flex items-center gap-0.5 shrink-0 flex-wrap">
@@ -1471,10 +1503,16 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-black text-rose-300">
-                  {hoveredPatientData.patient.fullName}
+                  {formatPatientDisplayName(hoveredPatientData.patient.fullName)}
                 </span>
-                <span className="text-[11px] font-bold text-slate-300">
-                  ({hoveredPatientData.patient.age}t • {hoveredPatientData.patient.gender})
+                <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
+                  <span>{hoveredPatientData.patient.age}t</span>
+                  <span>•</span>
+                  {hoveredPatientData.patient.gender === 'Nam' ? (
+                    <span className="inline-flex items-center gap-0.5 text-blue-400 font-black"><span>♂</span> Nam</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-0.5 text-rose-400 font-black"><span>♀</span> Nữ</span>
+                  )}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-semibold mt-0.5">
