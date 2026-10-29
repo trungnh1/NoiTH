@@ -103,6 +103,7 @@ interface DetailedPatientListViewProps {
   doctors: Doctor[];
   rooms?: DepartmentRoom[];
   roomDoctorAssignments?: Record<string, string>;
+  currentUser?: Doctor | null;
   onAssignRoomDoctor?: (roomNumber: string, doctorId: string) => void;
   onOpenNewPatient: () => void;
   onOpenNewPatientForRoom?: (roomNumber: string) => void;
@@ -112,6 +113,7 @@ interface DetailedPatientListViewProps {
   onTransferPatient?: (patient: Patient) => void;
   onDischargePatient?: (patient: Patient) => void;
   onDeletePatient?: (patient: Patient) => void;
+  onDeleteAllPatients?: () => void;
   onOpenPrintModal?: () => void;
   onAddPatient?: (patient: Patient) => void;
   onOpenSatelliteSync?: () => void;
@@ -381,7 +383,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   patients,
   doctors,
   rooms = [],
-  roomDoctorAssignments = {},
+  currentUser,
   onAssignRoomDoctor,
   onOpenNewPatient,
   onOpenNewPatientForRoom,
@@ -391,6 +393,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   onTransferPatient,
   onDischargePatient,
   onDeletePatient,
+  onDeleteAllPatients,
   onOpenPrintModal,
   onAddPatient,
   onOpenSatelliteSync,
@@ -805,6 +808,19 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     {pendingSatelliteCount}
                   </span>
                 )}
+              </button>
+            )}
+
+            {/* Delete All Patients Button - EXCLUSIVE FOR DOCTOR ACCOUNT ID 00979 */}
+            {currentUser?.id === '00979' && onDeleteAllPatients && (
+              <button
+                type="button"
+                onClick={onDeleteAllPatients}
+                className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-98"
+                title="Xóa vĩnh viễn toàn bộ bệnh nhân khỏi hệ thống (Chỉ dành riêng cho tài khoản ID 00979)"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-white" />
+                <span>Xóa Tất Cả BN</span>
               </button>
             )}
 

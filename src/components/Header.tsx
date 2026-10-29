@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-black text-blue-100 bg-white/15 px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-white/10">
-                  Bệnh Viện Đa Khoa Hùng Vương Gia Lai
+                  Bệnh Viện Hùng Vương Gia Lai
                 </span>
                 
                 {/* Real-time Cloud Sync Pill */}

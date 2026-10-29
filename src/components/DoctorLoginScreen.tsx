@@ -118,7 +118,7 @@ export const DoctorLoginScreen: React.FC<DoctorLoginScreenProps> = ({
           </div>
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white border border-blue-200 text-[#0b4d8c] shadow-xs text-xs font-black uppercase tracking-wider">
-            <span>Bệnh Viện Đa Khoa Hùng Vương Gia Lai</span>
+            <span>Bệnh Viện Hùng Vương Gia Lai</span>
           </div>
 
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">

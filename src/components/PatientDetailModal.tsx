@@ -410,53 +410,6 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Quick Severity Selector */}
-            <div className="bg-white/10 rounded-xl p-1 flex items-center gap-1 border border-white/20">
-              <button
-                type="button"
-                onClick={() => handleChangeSeverity('CRITICAL')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                  patient.severity === 'CRITICAL'
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'text-white/70 hover:text-white'
-                }`}
-              >
-                Nặng (Đỏ)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleChangeSeverity('MODERATE')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                  patient.severity === 'MODERATE'
-                    ? 'bg-amber-500 text-white shadow-xs'
-                    : 'text-white/70 hover:text-white'
-                }`}
-              >
-                Vừa
-              </button>
-              <button
-                type="button"
-                onClick={() => handleChangeSeverity('STABLE')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                  patient.severity === 'STABLE'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-white/70 hover:text-white'
-                }`}
-              >
-                Ổn định
-              </button>
-              <button
-                type="button"
-                onClick={() => handleChangeSeverity('UNCLASSIFIED')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                  patient.severity === 'UNCLASSIFIED' || !patient.severity
-                    ? 'bg-slate-700 text-white shadow-xs'
-                    : 'text-white/70 hover:text-white'
-                }`}
-              >
-                Chưa phân loại
-              </button>
-            </div>
 
             <button
               type="button"
@@ -601,81 +554,142 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
           {/* TAB 1: OVERVIEW & DEMOGRAPHICS */}
           {activeTab === 'overview' && (
             <div className="space-y-5">
-              {/* Special Priority Clinical Tags (Thở Oxy, Dùng Vận Mạch, Cần Theo Dõi Sát) */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
+              {/* Special Priority Clinical Tags & Severity Selection */}
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                     <HeartPulse className="w-4 h-4 text-rose-600" />
-                    Các Nhãn Lâm Sàng Đặc Biệt (Bấm để kích hoạt / tắt)
+                    Phân Loại Tình Trạng & Nhãn Lâm Sàng Đặc Biệt
                   </h3>
-                  <span className="text-[11px] font-bold text-slate-500">
-                    Tình trạng: <span className={isCritical ? 'text-rose-600 font-black' : isModerate ? 'text-amber-600 font-black' : 'text-emerald-600 font-black'}>
-                      {isCritical ? 'BỆNH NẶNG' : isModerate ? 'TRUNG BÌNH' : 'NHẸ / ỔN ĐỊNH'}
-                    </span>
-                  </span>
                 </div>
 
-                {/* Priority badges as compact inline buttons */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  {/* Thở Canula */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleTag('O2_CANULA')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                      patient.tags.includes('O2_CANULA') || patient.tags.includes('O2')
-                        ? 'bg-cyan-600 text-white shadow-2xs'
-                        : 'bg-cyan-50 text-cyan-800 border border-cyan-200 hover:bg-cyan-100'
-                    }`}
-                  >
-                    <Wind className="w-3.5 h-3.5 shrink-0" />
-                    <span>Thở Canula</span>
-                    {(patient.tags.includes('O2_CANULA') || patient.tags.includes('O2')) && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
-                  </button>
+                {/* 1. Mức độ tình trạng bệnh nhân (Severity Pills) */}
+                <div>
+                  <span className="text-[10.5px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">
+                    Tình trạng bệnh nhân:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleChangeSeverity('CRITICAL')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        patient.severity === 'CRITICAL'
+                          ? 'bg-rose-600 text-white shadow-2xs font-black ring-2 ring-rose-300'
+                          : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                      <span>Nặng (Đỏ)</span>
+                      {patient.severity === 'CRITICAL' && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
+                    </button>
 
-                  {/* Thở Mask */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleTag('O2_MASK')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                      patient.tags.includes('O2_MASK')
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
-                    }`}
-                  >
-                    <Wind className="w-3.5 h-3.5 shrink-0" />
-                    <span>Thở Mask</span>
-                    {patient.tags.includes('O2_MASK') && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleChangeSeverity('MODERATE')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        patient.severity === 'MODERATE'
+                          ? 'bg-amber-500 text-white shadow-2xs font-black ring-2 ring-amber-300'
+                          : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                      }`}
+                    >
+                      <span>Vừa</span>
+                      {patient.severity === 'MODERATE' && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
+                    </button>
 
-                  {/* TD dịch nhập/xuất */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleTag('FLUID_BALANCE')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                      patient.tags.includes('FLUID_BALANCE')
-                        ? 'bg-indigo-600 text-white shadow-2xs'
-                        : 'bg-indigo-50 text-indigo-800 border border-indigo-200 hover:bg-indigo-100'
-                    }`}
-                  >
-                    <Activity className="w-3.5 h-3.5 shrink-0" />
-                    <span>TD Dịch Nhập/Xuất</span>
-                    {patient.tags.includes('FLUID_BALANCE') && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleChangeSeverity('STABLE')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        patient.severity === 'STABLE'
+                          ? 'bg-emerald-600 text-white shadow-2xs font-black ring-2 ring-emerald-300'
+                          : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <span>Ổn định</span>
+                      {patient.severity === 'STABLE' && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
+                    </button>
 
-                  {/* Vận Mạch */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleTag('VASOPRESSOR')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                      patient.tags.includes('VASOPRESSOR')
-                        ? 'bg-rose-600 text-white shadow-2xs animate-pulse'
-                        : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
-                    }`}
-                  >
-                    <HeartPulse className="w-3.5 h-3.5 shrink-0" />
-                    <span>Vận Mạch</span>
-                    {patient.tags.includes('VASOPRESSOR') && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleChangeSeverity('UNCLASSIFIED')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        patient.severity === 'UNCLASSIFIED' || !patient.severity
+                          ? 'bg-slate-700 text-white shadow-2xs font-black ring-2 ring-slate-400'
+                          : 'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      <span>Chưa phân loại</span>
+                      {(patient.severity === 'UNCLASSIFIED' || !patient.severity) && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Priority badges as compact inline buttons */}
+                <div className="pt-1.5 border-t border-slate-100">
+                  <span className="text-[10.5px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">
+                    Nhãn can thiệp & Theo dõi cấp thiết:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {/* Thở Canula */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTag('O2_CANULA')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        patient.tags.includes('O2_CANULA') || patient.tags.includes('O2')
+                          ? 'bg-cyan-600 text-white shadow-2xs'
+                          : 'bg-cyan-50 text-cyan-800 border border-cyan-200 hover:bg-cyan-100'
+                      }`}
+                    >
+                      <Wind className="w-3.5 h-3.5 shrink-0" />
+                      <span>Thở Canula</span>
+                      {(patient.tags.includes('O2_CANULA') || patient.tags.includes('O2')) && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
+                    </button>
+
+                    {/* Thở Mask */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTag('O2_MASK')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        patient.tags.includes('O2_MASK')
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
+                      }`}
+                    >
+                      <Wind className="w-3.5 h-3.5 shrink-0" />
+                      <span>Thở Mask</span>
+                      {patient.tags.includes('O2_MASK') && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
+                    </button>
+
+                    {/* TD dịch nhập/xuất */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTag('FLUID_BALANCE')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        patient.tags.includes('FLUID_BALANCE')
+                          ? 'bg-indigo-600 text-white shadow-2xs'
+                          : 'bg-indigo-50 text-indigo-800 border border-indigo-200 hover:bg-indigo-100'
+                      }`}
+                    >
+                      <Activity className="w-3.5 h-3.5 shrink-0" />
+                      <span>TD Dịch Nhập/Xuất</span>
+                      {patient.tags.includes('FLUID_BALANCE') && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
+                    </button>
+
+                    {/* Vận Mạch */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTag('VASOPRESSOR')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        patient.tags.includes('VASOPRESSOR')
+                          ? 'bg-rose-600 text-white shadow-2xs animate-pulse'
+                          : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                      }`}
+                    >
+                      <HeartPulse className="w-3.5 h-3.5 shrink-0" />
+                      <span>Vận Mạch</span>
+                      {patient.tags.includes('VASOPRESSOR') && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Other secondary tags */}

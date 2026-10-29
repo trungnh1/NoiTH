@@ -424,6 +424,30 @@ export default function App() {
     }
   };
 
+  // Delete All Patients Modal state (Exclusive for Doctor ID 00979 - BS. Nguyễn Hữu Trung)
+  const [showDeleteAllConfirmModal, setShowDeleteAllConfirmModal] = useState(false);
+
+  const handleDeleteAllPatients = () => {
+    setShowDeleteAllConfirmModal(true);
+  };
+
+  const confirmDeleteAllPatients = async () => {
+    setShowDeleteAllConfirmModal(false);
+    setIsAutoSyncing(true);
+    try {
+      await deleteAllPatientsFromCloud();
+      setPatients([]);
+      savePatients([]);
+      setSelectedPatient(null);
+      setManualPushMessage('🗑️ Đã xóa vĩnh viễn toàn bộ bệnh nhân khỏi hệ thống và Cloud Firestore!');
+      setTimeout(() => setManualPushMessage(null), 7000);
+    } catch (err: any) {
+      alert(`Lỗi khi xóa toàn bộ bệnh nhân: ${err.message || String(err)}`);
+    } finally {
+      setIsAutoSyncing(false);
+    }
+  };
+
   // Confirm execution of patient discharge (xóa khỏi buồng phòng)
   const confirmDischargePatient = async (patient: Patient) => {
     const pId = patient.id;
@@ -688,6 +712,8 @@ export default function App() {
             onTransferPatient={(patient) => setTransferringPatient(patient)}
             onDischargePatient={handleDischargePatient}
             onDeletePatient={handleDeletePatient}
+            currentUser={authenticatedDoctor}
+            onDeleteAllPatients={handleDeleteAllPatients}
             onOpenPrintModal={() => setIsPrintModalOpen(true)}
             onAddPatient={handleAddPatient}
             onOpenSatelliteSync={() => setIsSatelliteSyncOpen(true)}
@@ -1019,6 +1045,57 @@ export default function App() {
           onClose={() => setIsDutyModalOpen(false)}
           onSelectDoctor={() => setIsDutyModalOpen(false)}
         />
+      )}
+
+      {/* Delete All Patients Confirmation Modal (BS ID 00979 Exclusive) */}
+      {showDeleteAllConfirmModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border-2 border-rose-500 overflow-hidden p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-3 rounded-2xl bg-rose-100 shrink-0">
+                <Trash2 className="w-7 h-7 text-rose-600" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 px-2 py-0.5 rounded border border-rose-200">
+                  Quyền Hạn Đặc Biệt (BS. Nguyễn Hữu Trung - ID: 00979)
+                </span>
+                <h3 className="font-black text-slate-900 text-base sm:text-lg leading-tight mt-1">
+                  XÁC NHẬN XÓA TẤT CẢ BỆNH NHÂN
+                </h3>
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-700 bg-rose-50/80 p-3.5 rounded-xl border border-rose-200 space-y-2">
+              <p className="font-extrabold text-rose-900">
+                ⚠️ CẢNH BÁO NGUY HẠI TỐI CAO:
+              </p>
+              <p className="font-semibold text-slate-800 leading-relaxed">
+                Bác sĩ <strong className="text-rose-700">{authenticatedDoctor?.name || 'Nguyễn Hữu Trung'}</strong> có chắc chắn muốn <strong className="text-rose-700 uppercase">XÓA VĨNH VIỄN TOÀN BỘ</strong> tất cả ({patients.filter((p) => p.status === 'ACTIVE').length}) bệnh nhân nội trú khỏi hệ thống?
+              </p>
+              <p className="text-[11px] text-rose-800 font-bold italic">
+                Thao tác này sẽ xóa sạch danh sách bệnh nhân trên máy và trên Cloud Firestore. Thao tác không thể hoàn tác!
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowDeleteAllConfirmModal(false)}
+                className="px-4 py-2 font-bold text-slate-600 hover:bg-slate-100 rounded-xl text-xs cursor-pointer transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteAllPatients}
+                className="px-5 py-2 font-black text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md text-xs cursor-pointer transition-colors flex items-center gap-1.5 active:scale-95"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xác Nhận Xóa Sạch Dữ Liệu</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
