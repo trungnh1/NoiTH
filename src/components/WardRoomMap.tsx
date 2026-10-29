@@ -434,8 +434,8 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                 </button>
               </div>
 
-              {/* Beds List */}
-              <div className="p-1.5 space-y-1.5 flex-1 bg-slate-50/50">
+              {/* Beds List - Tối ưu mật độ hiển thị nhiều bệnh nhân hơn */}
+              <div className="p-1 space-y-1 flex-1 bg-slate-50/50">
                 {Array.from({ length: maxBedRows }, (_, idx) => {
                   const bedIndex = idx + 1;
                   const bedNumFormatted = `Giường ${bedIndex < 10 ? '0' + bedIndex : bedIndex}`;
@@ -443,7 +443,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
 
                   if (!isRoomBedAllowed) {
                     return (
-                      <div key={bedIndex} className="h-14 rounded-lg bg-slate-100/60 border border-dashed border-slate-200 flex items-center justify-center text-slate-300 text-[10px] italic">
+                      <div key={bedIndex} className="h-10 rounded-md bg-slate-100/60 border border-dashed border-slate-200 flex items-center justify-center text-slate-300 text-[9px] italic">
                         Tối đa 3G
                       </div>
                     );
@@ -464,14 +464,14 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                       <div
                         key={bedIndex}
                         onClick={() => onAdmitToBed(room.number, bedNumFormatted)}
-                        className="h-[68px] rounded-lg border border-dashed border-slate-300 hover:border-emerald-400 bg-white/70 hover:bg-emerald-50/60 transition-all cursor-pointer flex flex-col items-center justify-center p-1 text-slate-400 hover:text-emerald-700 group shadow-2xs"
+                        className="h-[50px] rounded-lg border border-dashed border-slate-300 hover:border-emerald-400 bg-white/70 hover:bg-emerald-50/60 transition-all cursor-pointer flex flex-col items-center justify-center p-0.5 text-slate-400 hover:text-emerald-700 group shadow-2xs"
                         title={`Bấm để tiếp nhận bệnh nhân vào ${bedNumFormatted} P.${room.number}`}
                       >
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <PlusCircle className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-transform text-emerald-600" />
-                          <span className="text-[10px] font-bold text-slate-500 group-hover:text-emerald-700">G.{bedIndex < 10 ? '0' + bedIndex : bedIndex}</span>
+                        <div className="flex items-center gap-1">
+                          <PlusCircle className="w-3 h-3 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-transform text-emerald-600" />
+                          <span className="text-[9.5px] font-bold text-slate-500 group-hover:text-emerald-700">G.{bedIndex < 10 ? '0' + bedIndex : bedIndex}</span>
                         </div>
-                        <span className="text-[9px] font-medium text-slate-400 group-hover:text-emerald-600">Trống (Nhận BN)</span>
+                        <span className="text-[8.5px] font-medium text-slate-400 group-hover:text-emerald-600">Trống (Nhận BN)</span>
                       </div>
                     );
                   }
@@ -492,7 +492,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                   return (
                     <div
                       key={bedIndex}
-                      className={`rounded-lg p-1.5 transition-all border shadow-2xs hover:shadow-md flex flex-col justify-between min-h-[68px] relative group ${
+                      className={`rounded-lg p-1 transition-all border shadow-2xs hover:shadow-md flex flex-col justify-between min-h-[50px] relative group ${
                         isCritical
                           ? 'bg-rose-50/90 border-rose-300 border-l-4 border-l-rose-600 hover:bg-rose-100/90'
                           : isModerate
@@ -503,7 +503,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                       } ${isAnyFilterActive && !isMatched ? 'opacity-30 grayscale' : 'opacity-100'}`}
                     >
                       {/* Bed & Patient Name */}
-                      <div className="flex items-start justify-between gap-1">
+                      <div className="flex items-start justify-between gap-1 leading-none">
                         <div 
                           className="flex items-baseline gap-1 truncate cursor-pointer flex-1"
                           onClick={() => onSelectPatient(patient)}
@@ -517,16 +517,16 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                           }}
                           onMouseLeave={() => setHoveredPatientData(null)}
                         >
-                          <span className="text-[9px] font-black px-1 py-0.2 rounded bg-slate-200/80 text-slate-700 shrink-0">
+                          <span className="text-[8.5px] font-black px-1 py-0.2 rounded bg-slate-200/80 text-slate-700 shrink-0">
                             G.{bedIndex < 10 ? '0' + bedIndex : bedIndex}
                           </span>
                           <span 
-                            className="font-extrabold text-[12px] text-slate-900 group-hover:text-rose-700 leading-tight truncate underline decoration-dotted decoration-slate-300"
+                            className="font-black text-[11px] text-slate-900 group-hover:text-rose-700 leading-tight truncate underline decoration-dotted decoration-slate-300"
                             title={patient.fullName}
                           >
                             {patient.fullName}
                           </span>
-                          <span className="text-[10px] font-bold text-slate-500 shrink-0">{patient.age}t</span>
+                          <span className="text-[9px] font-bold text-slate-500 shrink-0">{patient.age}t</span>
                         </div>
 
                         <div className="flex items-center gap-0.5 shrink-0 opacity-80 group-hover:opacity-100">
@@ -560,10 +560,10 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                       {/* Diagnosis */}
                       <div 
                         onClick={() => onSelectPatient(patient)}
-                        className="my-0.5 cursor-pointer"
+                        className="my-0.5 cursor-pointer leading-tight"
                         title={patient.primaryDiagnosis}
                       >
-                        <p className="text-[9px] text-slate-700 font-medium leading-tight line-clamp-1">
+                        <p className="text-[8.5px] text-slate-700 font-medium line-clamp-1">
                           {patient.primaryDiagnosis}
                         </p>
                       </div>
@@ -572,55 +572,55 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                       {hasVital && (
                         <div 
                           onClick={() => onSelectPatient(patient)}
-                          className={`flex items-center gap-1 text-[8.5px] font-bold px-1 py-0.5 rounded cursor-pointer leading-none my-0.5 ${
+                          className={`flex items-center gap-1 text-[8px] font-bold px-1 py-0.2 rounded cursor-pointer leading-none my-0.2 ${
                             isVitalAlert 
                               ? 'bg-rose-100 text-rose-800 border border-rose-300 font-extrabold' 
                               : 'bg-slate-100/90 text-slate-700'
                           }`}
                           title={`Sinh hiệu gần nhất: HA ${latestVital.bpSystolic}/${latestVital.bpDiastolic} mmHg, Mạch ${latestVital.heartRate} l/p, SpO2 ${latestVital.spO2}%`}
                         >
-                          <Activity className={`w-2.5 h-2.5 shrink-0 ${isVitalAlert ? 'text-rose-600 animate-pulse' : 'text-slate-500'}`} />
-                          <span>HA: {latestVital.bpSystolic}/{latestVital.bpDiastolic}</span>
+                          <Activity className={`w-2 h-2 shrink-0 ${isVitalAlert ? 'text-rose-600 animate-pulse' : 'text-slate-500'}`} />
+                          <span>HA:{latestVital.bpSystolic}/{latestVital.bpDiastolic}</span>
                           <span className="text-slate-300">|</span>
-                          <span>M: {latestVital.heartRate}</span>
+                          <span>M:{latestVital.heartRate}</span>
                           <span className="text-slate-300">|</span>
-                          <span>SpO2: {latestVital.spO2}%</span>
+                          <span>SpO2:{latestVital.spO2}%</span>
                         </div>
                       )}
 
                       {/* Status badge & Tags */}
-                      <div className="flex items-center justify-between text-[9px] pt-0.5 border-t border-slate-200/60 mt-0.5">
+                      <div className="flex items-center justify-between text-[8px] pt-0.5 border-t border-slate-200/60 mt-0.5 leading-none">
                         <div className="flex items-center gap-0.5 flex-wrap">
                           {renderSmallStatusBadge(patient.admissionStatus)}
                           {isCritical && (
-                            <span className="text-[8px] font-extrabold px-1 rounded bg-rose-600 text-white flex items-center gap-0.5">
+                            <span className="text-[7.5px] font-extrabold px-1 rounded bg-rose-600 text-white flex items-center gap-0.5">
                               <span className="w-1 h-1 rounded-full bg-white animate-ping" />
                               NẶNG
                             </span>
                           )}
                           {isModerate && !patient.admissionStatus && (
-                            <span className="text-[8px] font-bold px-1 rounded bg-amber-500 text-white">TB</span>
+                            <span className="text-[7.5px] font-bold px-1 rounded bg-amber-500 text-white">TB</span>
                           )}
                           {isUnclassified && !patient.admissionStatus && (
-                            <span className="text-[8px] font-bold px-1 rounded bg-slate-200 text-slate-700 border border-slate-300">Chưa PL</span>
+                            <span className="text-[7.5px] font-bold px-1 rounded bg-slate-200 text-slate-700 border border-slate-300">Chưa PL</span>
                           )}
                         </div>
 
                         <div className="flex items-center gap-0.5 shrink-0 flex-wrap">
                           {(patient.tags.includes('O2_CANULA') || patient.tags.includes('O2')) && (
-                            <span className="px-1 rounded text-[8px] font-black bg-cyan-600 text-white" title="Thở Canula">Canula</span>
+                            <span className="px-1 rounded text-[7.5px] font-black bg-cyan-600 text-white" title="Thở Canula">Canula</span>
                           )}
                           {patient.tags.includes('O2_MASK') && (
-                            <span className="px-1 rounded text-[8px] font-black bg-blue-600 text-white" title="Thở Mask">Mask</span>
+                            <span className="px-1 rounded text-[7.5px] font-black bg-blue-600 text-white" title="Thở Mask">Mask</span>
                           )}
                           {patient.tags.includes('FLUID_BALANCE') && (
-                            <span className="px-1 rounded text-[8px] font-black bg-indigo-600 text-white" title="TD dịch nhập/xuất">TD Dịch</span>
+                            <span className="px-1 rounded text-[7.5px] font-black bg-indigo-600 text-white" title="TD dịch nhập/xuất">TD Dịch</span>
                           )}
                           {patient.tags.includes('VASOPRESSOR') && (
-                            <span className="px-1 rounded text-[8px] font-black bg-rose-600 text-white animate-pulse" title="Vận mạch">VM</span>
+                            <span className="px-1 rounded text-[7.5px] font-black bg-rose-600 text-white animate-pulse" title="Vận mạch">VM</span>
                           )}
                           {patient.tags.includes('CLOSE_MONITORING') && (
-                            <span className="px-1 rounded text-[8px] font-black bg-amber-500 text-white" title="Theo dõi sát">TDS</span>
+                            <span className="px-1 rounded text-[7.5px] font-black bg-amber-500 text-white" title="Theo dõi sát">TDS</span>
                           )}
                         </div>
                       </div>
@@ -655,16 +655,16 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
           
           {/* Cụm 1: Công suất giường & Quân số toàn khoa */}
-          <div className="flex items-center gap-3.5 sm:border-r border-slate-700/60 sm:pr-4">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white shadow-inner shrink-0">
-              <BedDouble className="w-6 h-6" />
+          <div className="flex items-center gap-3 sm:border-r border-slate-700/60 sm:pr-4 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white shadow-inner shrink-0">
+              <BedDouble className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">
-                  CÔNG SUẤT BUỒNG GIƯỜNG
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-300">
+                  NỘI TRÚ
                 </span>
-                <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full ${
                   totalOccupancyPercent >= 90
                     ? 'bg-rose-500 text-white animate-pulse'
                     : totalOccupancyPercent >= 75
@@ -674,16 +674,17 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                   {totalOccupancyPercent}%
                 </span>
               </div>
-              <div className="flex items-baseline gap-2 mt-0.5">
+              <div className="flex items-baseline gap-1.5 mt-0.5">
                 <span className="text-2xl font-black tracking-tight text-white font-mono">
                   {stats.total}
                 </span>
-                <span className="text-xs text-slate-300 font-medium">
-                  / {totalBedsCount} giường (<strong className="text-emerald-400">{availableBedsCount}</strong> giường trống)
+                <span className="text-xs text-indigo-200 font-bold uppercase">BN</span>
+                <span className="text-[11px] text-slate-400 font-medium ml-1">
+                  ({availableBedsCount} trống / {totalBedsCount}G)
                 </span>
               </div>
               {/* Progress bar */}
-              <div className="w-48 bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden border border-slate-700/50">
+              <div className="w-44 bg-slate-800 rounded-full h-1 mt-1 overflow-hidden border border-slate-700/50">
                 <div 
                   className={`h-full rounded-full transition-all duration-500 ${
                     totalOccupancyPercent >= 90 ? 'bg-rose-400' : totalOccupancyPercent >= 75 ? 'bg-amber-400' : 'bg-emerald-400'
@@ -694,53 +695,73 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
             </div>
           </div>
 
-          {/* Cụm 2: Phân tầng nguy cơ lâm sàng (Click để lọc nhanh) */}
-          <div className="flex items-center gap-2 flex-wrap sm:border-r border-slate-700/60 sm:pr-4">
+          {/* Cụm 2: Phân tầng nguy cơ lâm sàng (Nặng, Vừa, Ổn, Chưa phân loại) */}
+          <div className="flex items-center gap-1.5 flex-wrap sm:border-r border-slate-700/60 sm:pr-4">
+            {/* Nặng */}
             <button
               onClick={() => setSelectedSeverityFilter(selectedSeverityFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer border ${
+              className={`flex items-center gap-2 px-2.5 py-1 rounded-xl transition-all cursor-pointer border ${
                 selectedSeverityFilter === 'CRITICAL'
                   ? 'bg-rose-500/30 border-rose-400 text-white ring-2 ring-rose-400'
                   : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-200'
               }`}
-              title="Xem danh sách bệnh nhân NẶNG / Nguy kịch"
+              title="Xem danh sách bệnh nhân NẶNG"
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+              <div className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0" />
               <div className="text-left">
-                <div className="text-[10px] text-rose-300 font-bold uppercase tracking-wider">NGUY KỊCH</div>
-                <div className="text-base font-black text-rose-100 leading-tight font-mono">{stats.critical} <span className="text-[10px] font-normal opacity-75">BN</span></div>
+                <div className="text-[9.5px] text-rose-300 font-extrabold uppercase tracking-wider">NẶNG</div>
+                <div className="text-base font-black text-rose-100 leading-tight font-mono">{stats.critical} <span className="text-[9px] font-normal opacity-75">BN</span></div>
               </div>
             </button>
 
+            {/* Vừa */}
             <button
               onClick={() => setSelectedSeverityFilter(selectedSeverityFilter === 'MODERATE' ? 'ALL' : 'MODERATE')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer border ${
+              className={`flex items-center gap-2 px-2.5 py-1 rounded-xl transition-all cursor-pointer border ${
                 selectedSeverityFilter === 'MODERATE'
                   ? 'bg-amber-500/30 border-amber-400 text-white ring-2 ring-amber-400'
                   : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-200'
               }`}
-              title="Xem danh sách bệnh nhân TRUNG BÌNH"
+              title="Xem danh sách bệnh nhân VỪA (Trung bình)"
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
               <div className="text-left">
-                <div className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">TRUNG BÌNH</div>
-                <div className="text-base font-black text-amber-100 leading-tight font-mono">{stats.moderate} <span className="text-[10px] font-normal opacity-75">BN</span></div>
+                <div className="text-[9.5px] text-amber-300 font-extrabold uppercase tracking-wider">VỪA</div>
+                <div className="text-base font-black text-amber-100 leading-tight font-mono">{stats.moderate} <span className="text-[9px] font-normal opacity-75">BN</span></div>
               </div>
             </button>
 
+            {/* Ổn */}
             <button
               onClick={() => setSelectedSeverityFilter(selectedSeverityFilter === 'STABLE' ? 'ALL' : 'STABLE')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer border ${
+              className={`flex items-center gap-2 px-2.5 py-1 rounded-xl transition-all cursor-pointer border ${
                 selectedSeverityFilter === 'STABLE'
                   ? 'bg-emerald-500/30 border-emerald-400 text-white ring-2 ring-emerald-400'
                   : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-200'
               }`}
               title="Xem danh sách bệnh nhân ỔN ĐỊNH"
             >
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
               <div className="text-left">
-                <div className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">ỔN ĐỊNH</div>
-                <div className="text-base font-black text-emerald-100 leading-tight font-mono">{stats.stable} <span className="text-[10px] font-normal opacity-75">BN</span></div>
+                <div className="text-[9.5px] text-emerald-300 font-extrabold uppercase tracking-wider">ỔN</div>
+                <div className="text-base font-black text-emerald-100 leading-tight font-mono">{stats.stable} <span className="text-[9px] font-normal opacity-75">BN</span></div>
+              </div>
+            </button>
+
+            {/* Chưa phân loại */}
+            <button
+              onClick={() => setSelectedSeverityFilter(selectedSeverityFilter === 'UNCLASSIFIED' ? 'ALL' : 'UNCLASSIFIED')}
+              className={`flex items-center gap-2 px-2.5 py-1 rounded-xl transition-all cursor-pointer border ${
+                selectedSeverityFilter === 'UNCLASSIFIED'
+                  ? 'bg-slate-600 border-slate-400 text-white ring-2 ring-slate-400'
+                  : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-300'
+              }`}
+              title="Xem danh sách bệnh nhân CHƯA PHÂN LOẠI"
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
+              <div className="text-left">
+                <div className="text-[9.5px] text-slate-400 font-extrabold uppercase tracking-wider">CHƯA PL</div>
+                <div className="text-base font-black text-slate-200 leading-tight font-mono">{stats.unclassified} <span className="text-[9px] font-normal opacity-75">BN</span></div>
               </div>
             </button>
           </div>

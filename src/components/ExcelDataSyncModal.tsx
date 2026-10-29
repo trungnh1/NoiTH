@@ -159,7 +159,9 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       treatmentPlan: sat.treatmentPlan || excel.treatmentPlan,
     };
 
-    const patientObj = mapClinicalRecordToPatient(mergedRecord, doctors, rooms, currentUser?.id);
+    const patientObj = mapClinicalRecordToPatient(mergedRecord, doctors, rooms, '');
+    // Bác sĩ điều trị: Để trống theo yêu cầu lâm sàng (sẽ có người phân sau), không tự động gán người nhập
+    patientObj.attendingDoctorId = '';
     // Mức độ mặc định: CHƯA PHÂN LOẠI
     patientObj.severity = 'UNCLASSIFIED';
     if (excel.admissionDate) {
@@ -212,8 +214,8 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       ? excelRow.admissionDate 
       : defaultDateStr;
 
-    // Tìm bác sĩ phù hợp trong danh sách nếu file có ghi tên BS
-    let matchedDocId = currentUser?.id || doctors[0]?.id || '00979';
+    // Bác sĩ điều trị: Để trống theo yêu cầu lâm sàng (sẽ có người phân sau), tuyệt đối không tự động lấy người nhập
+    let matchedDocId = '';
     if (excelRow.doctorName) {
       const docFound = doctors.find(d => 
         excelRow.doctorName && (
@@ -302,7 +304,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="bg-white rounded-2xl w-full max-w-[96vw] shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[94vh]">
         
         {/* Header - Phong cách BV Hùng Vương Gia Lai */}
         <div className="px-5 py-4 bg-[#0b4d8c] text-white flex items-center justify-between border-b border-[#083a69] shrink-0">

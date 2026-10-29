@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { 
   Patient, 
   Doctor, 
@@ -300,7 +300,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
       />
 
       {/* Right-side sliding drawer panel */}
-      <div className="relative w-full sm:w-[620px] md:w-[720px] lg:w-[840px] xl:w-[960px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
+      <div className="relative w-full sm:w-[96vw] md:w-[95vw] lg:w-[94vw] max-w-[1850px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
         
         {/* Header - Thông tin Bệnh Nhân Rõ Ràng & Khoa Học - Tone BV Hùng Vương Gia Lai */}
         <div className="px-6 py-3.5 bg-[#0b4d8c] text-white flex items-center justify-between border-b border-[#083a69] shrink-0">

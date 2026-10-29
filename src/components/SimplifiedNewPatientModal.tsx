@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+﻿import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Patient, 
   Doctor, 
@@ -475,7 +475,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
       />
 
       {/* Right-side sliding drawer panel */}
-      <div className="relative w-full sm:w-[580px] md:w-[680px] lg:w-[760px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
+      <div className="relative w-full sm:w-[96vw] md:w-[95vw] lg:w-[94vw] max-w-[1850px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
         
         {/* Header - Phong cách BV Hùng Vương Gia Lai */}
         <div className="px-6 py-3.5 bg-[#0b4d8c] text-white flex items-center justify-between border-b border-[#083a69] shrink-0">

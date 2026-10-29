@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { Patient, Doctor, DepartmentRoom } from '../types/patient';
 import { X, Printer, Building2, Stethoscope } from 'lucide-react';
 import { 
@@ -124,7 +124,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
         }
       `}</style>
 
-      <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in">
+      <div className="bg-white rounded-2xl w-[96vw] max-w-[96vw] shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in">
         
         {/* Header - Screen Only */}
         <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between no-print shrink-0">

@@ -13,7 +13,7 @@ import {
 } from '../types/patient';
 import { formatDoctorShortName } from './DetailedPatientListView';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
-import { getCriticalLabAlerts } from '../utils/labAlerts';
+import { getCriticalLabAlerts, parseRawLabsText, autoClassifyAndTagPatient } from '../utils/labAlerts';
 import { 
   X, 
   Sparkles, 
@@ -129,8 +129,51 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
     setIsEditingMedText(false);
   };
 
+  const [aiClassificationResult, setAiClassificationResult] = useState<{
+    severity: SeverityLevel;
+    tags: ClinicalTag[];
+    admissionStatus?: AdmissionDischargeStatus;
+    reasons: string[];
+  } | null>(null);
+
+  const handleRunAiClassification = () => {
+    const result = autoClassifyAndTagPatient(patient);
+    setAiClassificationResult(result);
+    onUpdatePatient({
+      ...patient,
+      severity: result.severity,
+      tags: result.tags,
+      admissionStatus: result.admissionStatus || patient.admissionStatus,
+    });
+  };
+
+  const handleParseAndOrganizeLabs = () => {
+    const parsedLabs = parseRawLabsText(initialLabsText);
+    if (parsedLabs.length === 0) return;
+    const existingOtherLabs = (patient.labs || []).filter(
+      (l) => !parsedLabs.some((p) => p.testName.toLowerCase() === l.testName.toLowerCase())
+    );
+    const updatedLabs = [...parsedLabs, ...existingOtherLabs];
+    const updated = {
+      ...patient,
+      initialLabsText,
+      labs: updatedLabs,
+    };
+    onUpdatePatient(updated);
+  };
+
   const handleSaveLabText = () => {
-    const updated = { ...patient, initialLabsText };
+    const parsedLabs = parseRawLabsText(initialLabsText);
+    const existingOtherLabs = (patient.labs || []).filter(
+      (l) => !parsedLabs.some((p) => p.testName.toLowerCase() === l.testName.toLowerCase())
+    );
+    const updatedLabs = parsedLabs.length > 0 ? [...parsedLabs, ...existingOtherLabs] : (patient.labs || []);
+
+    const updated = { 
+      ...patient, 
+      initialLabsText,
+      labs: updatedLabs,
+    };
     onUpdatePatient(updated);
     setIsEditingLabText(false);
   };
@@ -378,8 +421,8 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
         title="Bấm bên ngoài để đóng bảng chi tiết"
       />
 
-      {/* Right-side expansive sliding drawer panel (khung rộng hơn nữa) */}
-      <div className="relative w-full sm:w-[94vw] md:w-[90vw] lg:w-[86vw] xl:w-[82vw] max-w-[1400px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
+      {/* Right-side expansive sliding drawer panel (khung rộng gần hết màn hình) */}
+      <div className="relative w-full sm:w-[98vw] md:w-[96vw] lg:w-[95vw] xl:w-[95vw] max-w-[1900px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
         
         {/* Modal Top Header - Đậm chất BV Hùng Vương Gia Lai */}
         <div className={`px-5 py-3 border-b flex flex-wrap items-center justify-between gap-3 shrink-0 ${
@@ -412,6 +455,16 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Nút Phân Loại Bệnh Án AI */}
+            <button
+              type="button"
+              onClick={handleRunAiClassification}
+              className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer border border-purple-400/50"
+              title="Tự động phân tích diễn tiến lâm sàng, sinh hiệu, cận lâm sàng để gắn nhãn (New, Dị ứng, Nặng...)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+              <span>Phân Loại Bệnh Án AI</span>
+            </button>
 
             <button
               type="button"
@@ -553,6 +606,41 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
         {/* Tab Content Body */}
         <div className="p-5 overflow-y-auto flex-1 space-y-5 bg-slate-50/40">
           
+          {/* Thông báo kết quả Phân Loại Bệnh Án AI */}
+          {aiClassificationResult && (
+            <div className="p-3.5 bg-purple-50 border-2 border-purple-300 rounded-xl text-xs space-y-2 animate-in fade-in shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-black text-purple-900">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  <span className="uppercase tracking-wide">KẾT QUẢ PHÂN LOẠI BỆNH ÁN AI (ĐÃ TỰ ĐỘNG GẮN NHÃN)</span>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setAiClassificationResult(null)} 
+                  className="px-2 py-0.5 rounded bg-purple-200/60 hover:bg-purple-300 text-purple-800 text-[11px] font-bold cursor-pointer"
+                >
+                  ✕ Đóng
+                </button>
+              </div>
+              <div className="flex items-center gap-2 font-bold text-slate-800 flex-wrap">
+                <span>Mức độ: <strong className="text-purple-700 uppercase px-1.5 py-0.5 bg-purple-100 rounded">{aiClassificationResult.severity}</strong></span>
+                <span>•</span>
+                <span>Nhãn tự động: <strong className="text-purple-700">{aiClassificationResult.tags.join(', ') || 'Không'}</strong></span>
+                {aiClassificationResult.admissionStatus && (
+                  <>
+                    <span>•</span>
+                    <span>Trạng thái: <strong className="text-purple-700">{aiClassificationResult.admissionStatus}</strong></span>
+                  </>
+                )}
+              </div>
+              <ul className="list-disc list-inside text-slate-700 text-[11px] space-y-0.5 pl-1 font-medium bg-white/70 p-2 rounded-lg border border-purple-100">
+                {aiClassificationResult.reasons.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* TAB 1: OVERVIEW & DEMOGRAPHICS */}
           {activeTab === 'overview' && (
             <div className="space-y-5">
@@ -1076,7 +1164,18 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                       Văn Bản Cận Lâm Sàng & Kết Quả Ban Đầu (HIS / Copy-Paste)
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {initialLabsText && (
+                      <button
+                        type="button"
+                        onClick={handleParseAndOrganizeLabs}
+                        className="px-2.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+                        title="Tự động bóc tách các chỉ số xét nghiệm từ văn bản và cập nhật vào bảng phía dưới"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-200" />
+                        <span>Phân tích & Sắp xếp bảng</span>
+                      </button>
+                    )}
                     {initialLabsText && (
                       <button
                         type="button"

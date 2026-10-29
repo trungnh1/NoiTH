@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { DepartmentRoom, Patient } from '../types/patient';
 import { X, ArrowRightLeft } from 'lucide-react';
 import { GROUP_1_ROOM_NUMBERS } from './DetailedPatientListView';
@@ -35,7 +35,7 @@ export const BedTransferModal: React.FC<BedTransferModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in">
+      <div className="bg-white rounded-2xl w-[92vw] max-w-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in">
         
         {/* Header */}
         <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
