@@ -24,7 +24,8 @@ import {
   Printer,
   Database,
   AlertTriangle,
-  Clock
+  Clock,
+  Filter
 } from 'lucide-react';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { parseExcelAdmissionDate } from '../utils/excelParser';
@@ -396,10 +397,11 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   pendingSatelliteCount,
 }) => {
   const [selectedGroup, setSelectedGroup] = useState<'GROUP_1' | 'CARDIO' | 'GROUP_2' | 'ALL'>('GROUP_1');
-  const [showEmptyRooms, setShowEmptyRooms] = useState<boolean>(true);
+  const [showEmptyRooms, setShowEmptyRooms] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | SeverityLevel | 'DISCHARGE_TODAY' | 'DISCHARGE_TOMORROW'>('ALL');
   const [doctorFilter, setDoctorFilter] = useState<string>('ALL');
+  const [tagFilter, setTagFilter] = useState<'ALL' | 'NEW' | 'ALLERGY' | ClinicalTag>('ALL');
   const [notification, setNotification] = useState<string | null>(null);
   const [hoveredPatientId, setHoveredPatientId] = useState<string | null>(null);
 
@@ -496,6 +498,19 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         }
       }
 
+      // Tag / Label filter (NEW, ALLERGY, etc.)
+      if (tagFilter !== 'ALL') {
+        if (tagFilter === 'NEW') {
+          if (!isNewAdmissionFromYesterday1630(p.admissionDate)) return false;
+        } else if (tagFilter === 'ALLERGY') {
+          const hasTag = p.tags?.includes('ALLERGY');
+          const hasText = Boolean(p.allergies && p.allergies.trim());
+          if (!hasTag && !hasText) return false;
+        } else {
+          if (!p.tags?.includes(tagFilter as ClinicalTag)) return false;
+        }
+      }
+
       // Search term: robust matching across room number, bed, patient name (accent-insensitive), diagnosis, doctor, notes
       if (searchTerm.trim()) {
         return matchesPatientSearch(p, searchTerm, doctorMap);
@@ -503,7 +518,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
       return true;
     });
-  }, [baseSearchPatients, statusFilter, doctorFilter, searchTerm, doctorMap]);
+  }, [baseSearchPatients, statusFilter, doctorFilter, tagFilter, searchTerm, doctorMap]);
 
   // Group patients by Room (Vertical List of Rooms for Selected Group or Search Results)
   const roomGroups = useMemo(() => {
@@ -620,6 +635,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const unclassifiedCount = activeGroupPatients.filter((p) => p.severity === 'UNCLASSIFIED' || !p.severity).length;
   const dischargeTodayCount = activeGroupPatients.filter((p) => p.admissionStatus === 'DISCHARGE_TODAY').length;
   const dischargeTomorrowCount = activeGroupPatients.filter((p) => p.admissionStatus === 'DISCHARGE_TOMORROW').length;
+  const newCount = activeGroupPatients.filter((p) => isNewAdmissionFromYesterday1630(p.admissionDate)).length;
+  const allergyCount = activeGroupPatients.filter((p) => p.tags?.includes('ALLERGY') || Boolean(p.allergies && p.allergies.trim())).length;
 
   // Active doctors currently treating patients in the selected group (sorted alphabetically by Vietnamese given name)
   const activeDoctorsWithCounts = useMemo(() => {
@@ -802,171 +819,182 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
           </div>
         </div>
 
-        {/* Row 2: Doctor Filter Chips */}
-        <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-black text-slate-500 uppercase tracking-wide flex items-center gap-1">
-            <Stethoscope className="w-3.5 h-3.5 text-[#0b4d8c]" />
-            Bác sĩ:
-          </span>
-          {activeDoctorsWithCounts.map((docItem) => {
-            const isSelected = doctorFilter === docItem.id;
-            const parts = docItem.name.trim().split(/\s+/);
-            const shortName = parts.length > 2 && /bình chi/i.test(docItem.name) 
-              ? 'Bình Chi' 
-              : parts[parts.length - 1];
+        {/* Row 2: BỘ LỌC NHANH & TÌM KIẾM (Simplified, Compact & Harmonized) */}
+        <div className="pt-2.5 border-t border-slate-100">
+          <div className="bg-slate-50/90 border border-slate-200 rounded-xl p-2.5 space-y-2">
+            
+            {/* Filter Controls Row */}
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2 text-xs">
+              
+              {/* Filter Pills */}
+              <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                <div className="flex items-center gap-1 text-[#0b4d8c] font-bold shrink-0 pr-2 border-r border-slate-200">
+                  <Filter className="w-3.5 h-3.5 text-[#0b4d8c]" />
+                  <span className="text-xs uppercase tracking-wide">Bộ lọc:</span>
+                </div>
 
-            return (
-              <button
-                key={docItem.id}
-                type="button"
-                onClick={() => setDoctorFilter(isSelected ? 'ALL' : docItem.id)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                  isSelected 
-                    ? 'bg-[#0b4d8c] text-white border-[#0b4d8c] shadow-xs' 
-                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                }`}
-              >
-                <span>BS. {shortName}</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
-                }`}>
-                  {docItem.count}
-                </span>
-              </button>
-            );
-          })}
+                {/* Status Filters */}
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                    statusFilter === 'ALL' && tagFilter === 'ALL'
+                      ? 'bg-[#0b4d8c] text-white shadow-2xs'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  Tất cả ({activeGroupPatients.length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter(statusFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                    statusFilter === 'CRITICAL'
+                      ? 'bg-rose-600 text-white shadow-2xs'
+                      : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                  <span>Nặng ({criticalCount})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter(statusFilter === 'MODERATE' ? 'ALL' : 'MODERATE')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                    statusFilter === 'MODERATE'
+                      ? 'bg-amber-500 text-white shadow-2xs'
+                      : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
+                  }`}
+                >
+                  <span>Trung bình ({moderateCount})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter(statusFilter === 'STABLE' ? 'ALL' : 'STABLE')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                    statusFilter === 'STABLE'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  }`}
+                >
+                  <span>Ổn ({stableCount})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter(statusFilter === 'UNCLASSIFIED' ? 'ALL' : 'UNCLASSIFIED')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                    statusFilter === 'UNCLASSIFIED'
+                      ? 'bg-slate-700 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+                  }`}
+                >
+                  <span>Chưa PL ({unclassifiedCount})</span>
+                </button>
+
+                <div className="h-4 w-px bg-slate-300 hidden sm:block mx-0.5" />
+
+                {/* Doctor Filter */}
+                <select
+                  value={doctorFilter}
+                  onChange={(e) => setDoctorFilter(e.target.value)}
+                  className={`bg-white font-bold text-xs px-2.5 py-1 rounded-lg border focus:outline-hidden cursor-pointer transition-all ${
+                    doctorFilter !== 'ALL'
+                      ? 'border-[#0b4d8c] text-[#0b4d8c] bg-blue-50/70 font-black'
+                      : 'border-slate-200 text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <option value="ALL">BS. Tất cả bác sĩ</option>
+                  {activeDoctorsWithCounts.map((docItem) => {
+                    const parts = docItem.name.trim().split(/\s+/);
+                    const shortName = parts.length > 2 && /bình chi/i.test(docItem.name) 
+                      ? 'Bình Chi' 
+                      : parts[parts.length - 1];
+                    return (
+                      <option key={docItem.id} value={docItem.id}>
+                        BS. {shortName} ({docItem.count})
+                      </option>
+                    );
+                  })}
+                </select>
+
+                <div className="h-4 w-px bg-slate-300 hidden sm:block mx-0.5" />
+
+                {/* Special Tags */}
+                <button
+                  type="button"
+                  onClick={() => setTagFilter(tagFilter === 'NEW' ? 'ALL' : 'NEW')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                    tagFilter === 'NEW'
+                      ? 'bg-rose-600 text-white shadow-2xs'
+                      : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
+                  }`}
+                  title="Bệnh mới nhập viện từ 16h30 hôm qua đến nay"
+                >
+                  <span className="px-1 py-0.2 rounded bg-rose-600 text-white text-[9px] font-black">NEW</span>
+                  <span>Mới ({newCount})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTagFilter(tagFilter === 'ALLERGY' ? 'ALL' : 'ALLERGY')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                    tagFilter === 'ALLERGY'
+                      ? 'bg-amber-500 text-white shadow-2xs'
+                      : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
+                  }`}
+                >
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Dị ứng ({allergyCount})</span>
+                </button>
+
+                {/* Reset Filters */}
+                {(statusFilter !== 'ALL' || doctorFilter !== 'ALL' || tagFilter !== 'ALL' || searchTerm.trim()) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter('ALL');
+                      setDoctorFilter('ALL');
+                      setTagFilter('ALL');
+                      setSearchTerm('');
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ml-auto"
+                    title="Xóa tất cả các bộ lọc hiện tại"
+                  >
+                    <span>✕ Đặt lại</span>
+                  </button>
+                )}
+              </div>
+
+            </div>
+
+            {/* Search Input Field */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm nhanh theo số phòng (vd: 735, 705), tên bệnh nhân, chẩn đoán..."
+                className="w-full pl-9 pr-8 py-1.5 bg-white hover:bg-slate-50 focus:bg-white text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-[#0b4d8c]/30 font-medium transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 cursor-pointer"
+                  title="Xóa tìm kiếm"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+          </div>
         </div>
 
-        {/* Row 3: Search Bar & Severity Filters */}
-        <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-          
-          {/* Search Box */}
-          <div className="relative flex-1 min-w-[240px] max-w-lg">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm theo số phòng (vd: 735, 705), tên BN, chẩn đoán, bác sĩ..."
-              className="w-full pl-10 pr-9 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#0b4d8c]/30 font-medium transition-all"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 cursor-pointer"
-                title="Xóa tìm kiếm"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Severity & Status Filters */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <button
-              type="button"
-              onClick={() => setStatusFilter('ALL')}
-              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer border ${
-                statusFilter === 'ALL'
-                  ? 'bg-[#0b4d8c] text-white border-[#0b4d8c] shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              Tất cả ({activeGroupPatients.length})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStatusFilter('CRITICAL')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
-                statusFilter === 'CRITICAL'
-                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                  : 'bg-white text-rose-700 border-rose-200 hover:bg-rose-50'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-              <span>Nặng ({criticalCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStatusFilter('MODERATE')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
-                statusFilter === 'MODERATE'
-                  ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                  : 'bg-white text-amber-800 border-amber-200 hover:bg-amber-50'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span>Vừa ({moderateCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStatusFilter('STABLE')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
-                statusFilter === 'STABLE'
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                  : 'bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>Ổn định ({stableCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStatusFilter('UNCLASSIFIED')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
-                statusFilter === 'UNCLASSIFIED'
-                  ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-slate-400" />
-              <span>Chưa phân loại ({unclassifiedCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStatusFilter('DISCHARGE_TOMORROW')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
-                statusFilter === 'DISCHARGE_TOMORROW'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                  : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              <span>Dự RV mai ({dischargeTomorrowCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStatusFilter('DISCHARGE_TODAY')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
-                statusFilter === 'DISCHARGE_TODAY'
-                  ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                  : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
-              }`}
-            >
-              <span>RV hôm nay ({dischargeTodayCount})</span>
-            </button>
-
-            {(searchTerm || statusFilter !== 'ALL' || doctorFilter !== 'ALL') && (
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('ALL');
-                  setDoctorFilter('ALL');
-                }}
-                className="text-xs text-rose-600 hover:underline font-bold px-2 py-1 cursor-pointer"
-              >
-                Xóa lọc
-              </button>
-            )}
-          </div>
-
-        </div>
       </div>
 
       {/* Search Result Banner */}
@@ -1241,15 +1269,15 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </div>
                             </div>
 
-                            {/* 2. Ngày vào viện & Tổng ngày ĐT */}
+                            {/* 2. Ngày vào viện & Số ngày ĐT */}
                             <div className="flex items-center justify-between text-xs sm:text-sm py-2 text-slate-700 border-b border-slate-100 font-bold">
                               <div className="flex items-center gap-1.5">
                                 <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                                <span>Ngày vào viện: <strong className="text-slate-900">{formatAdmissionDateDisplay(patient.admissionDate)}</strong></span>
+                                <span>Ngày NV: <strong className="text-slate-900">{formatAdmissionDateShort(patient.admissionDate).replace(/^NV:\s*/i, '')}</strong></span>
                               </div>
                               <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-[#0b4d8c] font-black text-xs border border-blue-200">
                                 <Clock className="w-3.5 h-3.5 text-[#0b4d8c]" />
-                                <span>Tổng ngày ĐT: {treatmentInfo.days} ngày</span>
+                                <span>Số ngày ĐT: {treatmentInfo.days}</span>
                               </div>
                             </div>
 
