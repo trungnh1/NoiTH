@@ -697,26 +697,26 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         </div>
       )}
 
-      {/* Top Action Bar & Quick Filters */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3.5">
+      {/* Top Action Bar & Quick Filters (Tối ưu gọn gàng cho Mobile & Desktop) */}
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs sm:shadow-sm p-2 sm:p-4 space-y-2 sm:space-y-3.5">
         
         {/* Row 1: Clinical Group Selector & Primary Actions */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2 sm:gap-3">
           
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-6 bg-[#0b4d8c] rounded-full" />
-              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                Danh Sách Buồng Bệnh
+          <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2.5">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="w-2 sm:w-2.5 h-4 sm:h-6 bg-[#0b4d8c] rounded-full shrink-0" />
+              <h2 className="text-xs sm:text-lg font-black text-slate-900 tracking-tight shrink-0 uppercase sm:normal-case">
+                Buồng Bệnh
               </h2>
             </div>
 
-            {/* Clinical Group Tabs (Tất cả, Nhóm 1, Nhóm 2, Nhóm TM) */}
-            <div className="inline-flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 text-xs font-semibold gap-1">
+            {/* Clinical Group Tabs (Tất cả, Nhóm 1, Nhóm 2, Nhóm TM) - Vuốt ngang mượt mà trên Mobile */}
+            <div className="flex items-center overflow-x-auto no-scrollbar bg-slate-100/90 p-0.5 sm:p-1 rounded-xl border border-slate-200 text-xs font-semibold gap-1 max-w-full">
               <button
                 type="button"
                 onClick={() => setSelectedGroup('ALL')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                   selectedGroup === 'ALL'
                     ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
@@ -728,7 +728,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setSelectedGroup('GROUP_1')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                   selectedGroup === 'GROUP_1'
                     ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
@@ -740,7 +740,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setSelectedGroup('GROUP_2')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                   selectedGroup === 'GROUP_2'
                     ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
@@ -752,7 +752,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setSelectedGroup('CARDIO')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                   selectedGroup === 'CARDIO'
                     ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
@@ -763,225 +763,223 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               </button>
             </div>
 
-            <span className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 text-[#0b4d8c] border border-blue-200 font-black">
+            <span className="text-[10.5px] sm:text-xs px-2 py-0.5 sm:py-1 rounded-lg bg-blue-50 text-[#0b4d8c] border border-blue-200 font-black shrink-0">
               {activeGroupPatients.length} BN
             </span>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {onOpenPrintModal && (
+          <div className="flex items-center justify-between sm:justify-end gap-1.5 shrink-0 w-full sm:w-auto">
+            <div className="flex items-center gap-1 shrink-0">
+              {onOpenPrintModal && (
+                <button
+                  type="button"
+                  onClick={onOpenPrintModal}
+                  className="px-2 sm:px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                  title="In danh sách bệnh nhân"
+                >
+                  <Printer className="w-3.5 h-3.5 text-slate-600" />
+                  <span className="hidden sm:inline">In DS</span>
+                </button>
+              )}
+
+              {/* Toggle Empty Rooms */}
               <button
                 type="button"
-                onClick={onOpenPrintModal}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-                title="In danh sách bệnh nhân"
+                onClick={() => setShowEmptyRooms(!showEmptyRooms)}
+                className={`px-2 sm:px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
+                  !showEmptyRooms 
+                    ? 'bg-[#0b4d8c] text-white border-[#0b4d8c] shadow-xs' 
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
+                }`}
+                title={showEmptyRooms ? 'Ẩn các buồng phòng hiện chưa có bệnh nhân' : 'Hiển thị tất cả các buồng phòng'}
               >
-                <Printer className="w-3.5 h-3.5 text-slate-600" />
-                <span>In DS</span>
+                <Users className="w-3.5 h-3.5 text-current" />
+                <span className="hidden sm:inline">{showEmptyRooms ? 'Ẩn phòng trống' : `Hiện phòng trống (${currentGroupRoomNumbers.length})`}</span>
+                <span className="sm:hidden text-[11px]">{showEmptyRooms ? 'Ẩn trống' : 'Hiện trống'}</span>
               </button>
-            )}
 
-            {/* Toggle Empty Rooms */}
-            <button
-              type="button"
-              onClick={() => setShowEmptyRooms(!showEmptyRooms)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1.5 ${
-                !showEmptyRooms 
-                  ? 'bg-[#0b4d8c] text-white border-[#0b4d8c] shadow-xs' 
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
-              }`}
-              title={showEmptyRooms ? 'Ẩn các buồng phòng hiện chưa có bệnh nhân' : 'Hiển thị tất cả các buồng phòng'}
-            >
-              <Users className="w-3.5 h-3.5 text-current" />
-              <span>{showEmptyRooms ? 'Ẩn phòng trống' : `Hiện phòng trống (${currentGroupRoomNumbers.length})`}</span>
-            </button>
-
-            {/* Delete All Patients Button - EXCLUSIVE FOR DOCTOR ACCOUNT ID 00979 */}
-            {currentUser?.id === '00979' && onDeleteAllPatients && (
-              <button
-                type="button"
-                onClick={onDeleteAllPatients}
-                className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-98"
-                title="Xóa vĩnh viễn toàn bộ bệnh nhân khỏi hệ thống (Chỉ dành riêng cho tài khoản ID 00979)"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-white" />
-                <span>Xóa Tất Cả BN</span>
-              </button>
-            )}
+              {/* Delete All Patients Button - EXCLUSIVE FOR DOCTOR ACCOUNT ID 00979 */}
+              {currentUser?.id === '00979' && onDeleteAllPatients && (
+                <button
+                  type="button"
+                  onClick={onDeleteAllPatients}
+                  className="px-2 sm:px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer active:scale-98"
+                  title="Xóa vĩnh viễn toàn bộ bệnh nhân khỏi hệ thống (Chỉ dành riêng cho tài khoản ID 00979)"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-white" />
+                  <span className="hidden sm:inline">Xóa Tất Cả BN</span>
+                </button>
+              )}
+            </div>
 
             <button
               type="button"
               onClick={onOpenNewPatient}
-              className="px-3.5 py-1.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white font-black text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-98"
+              className="flex-1 sm:flex-initial px-2.5 sm:px-3.5 py-1.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white font-black text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-98"
             >
-              <UserPlus className="w-4 h-4" />
-              <span>+ Tiếp Nhận BN Mới</span>
+              <UserPlus className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">+ Tiếp Nhận BN</span>
             </button>
           </div>
         </div>
 
-        {/* Row 2: BỘ LỌC NHANH & TÌM KIẾM (Simplified, Compact & Harmonized) */}
-        <div className="pt-2.5 border-t border-slate-100">
-          <div className="bg-slate-50/90 border border-slate-200 rounded-xl p-2.5 space-y-2">
+        {/* Row 2: BỘ LỌC NHANH & TÌM KIẾM (Gọn gàng 1 dòng cuộn ngang trên mobile) */}
+        <div className="pt-2 sm:pt-2.5 border-t border-slate-100">
+          <div className="bg-slate-50/90 border border-slate-200 rounded-xl p-2 sm:p-2.5 space-y-1.5 sm:space-y-2">
             
-            {/* Filter Controls Row */}
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2 text-xs">
-              
-              {/* Filter Pills */}
-              <div className="flex items-center gap-1.5 flex-wrap flex-1">
-                <div className="flex items-center gap-1 text-[#0b4d8c] font-bold shrink-0 pr-2 border-r border-slate-200">
-                  <Filter className="w-3.5 h-3.5 text-[#0b4d8c]" />
-                  <span className="text-xs uppercase tracking-wide">Bộ lọc:</span>
-                </div>
-
-                {/* Status Filters */}
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('ALL')}
-                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                    statusFilter === 'ALL' && tagFilter === 'ALL'
-                      ? 'bg-[#0b4d8c] text-white shadow-2xs'
-                      : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-                  }`}
-                >
-                  Tất cả ({activeGroupPatients.length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter(statusFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')}
-                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
-                    statusFilter === 'CRITICAL'
-                      ? 'bg-rose-600 text-white shadow-2xs'
-                      : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
-                  <span>Nặng ({criticalCount})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter(statusFilter === 'MODERATE' ? 'ALL' : 'MODERATE')}
-                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
-                    statusFilter === 'MODERATE'
-                      ? 'bg-amber-500 text-white shadow-2xs'
-                      : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
-                  }`}
-                >
-                  <span>Trung bình ({moderateCount})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter(statusFilter === 'STABLE' ? 'ALL' : 'STABLE')}
-                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
-                    statusFilter === 'STABLE'
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
-                  }`}
-                >
-                  <span>Ổn ({stableCount})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter(statusFilter === 'UNCLASSIFIED' ? 'ALL' : 'UNCLASSIFIED')}
-                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
-                    statusFilter === 'UNCLASSIFIED'
-                      ? 'bg-slate-700 text-white shadow-2xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
-                  }`}
-                >
-                  <span>Chưa PL ({unclassifiedCount})</span>
-                </button>
-
-                <div className="h-4 w-px bg-slate-300 hidden sm:block mx-0.5" />
-
-                {/* Doctor Filter */}
-                <select
-                  value={doctorFilter}
-                  onChange={(e) => setDoctorFilter(e.target.value)}
-                  className={`bg-white font-bold text-xs px-2.5 py-1 rounded-lg border focus:outline-hidden cursor-pointer transition-all ${
-                    doctorFilter !== 'ALL'
-                      ? 'border-[#0b4d8c] text-[#0b4d8c] bg-blue-50/70 font-black'
-                      : 'border-slate-200 text-slate-700 hover:border-slate-300'
-                  }`}
-                >
-                  <option value="ALL">BS. Tất cả bác sĩ</option>
-                  {activeDoctorsWithCounts.map((docItem) => {
-                    const parts = docItem.name.trim().split(/\s+/);
-                    const shortName = parts.length > 2 && /bình chi/i.test(docItem.name) 
-                      ? 'Bình Chi' 
-                      : parts[parts.length - 1];
-                    return (
-                      <option key={docItem.id} value={docItem.id}>
-                        BS. {shortName} ({docItem.count})
-                      </option>
-                    );
-                  })}
-                </select>
-
-                <div className="h-4 w-px bg-slate-300 hidden sm:block mx-0.5" />
-
-                {/* Special Tags */}
-                <button
-                  type="button"
-                  onClick={() => setTagFilter(tagFilter === 'NEW' ? 'ALL' : 'NEW')}
-                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
-                    tagFilter === 'NEW'
-                      ? 'bg-rose-600 text-white shadow-2xs'
-                      : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
-                  }`}
-                  title="Bệnh mới nhập viện từ 16h30 hôm qua đến nay"
-                >
-                  <span className="px-1 py-0.2 rounded bg-rose-600 text-white text-[9px] font-black">NEW</span>
-                  <span>Mới ({newCount})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setTagFilter(tagFilter === 'ALLERGY' ? 'ALL' : 'ALLERGY')}
-                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
-                    tagFilter === 'ALLERGY'
-                      ? 'bg-amber-500 text-white shadow-2xs'
-                      : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
-                  }`}
-                >
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Dị ứng ({allergyCount})</span>
-                </button>
-
-                {/* Reset Filters */}
-                {(statusFilter !== 'ALL' || doctorFilter !== 'ALL' || tagFilter !== 'ALL' || searchTerm.trim()) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStatusFilter('ALL');
-                      setDoctorFilter('ALL');
-                      setTagFilter('ALL');
-                      setSearchTerm('');
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ml-auto"
-                    title="Xóa tất cả các bộ lọc hiện tại"
-                  >
-                    <span>✕ Đặt lại</span>
-                  </button>
-                )}
+            {/* Filter Pills Row - Vuốt ngang mượt mà trên mobile, không bị nhảy dòng */}
+            <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs">
+              <div className="flex items-center gap-1 text-[#0b4d8c] font-bold shrink-0 pr-1.5 border-r border-slate-200">
+                <Filter className="w-3 h-3 text-[#0b4d8c]" />
+                <span className="text-[11px] uppercase tracking-wide hidden sm:inline">Bộ lọc:</span>
               </div>
 
+              {/* Status Filters */}
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ALL')}
+                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer shrink-0 ${
+                  statusFilter === 'ALL' && tagFilter === 'ALL'
+                    ? 'bg-[#0b4d8c] text-white shadow-2xs font-black'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                }`}
+              >
+                Tất cả ({activeGroupPatients.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')}
+                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  statusFilter === 'CRITICAL'
+                    ? 'bg-rose-600 text-white shadow-2xs font-black'
+                    : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                <span>Nặng ({criticalCount})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === 'MODERATE' ? 'ALL' : 'MODERATE')}
+                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  statusFilter === 'MODERATE'
+                    ? 'bg-amber-500 text-white shadow-2xs font-black'
+                    : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
+                }`}
+              >
+                <span>Vừa ({moderateCount})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === 'STABLE' ? 'ALL' : 'STABLE')}
+                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  statusFilter === 'STABLE'
+                    ? 'bg-emerald-600 text-white shadow-2xs font-black'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                }`}
+              >
+                <span>Ổn ({stableCount})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === 'UNCLASSIFIED' ? 'ALL' : 'UNCLASSIFIED')}
+                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  statusFilter === 'UNCLASSIFIED'
+                    ? 'bg-slate-700 text-white shadow-2xs font-black'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+                }`}
+              >
+                <span>Chưa PL ({unclassifiedCount})</span>
+              </button>
+
+              <div className="h-4 w-px bg-slate-300 shrink-0 mx-0.5" />
+
+              {/* Doctor Filter */}
+              <select
+                value={doctorFilter}
+                onChange={(e) => setDoctorFilter(e.target.value)}
+                className={`bg-white font-bold text-[11px] sm:text-xs px-2 py-1 rounded-lg border focus:outline-hidden cursor-pointer transition-all shrink-0 ${
+                  doctorFilter !== 'ALL'
+                    ? 'border-[#0b4d8c] text-[#0b4d8c] bg-blue-50/70 font-black'
+                    : 'border-slate-200 text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <option value="ALL">BS. Tất cả bác sĩ</option>
+                {activeDoctorsWithCounts.map((docItem) => {
+                  const parts = docItem.name.trim().split(/\s+/);
+                  const shortName = parts.length > 2 && /bình chi/i.test(docItem.name) 
+                    ? 'Bình Chi' 
+                    : parts[parts.length - 1];
+                  return (
+                    <option key={docItem.id} value={docItem.id}>
+                      BS. {shortName} ({docItem.count})
+                    </option>
+                  );
+                })}
+              </select>
+
+              <div className="h-4 w-px bg-slate-300 shrink-0 mx-0.5" />
+
+              {/* Special Tags */}
+              <button
+                type="button"
+                onClick={() => setTagFilter(tagFilter === 'NEW' ? 'ALL' : 'NEW')}
+                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  tagFilter === 'NEW'
+                    ? 'bg-rose-600 text-white shadow-2xs'
+                    : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
+                }`}
+                title="Bệnh mới nhập viện từ 16h30 hôm qua đến nay"
+              >
+                <span className="px-1 py-0.2 rounded bg-rose-600 text-white text-[9px] font-black">NEW</span>
+                <span>Mới ({newCount})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTagFilter(tagFilter === 'ALLERGY' ? 'ALL' : 'ALLERGY')}
+                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  tagFilter === 'ALLERGY'
+                    ? 'bg-amber-500 text-white shadow-2xs'
+                    : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
+                }`}
+              >
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                <span>Dị ứng ({allergyCount})</span>
+              </button>
+
+              {/* Reset Filters */}
+              {(statusFilter !== 'ALL' || doctorFilter !== 'ALL' || tagFilter !== 'ALL' || searchTerm.trim()) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter('ALL');
+                    setDoctorFilter('ALL');
+                    setTagFilter('ALL');
+                    setSearchTerm('');
+                  }}
+                  className="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ml-auto"
+                  title="Xóa tất cả các bộ lọc hiện tại"
+                >
+                  <span>✕ Đặt lại</span>
+                </button>
+              )}
             </div>
 
             {/* Search Input Field */}
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-slate-400 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm nhanh theo số phòng (vd: 735, 705), tên bệnh nhân, chẩn đoán..."
-                className="w-full pl-9 pr-8 py-1.5 bg-white hover:bg-slate-50 focus:bg-white text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-[#0b4d8c]/30 font-medium transition-all"
+                placeholder="Tìm nhanh phòng (vd: 735), tên BN, chẩn đoán..."
+                className="w-full pl-8 sm:pl-9 pr-8 py-1.5 bg-white hover:bg-slate-50 focus:bg-white text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-[#0b4d8c]/30 font-medium transition-all"
               />
               {searchTerm && (
                 <button
