@@ -86,6 +86,8 @@ export interface ClinicalRecord {
   vitals?: any;
   clinicalNote?: string;
   labsHtml?: string;
+  medicalRecordNumber?: string;
+  doctorName?: string;
 }
 
 /**

@@ -24,7 +24,6 @@ import {
   Printer,
   Database
 } from 'lucide-react';
-import { QuickPatientEntry } from './QuickPatientEntry';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
@@ -413,16 +412,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
   return (
     <div className="space-y-4 animate-in fade-in">
-      
-      {onAddPatient && (
-        <QuickPatientEntry 
-          onAddPatient={(newPat) => {
-            onAddPatient(newPat);
-            setNotification(`Đã trích xuất và thêm bệnh nhân ${newPat.fullName} vào Phòng ${newPat.roomNumber} - ${newPat.bedNumber}`);
-            setTimeout(() => setNotification(null), 5000);
-          }} 
-        />
-      )}
 
       {/* Quick feedback notification banner */}
       {notification && (
@@ -452,14 +441,14 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
             </h2>
 
             {/* Clinical Group Tabs (Nhóm 1, Tim Mạch, Nhóm 2, Tất cả) */}
-            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-bold gap-0.5">
+            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-medium gap-0.5">
               <button
                 type="button"
                 onClick={() => setSelectedGroup('GROUP_1')}
                 className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
                   selectedGroup === 'GROUP_1'
-                    ? 'bg-rose-600 text-white font-extrabold shadow-2xs'
-                    : 'text-slate-700 hover:text-slate-900'
+                    ? 'bg-[#0b4d8c] text-white font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="Nhóm 1: Phòng 703 - 731 & 733 (16 phòng)"
               >
@@ -470,8 +459,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 onClick={() => setSelectedGroup('CARDIO')}
                 className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
                   selectedGroup === 'CARDIO'
-                    ? 'bg-rose-600 text-white font-extrabold shadow-2xs'
-                    : 'text-slate-700 hover:text-slate-900'
+                    ? 'bg-[#0b4d8c] text-white font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="Nhóm Tim Mạch: Phòng 735 - 745 (6 phòng)"
               >
@@ -482,8 +471,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 onClick={() => setSelectedGroup('GROUP_2')}
                 className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
                   selectedGroup === 'GROUP_2'
-                    ? 'bg-indigo-600 text-white font-extrabold shadow-2xs'
-                    : 'text-slate-700 hover:text-slate-900'
+                    ? 'bg-[#0b4d8c] text-white font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="Nhóm 2: Phòng 747 - 757 (6 phòng)"
               >
@@ -494,8 +483,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 onClick={() => setSelectedGroup('ALL')}
                 className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
                   selectedGroup === 'ALL'
-                    ? 'bg-slate-900 text-white font-extrabold shadow-2xs'
-                    : 'text-slate-700 hover:text-slate-900'
+                    ? 'bg-[#0b4d8c] text-white font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="Tất cả các phòng trong khoa (28 phòng)"
               >
@@ -503,7 +492,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               </button>
             </div>
 
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-white font-extrabold">
+            <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-[#0b4d8c] border border-blue-200 font-bold">
               {activeGroupPatients.length} BN
             </span>
           </div>
@@ -513,26 +502,26 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={onOpenPrintModal}
-                className="px-2.5 py-1 rounded-lg text-xs font-black bg-purple-700 hover:bg-purple-800 text-white shadow-2xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
                 title="In danh sách bệnh nhân"
               >
-                <Printer className="w-3 h-3 text-purple-200" />
+                <Printer className="w-3 h-3 text-slate-500" />
                 <span>In DS</span>
               </button>
             )}
 
-            {/* Nút Ẩn / Hiện phòng trống - Được giữ lại theo yêu cầu */}
+            {/* Nút Ẩn / Hiện phòng trống */}
             <button
               type="button"
               onClick={() => setShowEmptyRooms(!showEmptyRooms)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1 ${
                 !showEmptyRooms 
-                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs' 
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                  ? 'bg-[#0b4d8c] text-white border-[#0b4d8c] shadow-2xs' 
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
               }`}
               title={showEmptyRooms ? 'Ẩn các buồng phòng hiện chưa có bệnh nhân' : 'Hiển thị tất cả các buồng phòng'}
             >
-              <Users className="w-3 h-3" />
+              <Users className="w-3 h-3 text-slate-500" />
               <span>{showEmptyRooms ? 'Ẩn phòng trống' : `Hiện phòng trống (${currentGroupRoomNumbers.length})`}</span>
             </button>
 
@@ -540,13 +529,13 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={onOpenSatelliteSync}
-                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-lg shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-98 relative"
+                className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-medium text-xs rounded-lg shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-98"
                 title="Lấy dữ liệu bệnh nhân tự động từ Cloud Firestore lâm sàng vệ tinh"
               >
-                <Database className="w-3 h-3 text-indigo-600" />
+                <Database className="w-3 h-3 text-slate-500" />
                 <span>Lấy dữ liệu BN</span>
                 {Boolean(pendingSatelliteCount && pendingSatelliteCount > 0) && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white font-black text-[10px] animate-pulse">
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#0b4d8c] text-white font-bold text-[9px]">
                     {pendingSatelliteCount}
                   </span>
                 )}
@@ -556,9 +545,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
             <button
               type="button"
               onClick={onOpenNewPatient}
-              className="px-3 py-1 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-black text-xs rounded-lg shadow-xs transition-all flex items-center gap-1 cursor-pointer active:scale-98"
+              className="px-3 py-1 bg-[#0b4d8c] hover:bg-[#083a69] text-white font-bold text-xs rounded-lg shadow-xs transition-all flex items-center gap-1 cursor-pointer active:scale-98"
             >
-              <UserPlus className="w-3 h-3" />
+              <UserPlus className="w-3.5 h-3.5" />
               <span>+ Nhập BN</span>
             </button>
           </div>
@@ -568,7 +557,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
           
           <div className="flex flex-wrap items-center gap-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase">BS:</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">BS:</span>
             {activeDoctorsWithCounts.map((docItem) => {
               const isSelected = doctorFilter === docItem.id;
               const parts = docItem.name.trim().split(/\s+/);
@@ -581,15 +570,15 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                   key={docItem.id}
                   type="button"
                   onClick={() => setDoctorFilter(isSelected ? 'ALL' : docItem.id)}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer border ${
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer border ${
                     isSelected 
-                      ? 'bg-rose-600 text-white border-rose-600' 
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                      ? 'bg-[#0b4d8c] text-white border-[#0b4d8c] shadow-2xs' 
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
                   }`}
                 >
                   <span>{shortName}</span>
-                  <span className={`px-1 py-0.2 rounded-full text-[9px] font-black ${
-                    isSelected ? 'bg-white text-rose-700' : 'bg-slate-900 text-white'
+                  <span className={`px-1 py-0.2 rounded text-[9px] font-bold ${
+                    isSelected ? 'bg-[#083a69] text-white' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {docItem.count}
                   </span>
@@ -612,29 +601,29 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Tìm theo tên bệnh nhân, phòng, chẩn đoán, kế hoạch, bác sĩ..."
-              className="w-full pl-9 pr-8 py-1.5 bg-slate-50 hover:bg-slate-100/60 focus:bg-white text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium transition-all"
+              className="w-full pl-9 pr-8 py-1.5 bg-slate-50 hover:bg-slate-100/60 focus:bg-white text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-400 font-medium transition-all"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-0.5"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-0.5 cursor-pointer"
               >
                 ✕
               </button>
             )}
           </div>
 
-          {/* Filter Pills */}
+          {/* Filter Pills - Tối giản */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             
             {/* Status & Severity Filters */}
-            <div className="inline-flex flex-wrap items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 gap-0.5">
+            <div className="inline-flex flex-wrap items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 gap-0.5">
               <button
                 type="button"
                 onClick={() => setStatusFilter('ALL')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
+                className={`px-2 py-0.5 rounded-md font-medium text-xs transition-colors cursor-pointer ${
                   statusFilter === 'ALL'
-                    ? 'bg-white text-slate-900 shadow-2xs'
+                    ? 'bg-white text-slate-900 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -643,92 +632,95 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <button
                 type="button"
                 onClick={() => setStatusFilter('CRITICAL')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 ${
+                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
                   statusFilter === 'CRITICAL'
-                    ? 'bg-rose-600 text-white shadow-2xs'
-                    : 'text-rose-700 hover:bg-rose-50'
+                    ? 'bg-white text-rose-700 font-bold shadow-2xs border border-rose-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                 <span>Nặng</span>
-                <span className="text-[10px] px-1 rounded-full bg-black/20 font-black">
-                  {criticalCount}
+                <span className="text-[10px] text-slate-400 font-semibold">
+                  ({criticalCount})
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter('MODERATE')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 ${
+                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
                   statusFilter === 'MODERATE'
-                    ? 'bg-amber-500 text-white shadow-2xs'
-                    : 'text-amber-700 hover:bg-amber-50'
+                    ? 'bg-white text-amber-800 font-bold shadow-2xs border border-amber-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                 <span>Vừa</span>
-                <span className="text-[10px] px-1 rounded-full bg-black/20 font-black">
-                  {moderateCount}
+                <span className="text-[10px] text-slate-400 font-semibold">
+                  ({moderateCount})
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter('STABLE')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 ${
+                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
                   statusFilter === 'STABLE'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'text-emerald-700 hover:bg-emerald-50'
+                    ? 'bg-white text-emerald-800 font-bold shadow-2xs border border-emerald-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 <span>Ổn định</span>
-                <span className="text-[10px] px-1 rounded-full bg-black/20 font-black">
-                  {stableCount}
+                <span className="text-[10px] text-slate-400 font-semibold">
+                  ({stableCount})
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter('UNCLASSIFIED')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 ${
+                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
                   statusFilter === 'UNCLASSIFIED'
-                    ? 'bg-slate-700 text-white shadow-2xs'
-                    : 'text-slate-700 hover:bg-slate-200'
+                    ? 'bg-white text-slate-800 font-bold shadow-2xs border border-slate-300'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <span>Chưa phân loại</span>
-                <span className="text-[10px] px-1 rounded-full bg-black/20 font-black">
-                  {unclassifiedCount}
+                <span className="text-[10px] text-slate-400 font-semibold">
+                  ({unclassifiedCount})
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter('DISCHARGE_TODAY')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 ${
+                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
                   statusFilter === 'DISCHARGE_TODAY'
-                    ? 'bg-purple-600 text-white shadow-2xs'
-                    : 'text-purple-700 hover:bg-purple-50'
+                    ? 'bg-white text-purple-700 font-bold shadow-2xs border border-purple-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <span>RV hôm nay</span>
-                <span className="text-[10px] px-1.5 rounded-full bg-purple-200 text-purple-900 font-black">
-                  {dischargeTodayCount}
+                <span className="text-[10px] text-slate-400 font-semibold">
+                  ({dischargeTodayCount})
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter('DISCHARGE_TOMORROW')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 ${
+                className={`px-2 py-0.5 rounded-md text-xs transition-colors cursor-pointer flex items-center gap-1 ${
                   statusFilter === 'DISCHARGE_TOMORROW'
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'text-blue-700 hover:bg-blue-50'
+                    ? 'bg-white text-blue-700 font-bold shadow-2xs border border-blue-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <span>Dự kiến RV mai</span>
-                <span className="text-[10px] px-1.5 rounded-full bg-blue-200 text-blue-900 font-black">
-                  {dischargeTomorrowCount}
+                <span className="text-[10px] text-slate-400 font-semibold">
+                  ({dischargeTomorrowCount})
                 </span>
               </button>
             </div>
 
             {/* Doctor Select Filter - Highlighting Nhóm 1 Doctors */}
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs">
-              <Stethoscope className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs">
+              <Stethoscope className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <select
                 value={doctorFilter}
                 onChange={(e) => setDoctorFilter(e.target.value)}
@@ -802,26 +794,26 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 key={group.roomNumber}
                 className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden"
               >
-                {/* 1. Header: Số phòng - Bs điều trị (Quick Doctor Assignment Dropdown) */}
-                <div className="bg-slate-900 text-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+                {/* 1. Header: Số phòng - Bs điều trị - Tone BV Hùng Vương Gia Lai */}
+                <div className="bg-[#0b4d8c] text-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 border-b border-[#083a69]">
                   
                   {/* Left: Phòng & Chọn nhanh Bác Sĩ Điều Trị */}
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <span className="text-rose-400 font-black text-sm sm:text-base tracking-tight">
+                    <span className="text-white font-black text-sm sm:text-base tracking-tight">
                       Phòng {group.roomNumber}
                     </span>
-                    <span className="text-slate-500 font-light">•</span>
+                    <span className="text-blue-200/60 font-light">•</span>
                     
                     {/* Quick Doctor Selector */}
-                    <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 hover:border-slate-500 rounded-lg px-2.5 py-1 transition-colors">
-                      <Stethoscope className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                      <span className="text-slate-400 text-[11px] font-semibold hidden sm:inline">
+                    <div className="flex items-center gap-1.5 bg-[#083a69] border border-blue-300/30 hover:border-blue-200/50 rounded-md px-2 py-1 transition-colors">
+                      <Stethoscope className="w-3.5 h-3.5 text-blue-200 shrink-0" />
+                      <span className="text-blue-200 text-[11px] font-normal hidden sm:inline">
                         BS điều trị:
                       </span>
                       <select
                         value={group.assignedDoctorId || ''}
                         onChange={(e) => handleQuickAssignDoctor(group.roomNumber, e.target.value)}
-                        className="bg-transparent text-white font-extrabold text-xs focus:outline-hidden cursor-pointer"
+                        className="bg-transparent text-white font-semibold text-xs focus:outline-hidden cursor-pointer"
                         title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber}`}
                       >
                         <option value="" className="text-slate-900 bg-white">-- Chọn BS điều trị --</option>
@@ -850,22 +842,22 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     </div>
 
                     {group.assignedDoctorName && (
-                      <span className="text-[11px] text-emerald-400 font-bold hidden md:inline">
-                        (Phụ trách buồng)
+                      <span className="text-[11px] text-blue-100 font-medium hidden md:inline">
+                        (Phụ trách)
                       </span>
                     )}
                   </div>
 
                   {/* Right: Số lượng bệnh nhân & Nút + Thêm BN */}
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-md bg-slate-800 text-slate-300 text-xs font-semibold">
+                    <span className="px-2 py-0.5 rounded-md bg-[#083a69] text-blue-100 text-xs font-bold border border-blue-300/20">
                       {group.patients.length} bệnh nhân
                     </span>
                     {onOpenNewPatientForRoom && (
                       <button
                         type="button"
                         onClick={() => onOpenNewPatientForRoom(group.roomNumber)}
-                        className="px-2.5 py-1 rounded-md bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-md bg-[#083a69] hover:bg-[#062c52] text-white text-xs font-bold border border-blue-300/30 flex items-center gap-1 transition-colors cursor-pointer"
                         title={`Tiếp nhận bệnh nhân mới vào Phòng ${group.roomNumber}`}
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -885,7 +877,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                       <button
                         type="button"
                         onClick={() => onOpenNewPatientForRoom(group.roomNumber)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-rose-400 text-rose-700 bg-rose-50/50 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-slate-300 text-slate-700 bg-white hover:bg-slate-100 text-xs font-medium transition-colors cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>+ Tiếp nhận bệnh nhân vào Phòng {group.roomNumber}</span>
@@ -897,8 +889,18 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     {group.patients.map((patient) => {
                       const isCritical = patient.severity === 'CRITICAL';
                       const isModerate = patient.severity === 'MODERATE';
+                      const isDischargeTomorrow = patient.admissionStatus === 'DISCHARGE_TOMORROW';
                       const treatmentInfo = calculateTreatmentDays(patient.admissionDate);
                       
+                      // Màu sắc tên Bệnh Nhân phản ánh trực quan tình trạng bệnh theo chuẩn lâm sàng
+                      const nameColorClass = isCritical
+                        ? 'text-rose-700 font-black'
+                        : isModerate
+                        ? 'text-amber-700 font-black'
+                        : isDischargeTomorrow
+                        ? 'text-blue-700 font-black'
+                        : 'text-[#0b4d8c] font-black';
+
                       // Combined unified diagnosis (tất cả các chẩn đoán, không phân biệt bệnh chính / bệnh kèm)
                       const combinedDiagnosis = formatCombinedDiagnosis(patient);
 
@@ -918,84 +920,100 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           key={patient.id}
                           className={`bg-white rounded-xl border ${
                             isCritical 
-                              ? 'border-rose-400/80 ring-1 ring-rose-400/40 shadow-xs' 
+                              ? 'border-rose-300 ring-1 ring-rose-200/60 shadow-2xs' 
                               : isModerate
-                              ? 'border-amber-300 shadow-2xs'
+                              ? 'border-amber-200 shadow-2xs'
+                              : isDischargeTomorrow
+                              ? 'border-blue-200 shadow-2xs'
                               : 'border-slate-200 shadow-2xs'
-                          } p-3 flex flex-col justify-between hover:shadow-md transition-all duration-150`}
+                          } p-3 flex flex-col justify-between hover:border-slate-300 transition-all duration-150`}
                         >
                           {/* Top Content */}
                           <div>
                             
-                            {/* Row 1: Tên Bệnh Nhân */}
+                            {/* Row 1: Tên Bệnh Nhân - Đổi màu theo tình trạng bệnh & Nhãn trạng thái */}
                             <div className="pb-2 border-b border-slate-100 flex items-start justify-between gap-1.5">
                               <div 
                                 onClick={() => onSelectPatient(patient)}
                                 className="cursor-pointer group flex-1 min-w-[120px]"
                               >
-                                <h4 className={`font-black text-sm tracking-tight transition-colors uppercase leading-snug ${
-                                  isCritical 
-                                    ? 'text-rose-600 group-hover:text-rose-700' 
-                                    : isModerate 
-                                    ? 'text-amber-600 group-hover:text-amber-700' 
-                                    : 'text-emerald-700 group-hover:text-emerald-800'
-                                }`}>
-                                  {patient.fullName}
-                                </h4>
-                                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mt-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h4 className={`text-sm tracking-tight uppercase leading-snug group-hover:underline transition-colors ${nameColorClass}`}>
+                                    {patient.fullName}
+                                  </h4>
+                                  {isCritical && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black uppercase tracking-wider bg-rose-600 text-white shrink-0 shadow-2xs">
+                                      Nặng
+                                    </span>
+                                  )}
+                                  {isModerate && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black uppercase tracking-wider bg-amber-500 text-white shrink-0 shadow-2xs">
+                                      Vừa
+                                    </span>
+                                  )}
+                                  {isDischargeTomorrow && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black uppercase tracking-wider bg-blue-600 text-white shrink-0 shadow-2xs">
+                                      Dự RV mai
+                                    </span>
+                                  )}
+                                  {!isCritical && !isModerate && !isDischargeTomorrow && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+                                      Ổn
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mt-0.5">
                                   <span>{patient.age} tuổi</span>
                                   <span>•</span>
-                                  <span className={patient.gender === 'Nam' ? 'text-blue-600 font-bold' : 'text-pink-600 font-bold'}>
-                                    {patient.gender}
-                                  </span>
+                                  <span>{patient.gender}</span>
                                 </div>
                               </div>
                             </div>
 
                             {/* Row 2: Ngày Vào (NV: DD/MM) & Số Ngày ĐT (ngày ĐT: XX) */}
                             <div className="flex items-center justify-between text-xs py-1.5 text-slate-600 border-b border-slate-100">
-                              <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                              <div className="flex items-center gap-1.5 font-medium text-slate-600">
                                 <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                 <span>{formatAdmissionDateShort(patient.admissionDate)}</span>
                               </div>
-                              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-900 font-black text-[11px] border border-indigo-200/80">
+                              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium text-[11px] border border-slate-200">
                                 {treatmentInfo.label}
                               </span>
                             </div>
 
                             {/* Row 3: Chẩn Đoán (Tất cả chẩn đoán, không phân thành bệnh chính, bệnh kèm) */}
                             <div className="py-2 space-y-1">
-                              <p className="font-bold text-xs text-slate-900 leading-snug" title={combinedDiagnosis}>
+                              <p className="font-semibold text-xs text-slate-900 leading-snug" title={combinedDiagnosis}>
                                 {combinedDiagnosis}
                               </p>
                             </div>
 
                             {/* Row 4: Tình Trạng & Nhãn Đặc Biệt */}
-                            <div className="flex flex-wrap items-center gap-1 pb-2.5">
+                            <div className="flex flex-wrap items-center gap-1 pb-2">
                               {/* Mức độ nặng/vừa/ổn định */}
                               {isCritical ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-black text-[10px] bg-rose-600 text-white shadow-2xs">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] bg-rose-50 text-rose-700 border border-rose-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
                                   NẶNG
                                 </span>
                               ) : isModerate ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-black text-[10px] bg-amber-500 text-white">
-                                  TRUNG BÌNH
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] bg-amber-50 text-amber-800 border border-amber-200">
+                                  VỪA
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-black text-[10px] bg-emerald-600 text-white">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
                                   ỔN ĐỊNH
                                 </span>
                               )}
 
                               {/* RV hôm nay / Dự kiến RV mai */}
                               {patient.admissionStatus === 'DISCHARGE_TODAY' && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-black text-[10px] bg-purple-600 text-white shadow-2xs">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] bg-purple-50 text-purple-700 border border-purple-200">
                                   RV hôm nay
                                 </span>
                               )}
                               {patient.admissionStatus === 'DISCHARGE_TOMORROW' && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-black text-[10px] bg-blue-600 text-white shadow-2xs">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] bg-blue-50 text-blue-700 border border-blue-200">
                                   Dự kiến RV mai
                                 </span>
                               )}
@@ -1007,7 +1025,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 return (
                                   <span
                                     key={tag}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${meta.badgeBg} text-white`}
+                                    className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
                                     title={meta.description}
                                   >
                                     {meta.shortLabel}
@@ -1016,21 +1034,21 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               })}
                             </div>
 
-                            {/* Row 5: Kế Hoạch Điều Trị (Hiển thị trực tiếp nội dung) */}
-                            <div className="p-2 rounded-lg bg-blue-50/70 border border-blue-200/80 mb-2">
+                            {/* Row 5: Kế Hoạch Điều Trị */}
+                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 mb-2">
                               <div className="flex items-start gap-1.5">
-                                <Stethoscope className="w-3.5 h-3.5 text-blue-700 shrink-0 mt-0.5" />
-                                <p className="text-xs font-semibold text-blue-950 leading-relaxed line-clamp-3" title={currentPlan}>
+                                <Stethoscope className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                                <p className="text-xs font-medium text-slate-800 leading-relaxed line-clamp-3" title={currentPlan}>
                                   {currentPlan}
                                 </p>
                               </div>
                             </div>
 
-                            {/* Row 6: Ghi Chú và Bàn Giao (Hiển thị trực tiếp nội dung) */}
-                            <div className="p-2 rounded-lg bg-amber-50/75 border border-amber-200/80 mb-3">
+                            {/* Row 6: Ghi Chú và Bàn Giao */}
+                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 mb-3">
                               <div className="flex items-start gap-1.5">
-                                <AlertCircle className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
-                                <p className="text-xs font-medium text-amber-950 leading-relaxed line-clamp-3" title={currentNotes}>
+                                <AlertCircle className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                                <p className="text-xs font-normal text-slate-700 leading-relaxed line-clamp-3" title={currentNotes}>
                                   {currentNotes}
                                 </p>
                               </div>
@@ -1038,15 +1056,15 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                           </div>
 
-                          {/* Bottom Action Buttons: + Diễn Tiến, Chi Tiết, Sửa, Chuyển, Ra viện, Xóa (Thao tác trên 1 hàng) */}
+                          {/* Bottom Action Buttons: + Diễn Tiến, Chi Tiết, Sửa, Chuyển, Ra viện, Xóa - Tối giản */}
                           <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 mt-auto">
                             <button
                               type="button"
                               onClick={() => onOpenEvolution(patient)}
-                              className="py-1 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs shadow-2xs flex items-center gap-1 transition-all cursor-pointer active:scale-95 shrink-0"
+                              className="py-1 px-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-semibold text-xs shadow-2xs flex items-center gap-1 transition-all cursor-pointer active:scale-95 shrink-0"
                               title="Nhập diễn tiến và kế hoạch điều trị"
                             >
-                              <Activity className="w-3 h-3 text-indigo-200" />
+                              <Activity className="w-3 h-3 text-slate-300" />
                               <span>+ Diễn Tiến</span>
                             </button>
 
@@ -1054,10 +1072,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               <button
                                 type="button"
                                 onClick={() => onSelectPatient(patient)}
-                                className="py-1 px-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-0.5"
+                                className="py-1 px-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md font-medium text-[11px] transition-colors cursor-pointer flex items-center gap-0.5"
                                 title="Xem chi tiết hồ sơ bệnh nhân"
                               >
-                                <FileEdit className="w-2.5 h-2.5 text-slate-500" />
+                                <FileEdit className="w-2.5 h-2.5 text-slate-400" />
                                 <span>Chi tiết</span>
                               </button>
 
@@ -1068,10 +1086,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   if (onEditPatient) onEditPatient(patient);
                                   else onSelectPatient(patient);
                                 }}
-                                className="py-1 px-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                className="py-1 px-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md font-medium text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
                                 title="Chỉnh sửa thông tin bệnh nhân"
                               >
-                                <FileEdit className="w-2.5 h-2.5 text-amber-600" />
+                                <FileEdit className="w-2.5 h-2.5 text-slate-400" />
                                 <span>Sửa</span>
                               </button>
 
@@ -1081,10 +1099,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   e.stopPropagation();
                                   if (onTransferPatient) onTransferPatient(patient);
                                 }}
-                                className="py-1 px-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                className="py-1 px-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md font-medium text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
                                 title="Chuyển bệnh nhân sang buồng phòng khác"
                               >
-                                <ArrowRightLeft className="w-2.5 h-2.5 text-blue-600" />
+                                <ArrowRightLeft className="w-2.5 h-2.5 text-slate-400" />
                                 <span>Chuyển</span>
                               </button>
 
@@ -1094,10 +1112,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   e.stopPropagation();
                                   if (onDischargePatient) onDischargePatient(patient);
                                 }}
-                                className="py-1 px-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                className="py-1 px-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-md font-medium text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
                                 title="Bấm đã ra viện (rời khỏi buồng phòng)"
                               >
-                                <LogOut className="w-2.5 h-2.5 text-emerald-600" />
+                                <LogOut className="w-2.5 h-2.5 text-slate-400" />
                                 <span>Ra viện</span>
                               </button>
 
@@ -1107,10 +1125,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   e.stopPropagation();
                                   if (onDeletePatient) onDeletePatient(patient);
                                 }}
-                                className="py-1 px-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 font-bold text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
+                                className="py-1 px-1.5 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-400 border border-slate-200 rounded-md font-medium text-[11px] flex items-center gap-0.5 transition-colors cursor-pointer"
                                 title="Xóa bệnh nhân khỏi hệ thống"
                               >
-                                <Trash2 className="w-2.5 h-2.5 text-rose-600" />
+                                <Trash2 className="w-2.5 h-2.5" />
                                 <span>Xóa</span>
                               </button>
                             </div>

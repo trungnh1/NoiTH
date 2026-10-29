@@ -132,7 +132,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     });
   };
 
-  // Action: Import direct patient from Excel row
+  // Action: Import direct patient from Excel row (Bỏ qua chẩn đoán ICD trong file)
   const handleImportDirectFromExcel = (excelRow: ExcelPatientRow, index: number) => {
     const now = new Date();
     const defaultDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -151,13 +151,14 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       admissionDate: excelRow.admissionDate || defaultDateStr,
       attendingDoctorId: currentUser?.id || doctors[0]?.id || '00979',
       primaryNurse: 'Điều dưỡng phụ trách phòng',
-      primaryDiagnosis: excelRow.diagnosis || 'Theo dõi bệnh nội khoa',
+      // Theo yêu cầu BS: Không lấy chẩn đoán trong file vì đó chỉ là chẩn đoán ICD hành chính
+      primaryDiagnosis: 'Chưa có chẩn đoán lâm sàng',
       medicalHistory: excelRow.medicalHistory || undefined,
       severity: 'STABLE',
       admissionStatus: 'ADMITTED_TODAY',
       tags: [],
       treatmentPlan: excelRow.treatmentPlan || 'Duy trì phác đồ điều trị nội khoa.',
-      importantNotes: `Nhập trực tiếp từ file Excel [${fileName || 'Excel'}]`,
+      importantNotes: `Nhập trực tiếp từ file Excel [${fileName || 'Excel'}] - Bỏ qua chẩn đoán ICD`,
       vitals: [],
       evolutions: [],
       labs: [],
@@ -169,28 +170,45 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     setImportedIds((prev) => new Set(prev).add(`excel-${index}`));
 
     setNotification({
-      message: `Đã nhập bệnh nhân "${newPatient.fullName}" vào Phòng ${newPatient.roomNumber}!`,
+      message: `Đã nhập bệnh nhân "${newPatient.fullName}" vào Phòng ${newPatient.roomNumber} (Chưa gắn chẩn đoán ICD)!`,
       type: 'success',
     });
     setTimeout(() => setNotification(null), 4000);
+  };
+
+  // Action: Nhập tất cả dữ liệu quét được từ file Excel cùng một lúc
+  const handleImportAllExcelRows = () => {
+    if (excelRows.length === 0) return;
+    let count = 0;
+    excelRows.forEach((row, idx) => {
+      const key = `excel-${idx}`;
+      if (!importedIds.has(key)) {
+        handleImportDirectFromExcel(row, idx);
+        count++;
+      }
+    });
+    setNotification({
+      message: `Đã nhập thành công tất cả ${count} bệnh nhân vào hệ thống! (Đã tự động bỏ qua chẩn đoán ICD)`,
+      type: 'success',
+    });
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
       <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
         
-        {/* Header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-emerald-900 via-teal-950 to-slate-900 text-white flex items-center justify-between border-b border-emerald-800/50 shrink-0">
+        {/* Header - Phong cách BV Hùng Vương Gia Lai */}
+        <div className="px-5 py-4 bg-[#0b4d8c] text-white flex items-center justify-between border-b border-[#083a69] shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white shadow-xs">
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-black tracking-tight text-white uppercase">
                 Nhập File Excel & Ghép Nối Dữ Liệu
               </h3>
-              <p className="text-xs text-emerald-200/90 mt-0.5">
-                Đọc danh sách bệnh nhân từ Excel để tự động điền Số phòng / Tuổi cho Bệnh nhân Vệ tinh
+              <p className="text-xs text-blue-100 mt-0.5">
+                Quét nhanh danh sách bệnh nhân từ Excel • Tự động bỏ qua mã ICD hành chính
               </p>
             </div>
           </div>
@@ -338,13 +356,25 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
           {/* SECTION 2: All Rows Extracted from Excel */}
           {excelRows.length > 0 && (
             <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-2 gap-2">
                 <div className="flex items-center gap-2">
-                  <Database className="w-4 h-4 text-indigo-600" />
+                  <Database className="w-4 h-4 text-[#0b4d8c]" />
                   <h4 className="text-sm font-black text-slate-900 uppercase">
                     Danh Sách Đọc Từ File Excel ({excelRows.length} bệnh nhân)
                   </h4>
+                  <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    Đã bỏ qua mã ICD
+                  </span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleImportAllExcelRows}
+                  className="px-3.5 py-1.5 bg-[#0b4d8c] hover:bg-[#083a69] text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Nhập tất cả dữ liệu quét được ({excelRows.length} BN)</span>
+                </button>
               </div>
 
               <div className="overflow-x-auto max-h-72 overflow-y-auto border border-slate-200 rounded-xl">
@@ -356,7 +386,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                       <th className="p-2.5">Tuổi</th>
                       <th className="p-2.5">Giới</th>
                       <th className="p-2.5">Phòng / Buồng</th>
-                      <th className="p-2.5">Chẩn Đoán</th>
+                      <th className="p-2.5">Mã Chẩn Đoán ICD (Bỏ qua)</th>
                       <th className="p-2.5 text-right">Thao Tác</th>
                     </tr>
                   </thead>
@@ -370,11 +400,13 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                           <td className="p-2.5 font-semibold text-slate-700">{row.patientAge}</td>
                           <td className="p-2.5 font-semibold text-slate-700">{row.patientGender}</td>
                           <td className="p-2.5">
-                            <span className="px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 font-black text-indigo-800">
+                            <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-200 font-black text-blue-900">
                               Phòng {row.patientRoom}
                             </span>
                           </td>
-                          <td className="p-2.5 text-slate-600 truncate max-w-[150px]">{row.diagnosis || 'Chưa ghi nhận'}</td>
+                          <td className="p-2.5 text-slate-400 italic truncate max-w-[150px] line-through">
+                            {row.diagnosis || 'Không có'}
+                          </td>
                           <td className="p-2.5 text-right">
                             <button
                               type="button"
@@ -383,7 +415,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                               className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                                 isImported
                                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                  : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs active:scale-95'
+                                  : 'bg-[#0b4d8c] hover:bg-[#083a69] text-white shadow-2xs active:scale-95'
                               }`}
                             >
                               {isImported ? 'Đã Nhập' : '+ Nhập Viện'}

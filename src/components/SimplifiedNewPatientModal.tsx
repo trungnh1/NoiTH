@@ -25,8 +25,20 @@ import {
   ArrowRightLeft,
   FileText,
   ShieldAlert,
-  FileEdit
+  FileEdit,
+  Sparkles,
+  Cpu,
+  Key,
+  Loader2,
+  CheckCircle2
 } from 'lucide-react';
+import { 
+  analyzeClinicalNote, 
+  loadAIConfig, 
+  saveAIConfig, 
+  AIAnalysisConfig, 
+  AIProvider 
+} from '../services/aiClinicalService';
 import { 
   getBpSysStatus, 
   getBpDiaStatus, 
@@ -135,6 +147,84 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   const [spO2, setSpO2] = useState<string>(latestVital?.spO2 ? String(latestVital.spO2) : '');
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Smart Paste & AI Clinical Intake (Gemini, DeepSeek & Offline Regex)
+  const [smartPasteText, setSmartPasteText] = useState('');
+  const [showSmartPaste, setShowSmartPaste] = useState(false);
+  const [smartPasteMsg, setSmartPasteMsg] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiConfig, setAiConfig] = useState<AIAnalysisConfig>(loadAIConfig);
+  const [showAiConfigModal, setShowAiConfigModal] = useState(false);
+  const [tempGeminiKey, setTempGeminiKey] = useState(aiConfig.geminiApiKey || '');
+  const [tempDeepseekKey, setTempDeepseekKey] = useState(aiConfig.deepseekApiKey || '');
+
+  const handleSmartPasteParse = async () => {
+    if (!smartPasteText.trim()) return;
+    setIsAnalyzing(true);
+    setSmartPasteMsg(null);
+
+    try {
+      const parsed = await analyzeClinicalNote(smartPasteText, aiConfig);
+
+      if (parsed.fullName) {
+        setFullName(parsed.fullName);
+      }
+      if (parsed.age) {
+        setAge(parsed.age);
+      }
+      if (parsed.gender) {
+        setGender(parsed.gender);
+      }
+      if (parsed.diagnosis) {
+        setPrimaryDiagnosis(parsed.diagnosis);
+      }
+      if (parsed.treatmentPlan) {
+        setTreatmentPlan(parsed.treatmentPlan);
+      }
+      if (parsed.medicalHistory) {
+        setMedicalHistory(parsed.medicalHistory);
+      }
+      if (parsed.clinicalNote) {
+        setAdmissionClinicalNote(parsed.clinicalNote);
+      }
+      if (parsed.severity) {
+        setSeverity(parsed.severity);
+      }
+      if (parsed.suggestedTags && parsed.suggestedTags.length > 0) {
+        setSelectedTags((prev) => {
+          const combined = new Set([...prev, ...parsed.suggestedTags]);
+          return Array.from(combined);
+        });
+      }
+
+      const modeName = aiConfig.provider === 'gemini' 
+        ? 'Google Gemini AI' 
+        : aiConfig.provider === 'deepseek' 
+        ? 'DeepSeek AI' 
+        : 'Thuật toán lâm sàng nội khoa';
+
+      setSmartPasteMsg(`✓ Đã phân tích thành công (${modeName}) và tự động điền đầy đủ Chẩn đoán, Kế hoạch, Tiền sử!`);
+      setTimeout(() => setSmartPasteMsg(null), 5000);
+    } catch (err: any) {
+      console.error('Lỗi phân tích bệnh án:', err);
+      setSmartPasteMsg(`Lỗi phân tích: ${err.message || 'Không thể bóc tách dữ liệu'}`);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleSaveAiKeys = () => {
+    const updated: AIAnalysisConfig = {
+      ...aiConfig,
+      geminiApiKey: tempGeminiKey.trim() || undefined,
+      deepseekApiKey: tempDeepseekKey.trim() || undefined,
+    };
+    setAiConfig(updated);
+    saveAIConfig(updated);
+    setShowAiConfigModal(false);
+    setSmartPasteMsg('Đã lưu cấu hình API Key!');
+    setTimeout(() => setSmartPasteMsg(null), 3000);
+  };
 
   // 3 Clinical Doctor Groups for 1-click select (sắp xếp theo thứ tự ABC của tên BS)
   const group1Doctors = useMemo(() => {
@@ -371,41 +461,41 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
       {/* POPUP RỘNG HƠN GẦN FULL MÀN HÌNH (max-w-[96vw] / max-w-7xl) */}
       <div className="bg-white rounded-2xl w-full max-w-[96vw] xl:max-w-7xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[96vh]">
         
-        {/* Header */}
-        <div className="px-6 py-3.5 bg-gradient-to-r from-slate-900 via-rose-900 to-slate-900 text-white flex items-center justify-between border-b border-rose-950/40 shrink-0">
+        {/* Header - Phong cách BV Hùng Vương Gia Lai */}
+        <div className="px-6 py-3.5 bg-[#0b4d8c] text-white flex items-center justify-between border-b border-[#083a69] shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-white border border-white/20 shadow-xs">
+            <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-white border border-white/20">
               {isEditing ? (
-                <FileEdit className="w-5 h-5 text-amber-300" />
+                <FileEdit className="w-4 h-4 text-white" />
               ) : (
-                <UserPlus className="w-5 h-5 text-rose-300" />
+                <UserPlus className="w-4 h-4 text-white" />
               )}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-black tracking-tight text-white">
+                <h3 className="text-sm sm:text-base font-black tracking-tight text-white">
                   {isEditing ? `Chỉnh Sửa Bệnh Nhân: ${patientToEdit?.fullName}` : 'Tiếp Nhận Bệnh Nhân Nội Trú Mới'}
                 </h3>
-                <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-rose-500/30 text-rose-200 border border-rose-400/40">
-                  Khoa Nội Tổng Hợp
+                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-white/15 text-white border border-white/20">
+                  BV Đa Khoa Hùng Vương Gia Lai
                 </span>
               </div>
-              <p className="text-xs text-rose-200/90 font-medium">
+              <p className="text-xs text-blue-100">
                 {isEditing
-                  ? 'Cập nhật nhanh thông tin hành chính, sinh hiệu, chẩn đoán, tiền sử, diễn tiến và bàn giao'
-                  : 'Nhập nhanh thông tin hành chính, sinh hiệu, chẩn đoán, tiền sử, diễn tiến và bàn giao'}
+                  ? 'Cập nhật thông tin hành chính, sinh hiệu, chẩn đoán và điều trị'
+                  : 'Nhập thông tin hành chính, sinh hiệu, chẩn đoán và bàn giao'}
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
-            <span className="hidden sm:inline-block text-[11px] text-slate-300 bg-black/20 px-2.5 py-1 rounded-lg border border-white/10 font-mono">
+            <span className="hidden sm:inline-block text-[11px] text-blue-100 bg-[#083a69] px-2.5 py-1 rounded border border-blue-400/30 font-mono">
               Esc để đóng • Ctrl+Enter để lưu
             </span>
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-blue-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
               title="Đóng (Esc)"
             >
               <X className="w-5 h-5" />
@@ -426,9 +516,219 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
           {/* Top 2-Column Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             
-            {/* CỘT TRÁI (4.5 cols): Buồng phòng, Hành chính & Sinh hiệu ban đầu */}
+            {/* CỘT TRÁI (4.5 cols): Dán nhanh HIS, Buồng phòng, Hành chính & Sinh hiệu ban đầu */}
             <div className="lg:col-span-4 xl:col-span-4 space-y-3.5">
               
+              {/* Dán Nhanh Bệnh Án Cũ / HIS & AI Clinical Intake */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-blue-200/80 space-y-2.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-[#0b4d8c] font-black text-xs uppercase">
+                    <ClipboardList className="w-3.5 h-3.5 text-[#0b4d8c]" />
+                    <span>Dán Nhanh Bệnh Án / Nhập Bằng AI</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowAiConfigModal(!showAiConfigModal)}
+                      className="text-[10px] font-bold text-slate-600 hover:text-[#0b4d8c] bg-white px-2 py-0.5 rounded border border-slate-300 flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Cấu hình API Key Gemini, DeepSeek hoặc xem hướng dẫn bảo mật trên Vercel"
+                    >
+                      <Key className="w-3 h-3 text-slate-500" />
+                      <span>API Key / Vercel</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowSmartPaste(!showSmartPaste)}
+                      className="text-[11px] font-bold text-[#0b4d8c] bg-blue-50 hover:bg-blue-100 px-2.5 py-0.5 rounded border border-blue-200 cursor-pointer transition-colors"
+                    >
+                      {showSmartPaste ? 'Thu gọn' : 'Mở ô dán'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Popover / Form Cấu hình API Key nếu người dùng muốn dùng Gemini hoặc DeepSeek */}
+                {showAiConfigModal && (
+                  <div className="p-3 bg-white border border-blue-300 rounded-xl space-y-2 animate-in fade-in shadow-md">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <span className="font-extrabold text-slate-900 text-xs flex items-center gap-1">
+                        <Cpu className="w-3.5 h-3.5 text-[#0b4d8c]" />
+                        <span>Cài Đặt AI (Gemini & DeepSeek)</span>
+                      </span>
+                      <button 
+                        type="button" 
+                        onClick={() => setShowAiConfigModal(false)}
+                        className="text-slate-400 hover:text-slate-600 cursor-pointer text-xs"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="text-[11px] text-slate-600 space-y-1">
+                      <p>
+                        💡 <strong>Bảo mật API trên Vercel:</strong> Khi deploy lên Vercel, cài biến môi trường <code className="bg-slate-100 px-1 py-0.5 rounded font-mono font-bold text-rose-600">GEMINI_API_KEY</code> hoặc <code className="bg-slate-100 px-1 py-0.5 rounded font-mono font-bold text-indigo-600">DEEPSEEK_API_KEY</code> trong Vercel Dashboard (Xem chi tiết file <strong className="text-blue-700">VERCEL_DEPLOYMENT_GUIDE.md</strong>).
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Hoặc nếu chạy thử nghiệm ngay tại trình duyệt, bạn có thể dán API Key trực tiếp dưới đây:
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5 pt-1">
+                      <div>
+                        <label className="text-[10.5px] font-bold text-slate-700 block">
+                          Gemini API Key (Google AI Studio)
+                        </label>
+                        <input
+                          type="password"
+                          value={tempGeminiKey}
+                          onChange={(e) => setTempGeminiKey(e.target.value)}
+                          placeholder="AIzaSy..."
+                          className="w-full p-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10.5px] font-bold text-slate-700 block">
+                          DeepSeek API Key (Platform DeepSeek)
+                        </label>
+                        <input
+                          type="password"
+                          value={tempDeepseekKey}
+                          onChange={(e) => setTempDeepseekKey(e.target.value)}
+                          placeholder="sk-..."
+                          className="w-full p-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleSaveAiKeys}
+                          className="px-3 py-1 bg-[#0b4d8c] hover:bg-[#083a69] text-white text-xs font-bold rounded-lg cursor-pointer"
+                        >
+                          Lưu Cấu Hình
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {showSmartPaste && (
+                  <div className="space-y-2 pt-1 animate-in fade-in">
+                    {/* Chọn Chế Độ Phân Tích: Thuật toán Offline, Gemini hoặc DeepSeek */}
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <span className="text-[10.5px] font-bold text-slate-600">Công nghệ bóc tách:</span>
+                      <div className="inline-flex bg-white p-0.5 rounded-lg border border-slate-200 text-[10.5px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = { ...aiConfig, provider: 'offline_regex' as const };
+                            setAiConfig(updated);
+                            saveAIConfig(updated);
+                          }}
+                          className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                            aiConfig.provider === 'offline_regex'
+                              ? 'bg-[#0b4d8c] text-white shadow-2xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                          title="Phân tích tức thời 0s không cần API / không cần mạng"
+                        >
+                          ⚡ Không cần AI (0s)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = { ...aiConfig, provider: 'gemini' as const };
+                            setAiConfig(updated);
+                            saveAIConfig(updated);
+                          }}
+                          className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                            aiConfig.provider === 'gemini'
+                              ? 'bg-[#0b4d8c] text-white shadow-2xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                          title="Dùng mô hình Gemini 1.5 Flash"
+                        >
+                          🤖 Gemini
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = { ...aiConfig, provider: 'deepseek' as const };
+                            setAiConfig(updated);
+                            saveAIConfig(updated);
+                          }}
+                          className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                            aiConfig.provider === 'deepseek'
+                              ? 'bg-[#0b4d8c] text-white shadow-2xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                          title="Dùng mô hình DeepSeek Chat"
+                        >
+                          🧠 DeepSeek
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-600">
+                      Dán văn bản tóm tắt bệnh án, phiếu khám, giấy chuyển tuyến (Hệ thống tự động lọc <strong>* Vấn đề:</strong>, <strong>* Kế hoạch:</strong>, <strong>Tiền sử:</strong>, <strong>Lâm sàng & CLS</strong>).
+                    </p>
+
+                    <textarea
+                      rows={4}
+                      value={smartPasteText}
+                      onChange={(e) => setSmartPasteText(e.target.value)}
+                      placeholder="Dán tóm tắt bệnh án tại đây...
+Ví dụ:
+Bệnh nhân nam 61 tuổi vào viện vì đau cổ vai gáy
+Tiền sử: tăng huyết áp...
+Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
+* Vấn đề: Hội chứng cổ vai gáy - THA
+* Kế hoạch điều trị: giảm đau, giãn cơ, mời PHCN"
+                      className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-medium text-slate-800 focus:ring-2 focus:ring-[#0b4d8c]"
+                    />
+
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={handleSmartPasteParse}
+                        disabled={isAnalyzing || !smartPasteText.trim()}
+                        className="px-3.5 py-1.5 bg-[#0b4d8c] hover:bg-[#083a69] text-white rounded-lg font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
+                      >
+                        {isAnalyzing ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Đang bóc tách dữ liệu...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Phân tích & Tự động điền</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSmartPasteText('');
+                          setShowSmartPaste(false);
+                        }}
+                        className="text-xs text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
+                      >
+                        Đóng
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {smartPasteMsg && (
+                  <div className="p-2.5 bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-lg text-xs font-bold animate-in fade-in flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{smartPasteMsg}</span>
+                  </div>
+                )}
+              </div>
+
               {/* 1. Chọn Buồng Phòng */}
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
                 <div className="flex items-center justify-between">
@@ -965,11 +1265,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
 
               <button
                 type="submit"
-                className={`px-6 py-2.5 ${
-                  isEditing 
-                    ? 'bg-amber-600 hover:bg-amber-700' 
-                    : 'bg-rose-600 hover:bg-rose-700'
-                } text-white font-black rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-98 text-xs`}
+                className="px-6 py-2.5 bg-[#0b4d8c] hover:bg-[#083a69] text-white font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-98 text-xs"
               >
                 {isEditing ? (
                   <>

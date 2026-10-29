@@ -280,12 +280,12 @@ export const DoctorLoginScreen: React.FC<DoctorLoginScreenProps> = ({
                       setSelectedDoctorPreview(matched || null);
                     }}
                     placeholder="VD: 00979"
-                    className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all placeholder:font-normal placeholder:text-slate-400"
+                    className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-500 focus:bg-white transition-all placeholder:font-normal placeholder:text-slate-400"
                   />
                 </div>
                 {selectedDoctorPreview && (
-                  <div className="flex items-center gap-1.5 text-xs text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-slate-700 shrink-0" />
                     <span>Bác sĩ: {selectedDoctorPreview.name}</span>
                   </div>
                 )}
@@ -311,7 +311,7 @@ export const DoctorLoginScreen: React.FC<DoctorLoginScreenProps> = ({
                       setErrorMessage(null);
                     }}
                     placeholder="Mật khẩu (mặc định: 123)"
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all placeholder:font-normal placeholder:text-slate-400"
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-500 focus:bg-white transition-all placeholder:font-normal placeholder:text-slate-400"
                   />
                   <button
                     type="button"
@@ -327,7 +327,7 @@ export const DoctorLoginScreen: React.FC<DoctorLoginScreenProps> = ({
               <button
                 type="submit"
                 disabled={isVerifying}
-                className="w-full py-2.5 px-4 mt-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-sm rounded-xl shadow-xs hover:shadow transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-2.5 px-4 mt-2 bg-[#0b4d8c] hover:bg-[#083a69] active:bg-[#062c52] text-white font-bold text-sm rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isVerifying ? (
                   <>
