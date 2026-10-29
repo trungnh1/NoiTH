@@ -40,7 +40,8 @@ import {
   checkSatelliteRecordCompleteness,
   parseAgeNumber,
   deleteSatelliteRecord,
-  formatSatelliteDateTime
+  formatSatelliteDateTime,
+  cleanSatelliteTreatmentPlan
 } from '../services/clinicalFirebase';
 import { User as FirebaseUser } from 'firebase/auth';
 
@@ -766,10 +767,10 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                           <div className="space-y-1 bg-indigo-50/50 p-3 rounded-xl border border-indigo-200">
                             <div className="text-[11px] font-black uppercase text-indigo-900 flex items-center gap-1.5">
                               <HeartPulse className="w-3.5 h-3.5 text-indigo-600" />
-                              <span>Hướng xử trí & Kế hoạch điều trị:</span>
+                              <span>Kế hoạch điều trị (Kế hoạch):</span>
                             </div>
                             <p className="text-indigo-950 font-bold leading-relaxed">
-                              {treatmentPlan}
+                              {cleanSatelliteTreatmentPlan(treatmentPlan)}
                             </p>
                           </div>
                         )}

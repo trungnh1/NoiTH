@@ -330,6 +330,43 @@ export function checkSatelliteRecordCompleteness(record: ClinicalRecord): {
 }
 
 /**
+ * Làm sạch và trích xuất riêng phần Kế hoạch điều trị từ dữ liệu bệnh án vệ tinh.
+ * Loại bỏ danh sách thuốc ("Điều trị: ...") và chỉ giữ lại nội dung sau "Kế hoạch:" (ví dụ: "Bù dịch - hạ sốt - đeo holter ECG khi đỡ sốt").
+ */
+export function cleanSatelliteTreatmentPlan(rawPlan?: string): string {
+  if (!rawPlan) return '';
+  let str = rawPlan.trim();
+
+  // 1. Nếu có từ khóa "Kế hoạch:" hoặc "Kế hoạch :-" hoặc "Kế hoạch" (không phân biệt hoa thường)
+  const planMatch = str.match(/kế\s*hoạch\s*[:\-–—]\s*([\s\S]+)/i);
+  if (planMatch && planMatch[1]?.trim()) {
+    return planMatch[1].trim();
+  }
+
+  // 2. Tìm biểu tượng phân cách "• Kế hoạch:" hoặc "- Kế hoạch:"
+  const bulletPlanMatch = str.match(/(?:[•\-\*\n]|\b)kế\s*hoạch\b[:\s\-–—]*([\s\S]+)/i);
+  if (bulletPlanMatch && bulletPlanMatch[1]?.trim()) {
+    return bulletPlanMatch[1].trim();
+  }
+
+  // 3. Nếu chuỗi bắt đầu bằng "Điều trị:" nhưng có ký tự "•" chia đoạn
+  if (/^điều\s*trị\s*:/i.test(str) && str.includes('•')) {
+    const parts = str.split('•');
+    const lastPart = parts[parts.length - 1].trim();
+    if (lastPart && !/^điều\s*trị/i.test(lastPart)) {
+      return lastPart.replace(/^kế\s*hoạch\s*[:\-–—]\s*/i, '').trim();
+    }
+  }
+
+  // 4. Nếu toàn bộ chuỗi bắt đầu bằng "Điều trị:", loại bỏ prefix "Điều trị:"
+  if (/^điều\s*trị\s*:/i.test(str)) {
+    return str.replace(/^điều\s*trị\s*:\s*/i, '').trim();
+  }
+
+  return str;
+}
+
+/**
  * Chuyển đổi an toàn từ 1 bản ghi vệ tinh chuẩn Schema sang đối tượng Patient bệnh viện
  */
 export function mapClinicalRecordToPatient(
@@ -400,7 +437,8 @@ export function mapClinicalRecordToPatient(
 
   // Chẩn đoán & Y lệnh
   const primaryDiagnosis = (record.diagnosis || '').trim();
-  const treatmentPlan = (record.treatmentPlan || '').trim();
+  const rawTreatmentPlan = (record.treatmentPlan || '').trim();
+  const treatmentPlan = cleanSatelliteTreatmentPlan(rawTreatmentPlan);
 
   // Cận lâm sàng nổi bật (HTML & Plain text)
   const clsHtml = record.clsHtml || record.labsHtml || '';
