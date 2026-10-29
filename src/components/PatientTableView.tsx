@@ -360,7 +360,7 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-900 text-white text-xs font-black uppercase tracking-wider sticky top-0 z-20 shadow-md">
             <tr>
-              <th className="py-3 px-4">Buồng / Giường</th>
+              <th className="py-3 px-4">Phòng</th>
               <th className="py-3 px-4">Bệnh nhân</th>
               <th className="py-3 px-4">Chẩn đoán</th>
               <th className="py-3 px-4">Tình trạng & Nhãn</th>
@@ -396,14 +396,11 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                       isCritical ? 'bg-rose-50/30' : ''
                     }`}
                   >
-                    {/* Room & Bed */}
+                    {/* Room */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="space-y-0.5">
-                        <span className="font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-xs border border-slate-200 block w-fit">
-                          {patient.roomNumber}
-                        </span>
-                        <span className="font-extrabold text-rose-700 text-xs block">
-                          {patient.bedNumber}
+                        <span className="font-black text-slate-900 bg-blue-50 text-[#0b4d8c] px-2.5 py-1 rounded-lg text-xs border border-blue-200 block w-fit">
+                          Phòng {patient.roomNumber}
                         </span>
                         <span className="text-[10px] text-slate-400 block">
                           Khoa Nội TH

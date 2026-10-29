@@ -572,11 +572,6 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                             <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-200 font-black text-blue-900">
                               Phòng {row.patientRoom}
                             </span>
-                            {row.bedNumber && (
-                              <span className="ml-1 text-[11px] text-slate-500 font-medium">
-                                ({row.bedNumber})
-                              </span>
-                            )}
                           </td>
                           <td className="p-2.5 text-slate-700 font-medium">
                             {row.admissionDate ? (

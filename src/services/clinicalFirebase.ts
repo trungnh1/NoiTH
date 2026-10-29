@@ -369,9 +369,9 @@ export function mapClinicalRecordToPatient(
   const matchedRoom = rooms.find(r => r.number === rawRoom || r.number.replace(/\D/g, '') === rawRoom.replace(/\D/g, ''));
   const roomNumber = matchedRoom ? matchedRoom.number : (rawRoom || (rooms[0]?.number || '703'));
 
-  // Bác sĩ phụ trách
-  const doctor = doctors.find(d => d.id === defaultDoctorId) || doctors[0];
-  const attendingDoctorId = doctor?.id || '00979';
+  // Bác sĩ phụ trách: Với bệnh nhân tự động lấy từ BN vệ tinh, để trống bác sĩ điều trị
+  const doctor = doctors.find(d => d.id === defaultDoctorId);
+  const attendingDoctorId = '';
 
   // Sinh hiệu
   const vitalsText = record.vitalSigns || '';

@@ -390,7 +390,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-1 rounded-lg bg-white/20 text-white font-black text-xs tracking-wider shadow-2xs">
-                Phòng {patient.roomNumber} - {patient.bedNumber}
+                Phòng {patient.roomNumber}
               </span>
               {patient.patientCode && (
                 <span className="px-2 py-0.5 rounded bg-white/10 text-white/90 font-mono font-bold text-xs">

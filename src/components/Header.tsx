@@ -226,32 +226,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             type="button"
-            onClick={() => onViewChange('map')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeView === 'map'
-                ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
-                : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-blue-50/60'
-            }`}
-          >
-            <MapPin className="w-3.5 h-3.5" />
-            <span>Bảng Buồng Phòng</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onViewChange('table')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeView === 'table'
-                ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
-                : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-blue-50/60'
-            }`}
-          >
-            <TableProperties className="w-3.5 h-3.5" />
-            <span>Bảng Lưới Chi Tiết</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => onViewChange('doctors')}
             className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
               activeView === 'doctors'

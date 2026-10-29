@@ -322,12 +322,13 @@ export const GROUP_2_DOCTOR_IDS = [
   '00769', // BS. Nguyễn Thị Phương Chi (Chi)
 ];
 
-// Danh sách Bác sĩ Tim Mạch (còn lại sau khi bỏ Tuế, Quyên): Nhật, Thọ, Thịnh, Lam
+// Danh sách Bác sĩ Tim Mạch (còn lại sau khi bỏ Tuế, Quyên): Nhật, Thọ, Thịnh, Lam, Luận
 export const CARDIO_DOCTOR_IDS = [
   '00020', // BS. Nguyễn Văn Phương Nhật (Nhật)
   '00355', // BS. Võ Văn Thọ (Thọ)
   '00818', // BS. Võ Hồng Thịnh (Thịnh)
   '00929', // BS. Trương Hoài Lam (Lam)
+  '00871', // BS. Đồng Văn Luận (Luận)
 ];
 
 // Doctors matching the official staff list at Khoa Nội Tổng Hợp - Bệnh viện Hùng Vương Gia Lai
@@ -456,6 +457,14 @@ export const INITIAL_DOCTORS: Doctor[] = [
     role: '',
     avatarColor: 'bg-violet-600',
     shiftStatus: 'Trực chính',
+  },
+  {
+    id: '00871',
+    name: 'Đồng Văn Luận',
+    title: '',
+    role: '',
+    avatarColor: 'bg-indigo-600',
+    shiftStatus: 'Hành chính',
   },
 ];
 

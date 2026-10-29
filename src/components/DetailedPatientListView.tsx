@@ -22,7 +22,9 @@ import {
   LogOut,
   Trash2,
   Printer,
-  Database
+  Database,
+  AlertTriangle,
+  Clock
 } from 'lucide-react';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { parseExcelAdmissionDate } from '../utils/excelParser';
@@ -210,6 +212,168 @@ export function calculateTreatmentDays(admissionDateStr: string): { days: number
   } catch {
     return { days: 1, label: 'ngày ĐT: 01' };
   }
+}
+
+/**
+ * Lấy chẩn đoán cập nhật mới nhất của bệnh nhân (từ diễn tiến mới nhất hoặc chẩn đoán ban đầu)
+ */
+export function getLatestDiagnosis(patient: Patient): string {
+  // 1. Kiểm tra diễn tiến mới nhất có chẩn đoán cập nhật không
+  if (patient.evolutions && patient.evolutions.length > 0) {
+    for (const evo of patient.evolutions) {
+      const evoDiag = (evo as any).diagnosis || (evo as any).primaryDiagnosis;
+      if (evoDiag && typeof evoDiag === 'string' && evoDiag.trim()) {
+        return evoDiag.trim();
+      }
+    }
+  }
+  // 2. Chẩn đoán đầy đủ kết hợp
+  return formatCombinedDiagnosis(patient);
+}
+
+/**
+ * Định dạng ngày nhập viện hiển thị rõ ràng: DD/MM/YYYY
+ */
+export function formatAdmissionDateDisplay(dateStr: string): string {
+  if (!dateStr) return '--/--/----';
+  try {
+    const normalized = parseExcelAdmissionDate(dateStr).formatted || dateStr;
+    const ymd = normalized.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (ymd) {
+      return `${ymd[3].padStart(2, '0')}/${ymd[2].padStart(2, '0')}/${ymd[1]}`;
+    }
+    const dmy = normalized.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (dmy) {
+      return `${dmy[1].padStart(2, '0')}/${dmy[2].padStart(2, '0')}/${dmy[3]}`;
+    }
+    const d = new Date(normalized.replace(' ', 'T'));
+    if (!isNaN(d.getTime())) {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yy = d.getFullYear();
+      return `${dd}/${mm}/${yy}`;
+    }
+  } catch {
+    // fallback
+  }
+  return dateStr.slice(0, 10);
+}
+
+/**
+ * Kiểm tra xem bệnh nhân có nhập viện từ 16h30 tối hôm trước tới thời điểm hiện tại không
+ */
+export function isNewAdmissionFromYesterday1630(admissionDateStr: string): boolean {
+  if (!admissionDateStr) return false;
+  try {
+    const normalized = parseExcelAdmissionDate(admissionDateStr).formatted || admissionDateStr;
+    let admDate: Date;
+    if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(normalized)) {
+      const parts = normalized.split(/[ /\-:]/);
+      admDate = new Date(
+        Number(parts[2]),
+        Number(parts[1]) - 1,
+        Number(parts[0]),
+        Number(parts[3] || 8),
+        Number(parts[4] || 0)
+      );
+    } else {
+      admDate = new Date(normalized.replace(' ', 'T'));
+    }
+    if (isNaN(admDate.getTime())) return false;
+
+    const now = new Date();
+    // 16:30 yesterday
+    const yesterday1630 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 16, 30, 0, 0);
+
+    return admDate.getTime() >= yesterday1630.getTime();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Trích xuất các cảnh báo cận lâm sàng bất thường nặng, nguy hiểm (Panic Values)
+ */
+export function getCriticalLabAlerts(patient: Patient): string[] {
+  const alerts: string[] = [];
+
+  // 1. Kiểm tra mảng kết quả xét nghiệm (labs)
+  if (patient.labs && patient.labs.length > 0) {
+    patient.labs.forEach((lab) => {
+      if (lab.isPanicValue) {
+        alerts.push(`${lab.testName}: ${lab.value} ${lab.unit} (Ngưỡng báo động đỏ)`);
+      } else if (lab.isAbnormal) {
+        const numVal = parseFloat(lab.value.replace(/[^0-9.]/g, ''));
+        const nameLower = lab.testName.toLowerCase();
+
+        if (nameLower.includes('k+') || nameLower.includes('kali')) {
+          if (!isNaN(numVal) && (numVal < 3.0 || numVal > 5.5)) {
+            alerts.push(`Kali máu (K+): ${lab.value} ${lab.unit} (${numVal < 3.0 ? 'Hạ Kali nguy hiểm' : 'Tăng Kali nguy hiểm'})`);
+          }
+        } else if (nameLower.includes('na+') || nameLower.includes('natri')) {
+          if (!isNaN(numVal) && (numVal < 125 || numVal > 155)) {
+            alerts.push(`Natri máu (Na+): ${lab.value} ${lab.unit} (Rối loạn điện giải nặng)`);
+          }
+        } else if (nameLower.includes('plt') || nameLower.includes('tiểu cầu') || nameLower.includes('platelet')) {
+          if (!isNaN(numVal) && numVal < 50) {
+            alerts.push(`Tiểu cầu (PLT): ${lab.value} G/L (Giảm tiểu cầu nặng < 50)`);
+          }
+        } else if (nameLower.includes('glucose') || nameLower.includes('đường huyết')) {
+          if (!isNaN(numVal) && (numVal < 3.0 || numVal > 18)) {
+            alerts.push(`Đường huyết: ${lab.value} mmol/L (${numVal < 3.0 ? 'Hạ đường huyết' : 'Tăng đường huyết cấp'})`);
+          }
+        } else if (nameLower.includes('troponin')) {
+          alerts.push(`${lab.testName}: ${lab.value} (Troponin tăng - Nghi ngờ NMCT)`);
+        } else if (nameLower.includes('ns1') || nameLower.includes('dengue')) {
+          if (/dương|pos/i.test(lab.value)) {
+            alerts.push(`Test NS1Ag: DƯƠNG TÍNH (Sốt xuất huyết Dengue)`);
+          }
+        }
+      }
+    });
+  }
+
+  // 2. Kiểm tra văn bản CLS ban đầu (initialLabsText)
+  if (patient.initialLabsText) {
+    const text = patient.initialLabsText;
+    if (/dengue.*dương tính|ns1.*dương tính/i.test(text)) {
+      if (!alerts.some((a) => a.includes('Dengue') || a.includes('NS1'))) {
+        alerts.push('Dengue virus NS1Ag: DƯƠNG TÍNH (Sốt xuất huyết Dengue)');
+      }
+    }
+    if (/huyết khối/i.test(text)) {
+      alerts.push('Hình ảnh siêu âm: Có huyết khối mạch máu');
+    }
+    if (/hẹp\s*(khoảng\s*)?4\d%|hẹp\s*(khoảng\s*)?[5-9]\d%|hẹp nặng/i.test(text)) {
+      const matchHep = text.match(/hẹp\s*[^;\.\n]+/i);
+      alerts.push(matchHep ? matchHep[0].trim() : 'Hẹp lòng động mạch đáng kể');
+    }
+    if (/platelets[^:]*:\s*([1-4]\d)\b/i.test(text)) {
+      const matchPlt = text.match(/platelets[^:]*:\s*([1-4]\d)\b/i);
+      if (matchPlt && !alerts.some((a) => a.includes('Tiểu cầu'))) {
+        alerts.push(`Tiểu cầu (PLT) giảm thấp: ${matchPlt[1]} G/L`);
+      }
+    }
+    if (/k\+:\s*([12]\.\d+)\b/i.test(text)) {
+      const matchK = text.match(/k\+:\s*([12]\.\d+)\b/i);
+      if (matchK && !alerts.some((a) => a.includes('Kali'))) {
+        alerts.push(`Hạ Kali máu: K+ = ${matchK[1]} mmol/L`);
+      }
+    }
+  }
+
+  // 3. Cảnh báo mức độ nghiêm trọng từ AI Analysis (nếu có)
+  if (patient.aiAnalysis?.clinicalAlerts) {
+    patient.aiAnalysis.clinicalAlerts
+      .filter((a) => a.type === 'critical')
+      .forEach((a) => {
+        if (!alerts.includes(a.message)) {
+          alerts.push(a.message);
+        }
+      });
+  }
+
+  return Array.from(new Set(alerts));
 }
 
 export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = ({
@@ -407,9 +571,18 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     return roomsToRender.map((roomKey) => {
       const roomPatientList = patientMap.get(roomKey) || [];
       
-      // Sort patients by bed number
+      // Sắp xếp bệnh nhân trong buồng theo mức độ ưu tiên lâm sàng: Nặng -> Vừa -> Chưa phân loại -> Ổn định, sau đó theo tên
+      const severityPriority: Record<string, number> = {
+        CRITICAL: 1,
+        MODERATE: 2,
+        UNCLASSIFIED: 3,
+        STABLE: 4,
+      };
       roomPatientList.sort((a, b) => {
-        return (a.bedNumber || '').localeCompare(b.bedNumber || '', undefined, { numeric: true });
+        const pA = severityPriority[a.severity] || 3;
+        const pB = severityPriority[b.severity] || 3;
+        if (pA !== pB) return pA - pB;
+        return (a.fullName || '').localeCompare(b.fullName || '', 'vi');
       });
 
       // Find assigned doctor for this room
@@ -950,13 +1123,15 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-100/50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-slate-100/60">
                     {group.patients.map((patient) => {
                       const isCritical = patient.severity === 'CRITICAL';
                       const isModerate = patient.severity === 'MODERATE';
                       const isDischargeTomorrow = patient.admissionStatus === 'DISCHARGE_TOMORROW';
-                      const isUnclassified = patient.severity === 'UNCLASSIFIED' || !patient.severity;
+                      const isDischargeToday = patient.admissionStatus === 'DISCHARGE_TODAY';
                       const isStable = patient.severity === 'STABLE';
+                      const isUnclassified = !patient.severity || patient.severity === 'UNCLASSIFIED';
+                      const isNewPatient = isNewAdmissionFromYesterday1630(patient.admissionDate);
                       const treatmentInfo = calculateTreatmentDays(patient.admissionDate);
                       
                       // Màu sắc tên Bệnh Nhân theo tình trạng bệnh lâm sàng
@@ -964,297 +1139,198 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                         ? 'text-rose-700'
                         : isModerate
                         ? 'text-amber-700'
-                        : isDischargeTomorrow
-                        ? 'text-blue-700'
-                        : isUnclassified
-                        ? 'text-slate-800'
-                        : 'text-emerald-800';
+                        : isStable
+                        ? 'text-emerald-700'
+                        : 'text-slate-800';
 
-                      // Card left border accent
-                      const cardBorderAccentClass = isCritical
-                        ? 'border-l-[6px] border-l-rose-500 ring-1 ring-rose-200/70'
+                      // Khung của mỗi BN hiển thị theo màu tình trạng bệnh
+                      const cardFrameClass = isCritical
+                        ? 'border-2 border-rose-500 bg-white ring-1 ring-rose-200/80 shadow-xs hover:border-rose-600'
                         : isModerate
-                        ? 'border-l-[6px] border-l-amber-500 ring-1 ring-amber-200/50'
-                        : isDischargeTomorrow
-                        ? 'border-l-[6px] border-l-blue-500 ring-1 ring-blue-200/50'
-                        : isUnclassified
-                        ? 'border-l-[6px] border-l-slate-400 ring-1 ring-slate-200/50'
-                        : 'border-l-[6px] border-l-emerald-500 ring-1 ring-emerald-200/50';
+                        ? 'border-2 border-amber-500 bg-white ring-1 ring-amber-200/80 shadow-xs hover:border-amber-600'
+                        : isStable
+                        ? 'border-2 border-emerald-500 bg-white ring-1 ring-emerald-200/80 shadow-xs hover:border-emerald-600'
+                        : 'border-2 border-slate-300 bg-white ring-1 ring-slate-200/80 shadow-xs hover:border-slate-400';
 
-                      // Combined unified diagnosis
-                      const combinedDiagnosis = formatCombinedDiagnosis(patient);
+                      // Chẩn đoán cập nhật mới nhất
+                      const latestDiagnosis = getLatestDiagnosis(patient);
 
-                      // Plan of treatment: explicit plan or newest evolution action (BỎ hoàn toàn dòng Chăm sóc cấp 2 mặc định)
+                      // Cảnh báo cận lâm sàng bất thường nặng, nguy hiểm
+                      const criticalAlerts = getCriticalLabAlerts(patient);
+
+                      // Kế hoạch điều trị
                       const currentPlan = patient.treatmentPlan || 
                         patient.evolutions?.[0]?.treatmentAction || 
                         patient.initialMedicationsText || 
                         '';
 
-                      // Notes and handover:
-                      const currentNotes = patient.importantNotes || 
-                        patient.handoverNotes || 
-                        (patient.evolutions?.[0]?.clinicalNote ? `Diễn biến: ${patient.evolutions[0].clinicalNote}` : '');
+                      // Ghi chú của BS (nếu có)
+                      const doctorNotes = patient.importantNotes?.trim() || '';
+
+                      // Bàn giao bệnh (nếu có)
+                      const handoverNotes = patient.handoverNotes?.trim() || '';
 
                       return (
                         <div
                           key={patient.id}
-                          className={`bg-white rounded-2xl border border-slate-200 ${cardBorderAccentClass} p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-150`}
+                          className={`rounded-2xl ${cardFrameClass} p-4 flex flex-col justify-between transition-all duration-150`}
                         >
                           {/* Top Content */}
                           <div>
                             
-                            {/* Row 1: Tên Bệnh Nhân - Đổi màu theo tình trạng bệnh & Nhãn trạng thái */}
+                            {/* 1. Họ và tên (màu theo tình trạng), Tuổi, Giới & Tình trạng bệnh */}
                             <div className="pb-3 border-b border-slate-100 flex items-start justify-between gap-2">
                               <div 
                                 onClick={() => onSelectPatient(patient)}
-                                onMouseEnter={() => setHoveredPatientId(patient.id)}
-                                onMouseLeave={() => setHoveredPatientId(null)}
-                                className="cursor-pointer group flex-1 min-w-[130px] relative"
+                                className="cursor-pointer group flex-1 min-w-[130px]"
                               >
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <h4 className={`text-base sm:text-lg font-black tracking-tight uppercase leading-snug group-hover:underline transition-colors ${nameColorClass}`}>
                                     {patient.fullName}
                                   </h4>
-                                  {isCritical && (
-                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-rose-600 text-white shrink-0 shadow-xs">
-                                      Nặng
-                                    </span>
-                                  )}
-                                  {isModerate && (
-                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500 text-white shrink-0 shadow-xs">
-                                      Vừa
-                                    </span>
-                                  )}
-                                  {isDischargeTomorrow && (
-                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-blue-600 text-white shrink-0 shadow-xs">
-                                      Dự RV mai
-                                    </span>
-                                  )}
-                                  {isUnclassified && (
-                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-slate-200 text-slate-700 shrink-0">
-                                      Chưa phân loại
-                                    </span>
-                                  )}
-                                  {isStable && (
-                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shrink-0 shadow-xs">
-                                      Ổn
+                                  {isNewPatient && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs animate-pulse shrink-0">
+                                      NEW
                                     </span>
                                   )}
                                 </div>
 
+                                {/* Tuổi & Giới (HOÀN TOÀN BỎ SỐ GIƯỜNG) */}
                                 <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 font-bold mt-1">
                                   <span>{patient.age} tuổi</span>
                                   <span>•</span>
                                   <span>{patient.gender}</span>
-                                  {patient.bedNumber && (
-                                    <>
-                                      <span>•</span>
-                                      <span className="text-[#0b4d8c] font-black">{patient.bedNumber}</span>
-                                    </>
-                                  )}
                                 </div>
+                              </div>
 
-                                {/* Hover Preview Popover Card: Hiện nhiều nội dung lâm sàng khi lướt vào tên */}
-                                {hoveredPatientId === patient.id && (
-                                  <div className="absolute left-0 top-full mt-2 z-50 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-blue-200 p-4 space-y-2.5 text-xs animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                                      <div>
-                                        <div className={`font-black text-sm uppercase ${nameColorClass}`}>
-                                          {patient.fullName}
-                                        </div>
-                                        <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                                          {patient.gender} • {patient.age} tuổi • Phòng {patient.roomNumber} {patient.bedNumber ? `- ${patient.bedNumber}` : ''}
-                                        </div>
-                                      </div>
-                                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-blue-50 text-[#0b4d8c] border border-blue-200">
-                                        {treatmentInfo.label}
-                                      </span>
-                                    </div>
+                              {/* Tình trạng bệnh: Nặng, Trung bình, Ổn, Chưa phân loại */}
+                              <div className="flex flex-col items-end gap-1 shrink-0">
+                                {isCritical && (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                    Nặng
+                                  </span>
+                                )}
+                                {isModerate && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500 text-white shadow-xs">
+                                    Trung bình
+                                  </span>
+                                )}
+                                {isStable && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                                    Ổn
+                                  </span>
+                                )}
+                                {isUnclassified && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-200 text-slate-700">
+                                    Chưa phân loại
+                                  </span>
+                                )}
 
-                                    {/* Chẩn đoán lâm sàng */}
-                                    <div className="space-y-0.5 bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
-                                      <span className="text-[10px] font-black uppercase text-[#0b4d8c] tracking-wider block">
-                                        Chẩn đoán lâm sàng:
-                                      </span>
-                                      <p className="font-bold text-slate-900 leading-snug">
-                                        {combinedDiagnosis}
-                                      </p>
-                                    </div>
-
-                                    {/* Sinh hiệu gần nhất */}
-                                    {patient.vitals && patient.vitals.length > 0 && (
-                                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                                        <div className="text-[10px] font-black uppercase text-slate-500 mb-1.5 flex items-center justify-between">
-                                          <span>Sinh hiệu ({patient.vitals[0].timestamp?.slice(11, 16) || 'Mới nhất'}):</span>
-                                        </div>
-                                        <div className="grid grid-cols-4 gap-1 text-center">
-                                          <div className="bg-white p-1 rounded-lg border border-slate-200">
-                                            <span className="block text-[9px] text-slate-400 font-bold">HA</span>
-                                            <span className="font-black text-slate-800">{patient.vitals[0].bpSystolic}/{patient.vitals[0].bpDiastolic}</span>
-                                          </div>
-                                          <div className="bg-white p-1 rounded-lg border border-slate-200">
-                                            <span className="block text-[9px] text-slate-400 font-bold">Mạch</span>
-                                            <span className="font-black text-slate-800">{patient.vitals[0].heartRate}</span>
-                                          </div>
-                                          <div className="bg-white p-1 rounded-lg border border-slate-200">
-                                            <span className="block text-[9px] text-slate-400 font-bold">SpO2</span>
-                                            <span className="font-black text-slate-800">{patient.vitals[0].spO2}%</span>
-                                          </div>
-                                          <div className="bg-white p-1 rounded-lg border border-slate-200">
-                                            <span className="block text-[9px] text-slate-400 font-bold">Thân nhiệt</span>
-                                            <span className="font-black text-slate-800">{patient.vitals[0].temperature}°C</span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Tiền sử & Dị ứng */}
-                                    {(patient.medicalHistory || patient.allergies) && (
-                                      <div className="text-[11px] text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-200 space-y-1">
-                                        {patient.medicalHistory && (
-                                          <p><strong className="text-slate-900 font-bold">Tiền sử:</strong> {patient.medicalHistory}</p>
-                                        )}
-                                        {patient.allergies && (
-                                          <p className="text-rose-700 font-bold"><strong className="text-rose-800">Dị ứng:</strong> {patient.allergies}</p>
-                                        )}
-                                      </div>
-                                    )}
-
-                                    {/* Hướng xử trí & Kế hoạch */}
-                                    <div className="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200">
-                                      <span className="block text-[10px] font-black uppercase text-emerald-800 mb-0.5">
-                                        Hướng xử trí & Kế hoạch:
-                                      </span>
-                                      <p className="text-[11px] font-semibold text-slate-800 leading-relaxed line-clamp-3">
-                                        {currentPlan}
-                                      </p>
-                                    </div>
-
-                                    {/* Ghi chú hoặc Diễn biến gần nhất */}
-                                    {patient.evolutions && patient.evolutions.length > 0 && patient.evolutions[0].clinicalNote && (
-                                      <div className="text-[11px] text-slate-700 bg-amber-50/60 p-2 rounded-xl border border-amber-200">
-                                        <span className="block text-[10px] font-black uppercase text-amber-900 mb-0.5">
-                                          Diễn biến gần nhất ({patient.evolutions[0].timestamp?.slice(5, 16) || ''}):
-                                        </span>
-                                        <p className="italic text-slate-800 line-clamp-2">
-                                          "{patient.evolutions[0].clinicalNote}"
-                                        </p>
-                                      </div>
-                                    )}
-
-                                    <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
-                                      <span>BS: <strong>{doctorMap.get(patient.attendingDoctorId)?.name || 'BS Điều trị'}</strong></span>
-                                      <span className="text-[#0b4d8c] font-bold">Bấm để mở trượt bên phải ➔</span>
-                                    </div>
-                                  </div>
+                                {/* Trạng thái ra viện nếu có */}
+                                {isDischargeToday && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-2xs">
+                                    RV hôm nay
+                                  </span>
+                                )}
+                                {isDischargeTomorrow && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-2xs">
+                                    Dự RV mai
+                                  </span>
                                 )}
                               </div>
                             </div>
 
-                            {/* Row 2: Ngày Vào (NV: DD/MM) & Số Ngày ĐT (ngày ĐT: XX) */}
+                            {/* 2. Ngày vào viện & Tổng ngày ĐT */}
                             <div className="flex items-center justify-between text-xs sm:text-sm py-2 text-slate-700 border-b border-slate-100 font-bold">
                               <div className="flex items-center gap-1.5">
                                 <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                                <span>{formatAdmissionDateShort(patient.admissionDate)}</span>
+                                <span>Ngày vào viện: <strong className="text-slate-900">{formatAdmissionDateDisplay(patient.admissionDate)}</strong></span>
                               </div>
-                              <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-800 font-extrabold text-xs border border-slate-200">
-                                {treatmentInfo.label}
-                              </span>
-                            </div>
-
-                            {/* Row 3: Chẩn Đoán Lâm Sàng */}
-                            <div className="py-2.5">
-                              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 shadow-2xs">
-                                <div className="text-[11px] font-black uppercase text-[#0b4d8c] tracking-wider mb-1 flex items-center gap-1">
-                                  <Activity className="w-3.5 h-3.5" />
-                                  Chẩn đoán:
-                                </div>
-                                <p className="font-bold text-xs sm:text-sm text-slate-900 leading-relaxed" title={combinedDiagnosis}>
-                                  {combinedDiagnosis}
-                                </p>
+                              <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-[#0b4d8c] font-black text-xs border border-blue-200">
+                                <Clock className="w-3.5 h-3.5 text-[#0b4d8c]" />
+                                <span>Tổng ngày ĐT: {treatmentInfo.days} ngày</span>
                               </div>
                             </div>
 
-                            {/* Row 4: Tình Trạng & Nhãn Đặc Biệt */}
-                            <div className="flex flex-wrap items-center gap-1.5 pb-2.5">
-                              {/* Mức độ nặng/vừa/chưa phân loại/ổn định */}
-                              {isCritical ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-rose-50 text-rose-700 border border-rose-300">
-                                  <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
-                                  NẶNG
-                                </span>
-                              ) : isModerate ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-amber-50 text-amber-800 border border-amber-300">
-                                  VỪA
-                                </span>
-                              ) : isUnclassified ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-slate-100 text-slate-700 border border-slate-300">
-                                  CHƯA PHÂN LOẠI
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-emerald-50 text-emerald-800 border border-emerald-300">
-                                  ỔN ĐỊNH
-                                </span>
-                              )}
-
-                              {/* RV hôm nay / Dự kiến RV mai */}
-                              {patient.admissionStatus === 'DISCHARGE_TODAY' && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-purple-50 text-purple-700 border border-purple-300">
-                                  RV hôm nay
-                                </span>
-                              )}
-                              {patient.admissionStatus === 'DISCHARGE_TOMORROW' && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-black text-xs bg-blue-50 text-blue-700 border border-blue-300">
-                                  Dự kiến RV mai
-                                </span>
-                              )}
-
-                              {/* Nhãn đặc biệt nếu có */}
-                              {patient.tags?.map((tag) => {
-                                const meta = CLINICAL_TAGS_META[tag];
-                                if (!meta) return null;
-                                return (
-                                  <span
-                                    key={tag}
-                                    className="px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200"
-                                    title={meta.description}
-                                  >
-                                    {meta.shortLabel}
-                                  </span>
-                                );
-                              })}
-                            </div>
-
-                            {/* Row 5: Kế Hoạch & Hướng Xử Trí */}
-                            {currentPlan ? (
-                              <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 mb-2.5 shadow-2xs">
-                                <div className="text-[11px] font-black uppercase text-emerald-800 tracking-wider mb-1 flex items-center gap-1">
-                                  <Stethoscope className="w-3.5 h-3.5" />
-                                  Hướng xử trí & Kế hoạch:
-                                </div>
-                                <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-relaxed line-clamp-3" title={currentPlan}>
-                                  {currentPlan}
-                                </p>
-                              </div>
-                            ) : (
-                              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 mb-2.5 shadow-2xs flex items-center justify-between text-slate-500">
-                                <div className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
-                                  <Stethoscope className="w-3.5 h-3.5 text-slate-400" />
-                                  Kế hoạch:
-                                </div>
-                                <span className="text-xs italic text-slate-400">Chưa có y lệnh điều trị</span>
+                            {/* 3. Các nhãn được gán (nếu có) */}
+                            {patient.tags && patient.tags.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1.5 py-2 border-b border-slate-100">
+                                {patient.tags.map((tag) => {
+                                  const meta = CLINICAL_TAGS_META[tag];
+                                  if (!meta) return null;
+                                  return (
+                                    <span
+                                      key={tag}
+                                      className="px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs"
+                                      title={meta.description}
+                                    >
+                                      {meta.shortLabel}
+                                    </span>
+                                  );
+                                })}
                               </div>
                             )}
 
-                            {/* Row 6: Ghi Chú và Bàn Giao (chỉ hiển thị nếu có ghi chú thực tế) */}
-                            {currentNotes && (
-                              <div className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-200/70 mb-3.5 shadow-2xs">
-                                <div className="text-[11px] font-bold text-amber-900 tracking-wider mb-0.5 flex items-center gap-1">
-                                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                                  Ghi chú lâm sàng / bàn giao:
+                            {/* 4. Chẩn đoán (hiển thị bằng Icon) */}
+                            <div className="py-2.5">
+                              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 shadow-2xs">
+                                <div className="flex items-center gap-1.5 text-[#0b4d8c] mb-1" title="Chẩn đoán">
+                                  <Activity className="w-4 h-4 text-[#0b4d8c] shrink-0" />
                                 </div>
-                                <p className="text-xs font-medium text-slate-700 leading-relaxed line-clamp-3" title={currentNotes}>
-                                  {currentNotes}
+                                <p className="font-bold text-xs sm:text-sm text-slate-900 leading-relaxed" title={latestDiagnosis}>
+                                  {latestDiagnosis}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* 5. Cảnh báo cận lâm sàng bất thường nặng, nguy hiểm (hiển thị bằng Icon) */}
+                            {criticalAlerts.length > 0 && (
+                              <div className="mb-2.5 p-3 rounded-xl bg-rose-50 border-2 border-rose-400 shadow-2xs">
+                                <div className="flex items-center gap-1.5 text-rose-800 mb-1.5" title="Cảnh báo cận lâm sàng bất thường nặng, nguy hiểm">
+                                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 animate-pulse" />
+                                </div>
+                                <ul className="space-y-1">
+                                  {criticalAlerts.map((alert, idx) => (
+                                    <li key={idx} className="text-xs font-bold text-rose-900 flex items-start gap-1.5">
+                                      <span className="text-rose-600 font-black shrink-0">•</span>
+                                      <span>{alert}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* 6. Hướng xử trí & Kế hoạch điều trị (hiển thị bằng Icon) */}
+                            <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 mb-2.5 shadow-2xs">
+                              <div className="flex items-center gap-1.5 text-emerald-800 mb-1" title="Hướng xử trí & Kế hoạch điều trị">
+                                <Stethoscope className="w-4 h-4 text-emerald-700 shrink-0" />
+                              </div>
+                              <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-line" title={currentPlan || 'Theo dõi diễn tiến'}>
+                                {currentPlan || 'Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa'}
+                              </p>
+                            </div>
+
+                            {/* 7. Ghi chú của bs (hiển thị bằng Icon) */}
+                            {doctorNotes && (
+                              <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/80 mb-2.5 shadow-2xs">
+                                <div className="flex items-center gap-1.5 text-amber-900 mb-1" title="Ghi chú lâm sàng của bác sĩ">
+                                  <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                                </div>
+                                <p className="text-xs font-medium text-slate-800 leading-relaxed whitespace-pre-line" title={doctorNotes}>
+                                  {doctorNotes}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* 8. Bàn giao bệnh (hiển thị bằng Icon) */}
+                            {handoverNotes && (
+                              <div className="p-2.5 rounded-xl bg-indigo-50/60 border border-indigo-200/80 mb-2.5 shadow-2xs">
+                                <div className="flex items-center gap-1.5 text-indigo-900 mb-1" title="Nội dung bàn giao bệnh">
+                                  <ArrowRightLeft className="w-4 h-4 text-indigo-700 shrink-0" />
+                                </div>
+                                <p className="text-xs font-medium text-slate-800 leading-relaxed whitespace-pre-line" title={handoverNotes}>
+                                  {handoverNotes}
                                 </p>
                               </div>
                             )}

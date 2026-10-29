@@ -246,7 +246,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
 
   const cardioDoctors = useMemo(() => {
     const list = doctors.filter(
-      (d) => (CARDIO_DOCTOR_IDS.includes(d.id) || /nguyễn văn phương nhật|võ văn thọ|võ hồng thịnh|trương hoài lam/i.test(d.name)) &&
+      (d) => (CARDIO_DOCTOR_IDS.includes(d.id) || /nguyễn văn phương nhật|võ văn thọ|võ hồng thịnh|trương hoài lam|đồng văn luận/i.test(d.name)) &&
       !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
     );
     return sortDoctorsAlphabetically(list);

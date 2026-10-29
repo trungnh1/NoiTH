@@ -81,7 +81,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
       // Natural sort by Room and Bed Number
       const roomComp = (a.roomNumber || '').localeCompare(b.roomNumber || '', undefined, { numeric: true });
       if (roomComp !== 0) return roomComp;
-      return (a.bedNumber || '').localeCompare(b.bedNumber || '', undefined, { numeric: true });
+      return a.fullName.localeCompare(b.fullName, 'vi');
     });
   }, [patients, filterMode, selectedRoom, selectedDoctorId]);
 
