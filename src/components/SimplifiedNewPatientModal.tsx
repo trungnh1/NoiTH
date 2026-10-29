@@ -128,7 +128,16 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   const [severity, setSeverity] = useState<SeverityLevel>(patientToEdit?.severity || 'STABLE');
   const [selectedTags, setSelectedTags] = useState<ClinicalTag[]>(patientToEdit?.tags || []);
 
-  const [attendingDoctorId, setAttendingDoctorId] = useState<string>(defaultDocId);
+  // Bác sĩ phụ trách: Nếu nhập từ BN vệ tinh (isImportMode) hoặc chưa chọn, để trống bác sĩ điều trị ('')
+  const [attendingDoctorId, setAttendingDoctorId] = useState<string>(() => {
+    if (isImportMode) {
+      return patientToEdit?.attendingDoctorId || '';
+    }
+    if (isEditing) {
+      return patientToEdit?.attendingDoctorId || '';
+    }
+    return currentUser?.id || doctors[0]?.id || '';
+  });
   const [treatmentPlan, setTreatmentPlan] = useState(patientToEdit?.treatmentPlan || '');
   
   // Tách riêng: Bàn giao tua trực (ở trên) & Ghi chú (ở dưới)
@@ -1154,9 +1163,21 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                   <span className="text-xs font-extrabold text-slate-800 block uppercase">
                     Thẻ Theo Dõi Lâm Sàng Đặc Biệt
                   </span>
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    Bác sĩ phụ trách: <strong className="text-indigo-700 font-bold">{formatDoctorShortName(doctors.find(d => d.id === attendingDoctorId)?.name || 'Bác sĩ')}</strong> (Mặc định theo tài khoản)
-                  </span>
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-600 font-medium">
+                    <span>BS điều trị:</span>
+                    <select
+                      value={attendingDoctorId}
+                      onChange={(e) => setAttendingDoctorId(e.target.value)}
+                      className="px-2 py-0.5 bg-slate-50 border border-slate-300 rounded font-bold text-indigo-700 text-xs focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      <option value="">-- Chưa phân công BS --</option>
+                      {doctors.map((doc) => (
+                        <option key={doc.id} value={doc.id}>
+                          {doc.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {(Object.keys(CLINICAL_TAGS_META) as ClinicalTag[])
