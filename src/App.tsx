@@ -333,6 +333,52 @@ export default function App() {
     }
   };
 
+  // Tự động cho ra viện các bệnh nhân có trong danh sách nhưng không có trong file Excel vừa tải
+  const handleAutoDischargePatients = async (dischargedPats: Patient[]) => {
+    if (!dischargedPats || dischargedPats.length === 0) return;
+    const dischargeIds = new Set(dischargedPats.map((p) => p.id));
+    const nowIso = new Date().toISOString();
+
+    const updatedList = patients.map((p) => {
+      if (dischargeIds.has(p.id)) {
+        return {
+          ...p,
+          status: 'DISCHARGED' as const,
+          admissionStatus: 'DISCHARGE_TODAY' as const,
+          dischargeDate: nowIso,
+        };
+      }
+      return p;
+    });
+
+    setPatients(updatedList);
+    savePatients(updatedList);
+
+    const names = dischargedPats.slice(0, 3).map((p) => p.fullName).join(', ') + 
+      (dischargedPats.length > 3 ? ` và ${dischargedPats.length - 3} BN khác` : '');
+    setManualPushMessage(`🚪 Đã tự động cho ra viện ${dischargedPats.length} bệnh nhân không có trong file Excel (${names})!`);
+    setTimeout(() => setManualPushMessage(null), 7000);
+
+    // Đồng bộ trạng thái ra viện lên Cloud Firestore
+    setIsAutoSyncing(true);
+    try {
+      for (const pat of dischargedPats) {
+        const updatedPat: Patient = {
+          ...pat,
+          status: 'DISCHARGED' as const,
+          admissionStatus: 'DISCHARGE_TODAY' as const,
+          dischargeDate: nowIso,
+        };
+        await syncPatientToCloud(updatedPat);
+      }
+      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+    } catch (err) {
+      console.warn('Lỗi sync cloud khi tự động cho ra viện:', err);
+    } finally {
+      setIsAutoSyncing(false);
+    }
+  };
+
   // Manual push on demand button handler
   const [manualPushMessage, setManualPushMessage] = useState<string | null>(null);
 
@@ -980,6 +1026,10 @@ export default function App() {
             handleAddPatient(newPat);
           }}
           onImportMultiplePatients={handleImportMultiplePatients}
+          onAutoDischargePatients={handleAutoDischargePatients}
+          onReactivatePatient={(pat) => {
+            handleUpdatePatient(pat);
+          }}
         />
       )}
 

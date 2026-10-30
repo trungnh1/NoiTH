@@ -19,7 +19,9 @@ import {
   Calendar,
   HelpCircle,
   Eye,
-  Info
+  Info,
+  LogOut,
+  RotateCcw
 } from 'lucide-react';
 import { Patient, Doctor, DepartmentRoom } from '../types/patient';
 import { ClinicalRecord, mapClinicalRecordToPatient, parseAgeNumber } from '../services/clinicalFirebase';
@@ -40,6 +42,9 @@ interface ExcelDataSyncModalProps {
   currentUser?: Doctor | null;
   onClose: () => void;
   onImportPatientDirect: (patient: Patient) => void;
+  onImportMultiplePatients?: (patients: Patient[]) => void;
+  onAutoDischargePatients?: (patients: Patient[]) => void;
+  onReactivatePatient?: (patient: Patient) => void;
 }
 
 export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
@@ -50,13 +55,66 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
   currentUser,
   onClose,
   onImportPatientDirect,
+  onImportMultiplePatients,
+  onAutoDischargePatients,
+  onReactivatePatient,
 }) => {
   const [excelRows, setExcelRows] = useState<ExcelPatientRow[]>([]);
   const [detectedColumns, setDetectedColumns] = useState<string[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
+  const [autoDischargedPatients, setAutoDischargedPatients] = useState<Patient[]>([]);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  // Helper: Kiểm tra bệnh nhân có xuất hiện trong danh sách hàng Excel không
+  const isPatientInExcel = (patient: Patient, rows: ExcelPatientRow[]): boolean => {
+    if (!rows || rows.length === 0) return false;
+    const pCode = (patient.patientCode || patient.medicalRecordNumber || patient.id || '').trim().toLowerCase();
+    const pNameNorm = normalizeVietnameseString(patient.fullName);
+
+    for (const row of rows) {
+      const excelCode = (row.patientCode || '').trim().toLowerCase();
+      // 1. Khớp theo mã bệnh nhân (mabn / medicalRecordNumber / id)
+      if (excelCode && pCode) {
+        if (
+          pCode === excelCode ||
+          (excelCode.length >= 4 && pCode.length >= 4 && (pCode.includes(excelCode) || excelCode.includes(pCode)))
+        ) {
+          return true;
+        }
+      }
+
+      // 2. Khớp theo họ tên chuẩn hóa (accent-insensitive)
+      const excelNameNorm = normalizeVietnameseString(row.patientName);
+      if (excelNameNorm && pNameNorm && excelNameNorm === pNameNorm) {
+        const excelRoomNorm = extractCleanRoomNumber(row.patientRoom);
+        const pRoomNorm = extractCleanRoomNumber(patient.roomNumber);
+        if (!row.patientRoom || !patient.roomNumber || excelRoomNorm === pRoomNorm) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  // Hoàn tác: Khôi phục lại trạng thái nội trú cho bệnh nhân đã tự động cho ra viện
+  const handleReactivatePatient = (patient: Patient) => {
+    if (onReactivatePatient) {
+      onReactivatePatient({
+        ...patient,
+        status: 'ACTIVE',
+        admissionStatus: 'STABLE_INPATIENT',
+        dischargeDate: undefined,
+      });
+    }
+    setAutoDischargedPatients((prev) => prev.filter((p) => p.id !== patient.id));
+    setNotification({
+      message: `Đã khôi phục bệnh nhân "${patient.fullName}" (Phòng ${patient.roomNumber}) trở lại danh sách nội trú!`,
+      type: 'info',
+    });
+  };
 
   // File upload handler
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,10 +131,33 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
         const { rows: parsed, detectedHeaders: headers } = parseExcelFile(buffer);
         setExcelRows(parsed);
         setDetectedColumns(headers);
-        setNotification({
-          message: `Đã đọc thành công ${parsed.length} bệnh nhân từ file "${file.name}"! Nhận diện được ${headers.length} cột dữ liệu.`,
-          type: 'success',
-        });
+
+        // Theo yêu cầu: Tự động cho ra viện những ca có trong danh sách khoa nhưng KHÔNG CÓ trong file Excel
+        if (parsed.length > 0 && existingPatients && existingPatients.length > 0) {
+          const activeInpatients = existingPatients.filter((p) => p.status === 'ACTIVE');
+          const toDischarge = activeInpatients.filter((p) => !isPatientInExcel(p, parsed));
+
+          if (toDischarge.length > 0) {
+            setAutoDischargedPatients(toDischarge);
+            if (onAutoDischargePatients) {
+              onAutoDischargePatients(toDischarge);
+            }
+            setNotification({
+              message: `Đã đọc thành công ${parsed.length} BN từ file "${file.name}"! Tự động cho ra viện ${toDischarge.length} bệnh nhân không có trong file Excel.`,
+              type: 'success',
+            });
+          } else {
+            setNotification({
+              message: `Đã đọc thành công ${parsed.length} bệnh nhân từ file "${file.name}"! Nhận diện được ${headers.length} cột dữ liệu.`,
+              type: 'success',
+            });
+          }
+        } else {
+          setNotification({
+            message: `Đã đọc thành công ${parsed.length} bệnh nhân từ file "${file.name}"! Nhận diện được ${headers.length} cột dữ liệu.`,
+            type: 'success',
+          });
+        }
       } catch (err: any) {
         console.error('Excel parse error:', err);
         setNotification({
@@ -282,6 +363,18 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     let count = 0;
     let skippedExisting = 0;
 
+    // Kiểm tra và tự động cho ra viện các ca không còn trong file Excel
+    const activeInpatients = (existingPatients || []).filter((p) => p.status === 'ACTIVE');
+    const toDischarge = activeInpatients.filter((p) => !isPatientInExcel(p, excelRows));
+    if (toDischarge.length > 0 && onAutoDischargePatients) {
+      onAutoDischargePatients(toDischarge);
+      setAutoDischargedPatients((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const newOnes = toDischarge.filter((p) => !seen.has(p.id));
+        return [...prev, ...newOnes];
+      });
+    }
+
     excelRows.forEach((row, idx) => {
       const key = `excel-${idx}`;
       // Nếu đã có trong dữ liệu khoa -> BỎ QUA KHÔNG NHẬP THÊM
@@ -295,14 +388,15 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       }
     });
 
+    const dischargeMsg = toDischarge.length > 0 ? ` (Đã tự động cho ra viện ${toDischarge.length} BN không có trong file Excel)` : '';
     if (count > 0) {
       setNotification({
-        message: `Đã nhập thành công ${count} bệnh nhân mới vào hệ thống! ${skippedExisting > 0 ? `(Đã tự động bỏ qua ${skippedExisting} bệnh nhân đã có sẵn trong khoa)` : ''}`,
+        message: `Đã nhập thành công ${count} bệnh nhân mới vào hệ thống! ${skippedExisting > 0 ? `(Đã tự động bỏ qua ${skippedExisting} bệnh nhân đã có sẵn trong khoa)` : ''}${dischargeMsg}`,
         type: 'success',
       });
     } else {
       setNotification({
-        message: `Tất cả ${skippedExisting} bệnh nhân trong file đều đã có trong danh sách khoa, đã tự động bỏ qua không nhập trùng.`,
+        message: `Tất cả ${skippedExisting} bệnh nhân trong file đều đã có trong danh sách khoa, đã tự động bỏ qua không nhập trùng.${dischargeMsg}`,
         type: 'info',
       });
     }
@@ -412,6 +506,74 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
             )}
           </div>
 
+          {/* SECTION 0: Tự Động Cho Ra Viện các ca có trong danh sách khoa nhưng KHÔNG CÓ trong file Excel */}
+          {autoDischargedPatients.length > 0 && (
+            <div className="bg-purple-50/90 rounded-2xl border-2 border-purple-300 p-4 space-y-3 shadow-xs animate-in fade-in">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-purple-200 pb-2.5 gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <LogOut className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-purple-950 uppercase flex items-center gap-2">
+                      <span>Tự Động Cho Ra Viện</span>
+                      <span className="px-2 py-0.5 rounded-full bg-purple-200 text-purple-900 text-xs font-mono font-black">
+                        {autoDischargedPatients.length} BN
+                      </span>
+                    </h4>
+                    <p className="text-xs text-purple-800 font-medium mt-0.5">
+                      Các bệnh nhân sau có trong danh sách khoa nhưng <strong>không có trong file Excel vừa tải</strong>, hệ thống đã tự động ghi nhận ra viện.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[11px] font-black px-3 py-1 rounded-lg bg-purple-700 text-white shrink-0 shadow-2xs">
+                  ✓ Đã Tự Động Cho Ra Viện
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1">
+                {autoDischargedPatients.map((p) => (
+                  <div 
+                    key={p.id} 
+                    className="p-3 rounded-xl bg-white border border-purple-200 hover:border-purple-300 flex items-center justify-between gap-2.5 shadow-2xs transition-all"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-black text-slate-900 text-xs truncate">
+                        {p.fullName}
+                      </div>
+                      <div className="text-[11px] text-purple-900 font-bold mt-0.5 flex items-center gap-1.5">
+                        <span className="px-1.5 py-0.2 bg-purple-100 text-purple-800 rounded font-mono font-black">
+                          P.{p.roomNumber}
+                        </span>
+                        <span>•</span>
+                        <span>{p.age}T</span>
+                        <span>•</span>
+                        <span>{p.gender}</span>
+                      </div>
+                      {p.primaryDiagnosis && (
+                        <div className="text-[10.5px] text-slate-500 truncate mt-0.5 font-medium" title={p.primaryDiagnosis}>
+                          {p.primaryDiagnosis}
+                        </div>
+                      )}
+                    </div>
+
+                    {onReactivatePatient && (
+                      <button
+                        type="button"
+                        onClick={() => handleReactivatePatient(p)}
+                        className="px-2 py-1 bg-slate-50 hover:bg-purple-100 text-slate-700 hover:text-purple-800 border border-slate-200 rounded-lg text-[10.5px] font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95"
+                        title="Khôi phục bệnh nhân này lại danh sách nội trú nếu chưa muốn cho ra viện"
+                      >
+                        <RotateCcw className="w-3 h-3 text-purple-600" />
+                        <span>Khôi phục</span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* SECTION 1: Matched Pairs with Pending Satellite Records */}
           {matchedRecords.length > 0 && (
             <div className="bg-white rounded-2xl border border-emerald-200 p-4 space-y-3 shadow-xs">
@@ -508,6 +670,12 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                   <span className="text-[11px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                     Bỏ qua mã ICD
                   </span>
+                  {autoDischargedPatients.length > 0 && (
+                    <span className="text-[11px] text-purple-800 font-bold bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200 flex items-center gap-1">
+                      <LogOut className="w-3 h-3 text-purple-600" />
+                      <span>Đã tự động cho ra viện: {autoDischargedPatients.length} BN</span>
+                    </span>
+                  )}
                 </div>
 
                 <button
