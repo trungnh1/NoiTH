@@ -32,6 +32,7 @@ interface PatientTableViewProps {
   onSelectPatient: (patient: Patient) => void;
   onTransferPatient: (patient: Patient) => void;
   onReassignDoctor?: (patientId: string, newDoctorId: string) => void;
+  onUpdatePatient?: (patient: Patient) => void;
 }
 
 export const PatientTableView: React.FC<PatientTableViewProps> = ({
@@ -40,7 +41,9 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
   onSelectPatient,
   onTransferPatient,
   onReassignDoctor,
+  onUpdatePatient,
 }) => {
+  const [openSeverityMenuId, setOpenSeverityMenuId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState<SeverityLevel | 'ALL'>('ALL');
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL');
@@ -450,19 +453,78 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                     <td className="py-3.5 px-4">
                       <div className="space-y-1.5">
                         <div className="flex flex-wrap items-center gap-1">
-                          {/* Severity Badge */}
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black ${
-                            isCritical
-                              ? 'bg-rose-600 text-white shadow-xs'
-                              : isModerate
-                              ? 'bg-amber-500 text-white shadow-xs'
-                              : patient.severity === 'UNCLASSIFIED' || !patient.severity
-                              ? 'bg-slate-200 text-slate-800 border border-slate-300'
-                              : 'bg-emerald-600 text-white'
-                          }`}>
-                            {isCritical && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
-                            {isCritical ? 'NẶNG' : isModerate ? 'TRUNG BÌNH' : patient.severity === 'UNCLASSIFIED' || !patient.severity ? 'CHƯA PHÂN LOẠI' : 'NHẸ / ỔN ĐỊNH'}
-                          </span>
+                          {/* Severity Badge (Bấm để sửa nhanh) */}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenSeverityMenuId(openSeverityMenuId === patient.id ? null : patient.id);
+                              }}
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer shadow-xs active:scale-95 border hover:brightness-105 ${
+                                isCritical
+                                  ? 'bg-rose-600 text-white border-rose-700'
+                                  : isModerate
+                                  ? 'bg-amber-500 text-white border-amber-600'
+                                  : patient.severity === 'UNCLASSIFIED' || !patient.severity
+                                  ? 'bg-slate-200 text-slate-800 border border-slate-300'
+                                  : 'bg-emerald-600 text-white border-emerald-700'
+                              }`}
+                              title="Bấm để đổi phân loại: Nặng / Trung bình / Nhẹ"
+                            >
+                              {isCritical && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
+                              <span>{isCritical ? 'NẶNG' : isModerate ? 'TRUNG BÌNH' : patient.severity === 'UNCLASSIFIED' || !patient.severity ? 'CHƯA PHÂN LOẠI' : 'NHẸ'}</span>
+                              <ChevronDown className="w-2.5 h-2.5 opacity-80" />
+                            </button>
+
+                            {openSeverityMenuId === patient.id && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-40"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenSeverityMenuId(null);
+                                  }}
+                                />
+                                <div
+                                  className="absolute left-0 top-full mt-1 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 p-1.5 z-50 animate-in fade-in zoom-in-95 text-left"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div className="px-2 py-0.5 text-[10px] font-black uppercase text-slate-400 border-b border-slate-100">
+                                    Đổi Phân Loại:
+                                  </div>
+                                  <div className="py-1 space-y-0.5">
+                                    {[
+                                      { id: 'CRITICAL', label: 'Nặng', color: 'text-rose-700 hover:bg-rose-50', activeColor: 'bg-rose-600 text-white', dot: 'bg-rose-500' },
+                                      { id: 'MODERATE', label: 'Trung bình', color: 'text-amber-800 hover:bg-amber-50', activeColor: 'bg-amber-500 text-white', dot: 'bg-amber-400' },
+                                      { id: 'STABLE', label: 'Nhẹ (Ổn định)', color: 'text-emerald-700 hover:bg-emerald-50', activeColor: 'bg-emerald-600 text-white', dot: 'bg-emerald-500' },
+                                      { id: 'UNCLASSIFIED', label: 'Chưa phân loại', color: 'text-slate-600 hover:bg-slate-100', activeColor: 'bg-slate-700 text-white', dot: 'bg-slate-300' },
+                                    ].map((opt) => (
+                                      <button
+                                        key={opt.id}
+                                        type="button"
+                                        onClick={() => {
+                                          if (onUpdatePatient && patient.severity !== opt.id) {
+                                            onUpdatePatient({ ...patient, severity: opt.id as any });
+                                          }
+                                          setOpenSeverityMenuId(null);
+                                        }}
+                                        className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                                          (patient.severity || 'UNCLASSIFIED') === opt.id ? opt.activeColor : opt.color
+                                        }`}
+                                      >
+                                        <span className="flex items-center gap-1.5">
+                                          <span className={`w-2 h-2 rounded-full ${opt.dot}`} />
+                                          <span>{opt.label}</span>
+                                        </span>
+                                        {(patient.severity || 'UNCLASSIFIED') === opt.id && <Check className="w-3 h-3" />}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
 
                           {/* Admission / Discharge Status Badge */}
                           {patient.admissionStatus && patient.admissionStatus !== 'STABLE_INPATIENT' && (

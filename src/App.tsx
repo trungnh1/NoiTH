@@ -772,6 +772,7 @@ export default function App() {
             rooms={rooms}
             roomDoctorAssignments={roomDoctorAssignments}
             onAssignRoomDoctor={handleAssignRoomDoctor}
+            onUpdatePatient={handleUpdatePatient}
             onOpenNewPatient={() => {
               setPrefilledRoom(undefined);
               setPrefilledBed(undefined);
@@ -828,6 +829,7 @@ export default function App() {
             doctors={doctors}
             onSelectPatient={(p) => setSelectedPatient(p)}
             onTransferPatient={(p) => setTransferringPatient(p)}
+            onUpdatePatient={handleUpdatePatient}
           />
         )}
 
