@@ -5,6 +5,8 @@ import { X, Printer, Building2, Stethoscope } from 'lucide-react';
 import { 
   GROUP_1_ROOM_NUMBERS, 
   GROUP_1_DOCTOR_IDS, 
+  GROUP_2_DOCTOR_IDS,
+  CARDIO_DOCTOR_IDS,
   formatDoctorShortName, 
   formatCombinedDiagnosis 
 } from './DetailedPatientListView';
@@ -44,6 +46,22 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
       }
     }
     return uniqueList;
+  }, [doctors]);
+
+  // Group 2 doctors (Linh, Hoài, Mai, Ngoan, Chi)
+  const group2Doctors = useMemo(() => {
+    return doctors.filter((d) => 
+      (GROUP_2_DOCTOR_IDS.includes(d.id) || /thái thị thùy linh|dương thị hoài|nguyễn thị ngọc mai|đỗ thị ngoan|nguyễn thị phương chi/i.test(d.name)) &&
+      !/bình chi/i.test(d.name)
+    );
+  }, [doctors]);
+
+  // Cardio doctors (Nhật, Thọ, Thịnh, Lam, Luận)
+  const cardioDoctors = useMemo(() => {
+    return doctors.filter((d) => 
+      (CARDIO_DOCTOR_IDS.includes(d.id) || /nguyễn văn phương nhật|võ văn thọ|võ hồng thịnh|trương hoài lam|đồng văn luận/i.test(d.name)) &&
+      !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
+    );
   }, [doctors]);
 
   // Doctor lookup map
@@ -228,11 +246,27 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                   className="bg-transparent font-bold text-slate-900 focus:outline-hidden cursor-pointer"
                 >
                   <option value="ALL">Tất cả Bác sĩ</option>
-                  {group1Doctors.map((doc) => (
-                    <option key={doc.id} value={doc.id}>
-                      BS. {formatDoctorShortName(doc.name)} ({doc.name})
-                    </option>
-                  ))}
+                  <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)">
+                    {group1Doctors.map((doc) => (
+                      <option key={doc.id} value={doc.id}>
+                        BS. {formatDoctorShortName(doc.name)} ({doc.name})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Bác sĩ Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)">
+                    {group2Doctors.map((doc) => (
+                      <option key={doc.id} value={doc.id}>
+                        BS. {formatDoctorShortName(doc.name)} ({doc.name})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam, Luận)">
+                    {cardioDoctors.map((doc) => (
+                      <option key={doc.id} value={doc.id}>
+                        BS. {formatDoctorShortName(doc.name)} ({doc.name})
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
             )}

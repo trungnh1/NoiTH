@@ -96,12 +96,13 @@ export const GROUP_2_DOCTOR_IDS = [
   '00769', // BS. Nguyễn Thị Phương Chi (Chi)
 ];
 
-// Bác sĩ Tim Mạch: Nhật, Thọ, Thịnh, Lam
+// Bác sĩ Tim Mạch: Nhật, Thọ, Thịnh, Lam, Luận
 export const CARDIO_DOCTOR_IDS = [
   '00020', // BS. Nguyễn Văn Phương Nhật (Nhật)
   '00355', // BS. Võ Văn Thọ (Thọ)
   '00818', // BS. Võ Hồng Thịnh (Thịnh)
   '00929', // BS. Trương Hoài Lam (Lam)
+  '00871', // BS. Đồng Văn Luận (Luận)
 ];
 
 interface DetailedPatientListViewProps {
@@ -436,10 +437,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     return sortDoctorsAlphabetically(list);
   }, [doctors]);
 
-  // Cardio doctors (Nhật, Thọ, Thịnh, Lam)
+  // Cardio doctors (Nhật, Thọ, Thịnh, Lam, Luận)
   const cardioDoctors = useMemo(() => {
     const list = doctors.filter((d) => 
-      (CARDIO_DOCTOR_IDS.includes(d.id) || /nguyễn văn phương nhật|võ văn thọ|võ hồng thịnh|trương hoài lam/i.test(d.name)) &&
+      (CARDIO_DOCTOR_IDS.includes(d.id) || /nguyễn văn phương nhật|võ văn thọ|võ hồng thịnh|trương hoài lam|đồng văn luận/i.test(d.name)) &&
       !/tuế|quyên/i.test(d.name) && d.id !== '00101' && d.id !== '00199'
     );
     return sortDoctorsAlphabetically(list);
@@ -1331,7 +1332,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                             </option>
                           ))}
                         </optgroup>
-                        <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam)" className="text-slate-900 bg-white font-bold">
+                        <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam, Luận)" className="text-slate-900 bg-white font-bold">
                           {cardioDoctors.map((doc) => (
                             <option key={doc.id} value={doc.id}>
                               BS. {formatDoctorShortName(doc.name)}

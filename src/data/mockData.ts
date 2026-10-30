@@ -491,12 +491,12 @@ export const DEFAULT_ROOM_DOCTORS: Record<string, string> = {
   "731": "00144",    // Phạm Cao Thiên
   "733": "00226",    // Đặng Thị Ngọc Ánh
 
-  // Nhóm Tim Mạch (735 - 745) - BS: Nhật, Thọ, Thịnh, Lam
+  // Nhóm Tim Mạch (735 - 745) - BS: Nhật, Thọ, Thịnh, Lam, Luận
   "735": "00020",    // Nguyễn Văn Phương Nhật
   "737": "00355",    // Võ Văn Thọ
   "739": "00818",    // Võ Hồng Thịnh
   "741": "00929",    // Trương Hoài Lam
-  "743": "00020",    // Nguyễn Văn Phương Nhật
+  "743": "00871",    // Đồng Văn Luận
   "745": "00818",    // Võ Hồng Thịnh
 
   // Nhóm 2 (747 - 757) - BS: Linh, Hoài, Mai, Ngoan, Chi
