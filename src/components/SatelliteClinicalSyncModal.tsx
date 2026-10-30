@@ -811,7 +811,10 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                         {!completeness.isComplete ? (
                           <button
                             type="button"
-                            onClick={() => handleReviewAndEdit(record)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReviewAndEdit(record);
+                            }}
                             className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-black text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-xs hover:shadow active:scale-95"
                             title="Bổ sung các thông tin còn thiếu (Họ tên, Tuổi, Buồng phòng) và tiếp nhận bệnh nhân vào nội trú"
                           >
@@ -822,7 +825,10 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
                           <>
                             <button
                               type="button"
-                              onClick={() => handleReviewAndEdit(record)}
+                              onClick={(e) => {
+                              e.stopPropagation();
+                              handleReviewAndEdit(record);
+                            }}
                               className="px-2.5 py-1.5 rounded-lg border border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
                               title="Mở biểu mẫu nhập viện hoàn chỉnh với dữ liệu đã điền sẵn để rà soát trước khi lưu"
                             >

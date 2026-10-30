@@ -613,7 +613,9 @@ export function mapClinicalRecordToPatient(
   rawRoom = rawRoom.replace(/^(phòng|p\.?|buồng)\s*/i, '').trim();
   
   const matchedRoom = rooms.find(r => r.number === rawRoom || r.number.replace(/\D/g, '') === rawRoom.replace(/\D/g, ''));
-  const roomNumber = matchedRoom ? matchedRoom.number : (rawRoom || (rooms[0]?.number || '703'));
+  const hasDigitRoom = /\d/.test(rawRoom);
+  const cleanRoomNumber = hasDigitRoom ? rawRoom.replace(/\D/g, '') : '';
+  const roomNumber = matchedRoom ? matchedRoom.number : (cleanRoomNumber || (rooms[0]?.number || '703'));
   // Bác sĩ phụ trách: Bác sĩ điều trị là bác sĩ có sẵn ở buồng phòng đó
   let attendingDoctorId = '';
   if (matchedRoom && (matchedRoom as any).assignedDoctorId) {
@@ -699,6 +701,7 @@ export function mapClinicalRecordToPatient(
 
   const newPatient: Patient = {
     id: record.id || `SAT-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    patientCode: (record as any).medicalRecordNumber || (record as any).patientCode || record.id || `BN-${Date.now().toString().slice(-6)}`,
     fullName,
     age,
     gender,

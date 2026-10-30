@@ -1503,7 +1503,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                         {onDismissPendingSatelliteRecord && (
                           <button
                             type="button"
-                            onClick={() => onDismissPendingSatelliteRecord(record.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDismissPendingSatelliteRecord(record.id);
+                            }}
                             className="px-2 py-1 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
                             title="Bỏ qua / Xóa ca này khỏi danh sách chờ"
                           >
@@ -1515,7 +1518,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                         {onOpenSatelliteDraft && (
                           <button
                             type="button"
-                            onClick={() => onOpenSatelliteDraft(record)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenSatelliteDraft(record);
+                            }}
                             className="ml-auto px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
                             title="Mở hồ sơ để bổ sung buồng phòng và tiếp nhận vào khoa"
                           >

@@ -10,8 +10,8 @@ import {
   VitalSign,
   ClinicalEvolution
 } from '../types/patient';
-import { GROUP_1_ROOM_NUMBERS, GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS } from '../data/mockData';
-import { formatDoctorShortName } from './DetailedPatientListView';
+import { GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS } from '../data/mockData';
+import { formatDoctorShortName, GROUP_1_ROOM_NUMBERS, CARDIO_ROOM_NUMBERS, GROUP_2_ROOM_NUMBERS } from './DetailedPatientListView';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { isRealAllergy } from '../utils/clinicalTextParser';
 import { 
@@ -97,7 +97,13 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   const [fullName, setFullName] = useState(patientToEdit?.fullName || '');
   const [age, setAge] = useState<number>(patientToEdit?.age ?? 60);
   const [gender, setGender] = useState<'Nam' | 'Nữ'>(patientToEdit?.gender || 'Nam');
-  const [roomNumber, setRoomNumber] = useState<string>(patientToEdit?.roomNumber || prefilledRoom || '703');
+  const [roomNumber, setRoomNumber] = useState<string>(() => {
+    const raw = patientToEdit?.roomNumber || prefilledRoom || '';
+    if (/\d/.test(raw)) {
+      return raw.replace(/^(phòng|p\.?|buồng)\s*/i, '').trim();
+    }
+    return prefilledRoom || '703';
+  });
   const [admissionDateTime, setAdmissionDateTime] = useState<string>(() => {
     if (patientToEdit?.admissionDate) {
       const formatted = patientToEdit.admissionDate.replace(' ', 'T');
@@ -347,11 +353,13 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
 
     if (!fullName.trim()) {
       setErrorMsg('Vui lòng nhập họ và tên bệnh nhân.');
+      setMobileTab('admin');
       if (nameInputRef.current) nameInputRef.current.focus();
       return;
     }
     if (!primaryDiagnosis.trim()) {
       setErrorMsg('Vui lòng nhập chẩn đoán lâm sàng của bệnh nhân.');
+      setMobileTab('clinical');
       return;
     }
 
@@ -391,8 +399,8 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
     };
 
     const newPatient: Patient = {
-      id: `PAT-${Date.now()}`,
-      patientCode: `BN-${Date.now().toString().slice(-6)}`,
+      id: isImportMode && patientToEdit?.id ? patientToEdit.id : `PAT-${Date.now()}`,
+      patientCode: (isImportMode && (patientToEdit?.patientCode || patientToEdit?.id)) || `BN-${Date.now().toString().slice(-6)}`,
       fullName: formatPatientDisplayName(fullName.trim()),
       gender,
       age: Number(age) || 50,
@@ -415,10 +423,10 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
       handoverNotes: handoverNotes.trim() || undefined,
       initialLabsText: patientToEdit?.initialLabsText || undefined,
       status: 'ACTIVE',
-      vitals: initialVitalsList,
-      evolutions: [initialEvolution],
-      labs: [],
-      medications: [],
+      vitals: initialVitalsList.length > 0 ? initialVitalsList : (patientToEdit?.vitals || []),
+      evolutions: admissionClinicalNote.trim() ? [initialEvolution] : (patientToEdit?.evolutions && patientToEdit.evolutions.length > 0 ? patientToEdit.evolutions : [initialEvolution]),
+      labs: patientToEdit?.labs || [],
+      medications: patientToEdit?.medications || [],
     };
 
     if (isEditing && patientToEdit) {
@@ -502,7 +510,9 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
         <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 bg-[#0b4d8c] text-white flex items-center justify-between border-b border-[#083a69] shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-lg bg-white/10 flex items-center justify-center text-white border border-white/20 shrink-0">
-              {isEditing ? (
+              {isImportMode ? (
+                <CheckCircle2 className="w-4 h-4 text-white" />
+              ) : isEditing ? (
                 <FileEdit className="w-4 h-4 text-white" />
               ) : (
                 <UserPlus className="w-4 h-4 text-white" />
@@ -511,7 +521,11 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
             <div>
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <h3 className="text-sm sm:text-base font-black tracking-tight text-white">
-                  {isEditing ? `Chỉnh Sửa Bệnh Nhân: ${formatPatientDisplayName(patientToEdit?.fullName || "")}` : 'Tiếp Nhận Bệnh Nhân Mới'}
+                  {isImportMode 
+                    ? `Bổ Sung Thông Tin & Tiếp Nhận: ${formatPatientDisplayName(patientToEdit?.fullName || '')}`
+                    : isEditing 
+                    ? `Chỉnh Sửa Bệnh Nhân: ${formatPatientDisplayName(patientToEdit?.fullName || "")}` 
+                    : 'Tiếp Nhận Bệnh Nhân Mới'}
                 </h3>
                 <span className="text-[10px] uppercase font-bold px-1.5 sm:px-2 py-0.5 rounded bg-white/15 text-white border border-white/20 hidden sm:inline-block">
                   BV Đa Khoa Hùng Vương Gia Lai
@@ -813,7 +827,7 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                   onChange={(e) => setRoomNumber(e.target.value)}
                   className="w-full p-2.5 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs focus:ring-2 focus:ring-rose-500 focus:border-rose-500 cursor-pointer"
                 >
-                  <optgroup label="Buồng Phòng Nhóm 1 (703 - 731 & 733)">
+                  <optgroup label="Buồng Phòng Nhóm 1 (703 - 733)">
                     {GROUP_1_ROOM_NUMBERS.map((num) => {
                       const count = patients.filter((p) => p.status === 'ACTIVE' && p.roomNumber === num).length;
                       return (
@@ -823,6 +837,36 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                       );
                     })}
                   </optgroup>
+                  <optgroup label="Buồng Phòng Nhóm Tim Mạch (735 - 745)">
+                    {CARDIO_ROOM_NUMBERS.map((num) => {
+                      const count = patients.filter((p) => p.status === 'ACTIVE' && p.roomNumber === num).length;
+                      return (
+                        <option key={num} value={num}>
+                          Phòng {num} ({count} bệnh nhân hiện tại)
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                  <optgroup label="Buồng Phòng Nhóm 2 (747 - 757)">
+                    {GROUP_2_ROOM_NUMBERS.map((num) => {
+                      const count = patients.filter((p) => p.status === 'ACTIVE' && p.roomNumber === num).length;
+                      return (
+                        <option key={num} value={num}>
+                          Phòng {num} ({count} bệnh nhân hiện tại)
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                  {roomNumber && 
+                    !GROUP_1_ROOM_NUMBERS.includes(roomNumber) && 
+                    !CARDIO_ROOM_NUMBERS.includes(roomNumber) && 
+                    !GROUP_2_ROOM_NUMBERS.includes(roomNumber) && (
+                    <optgroup label="Phòng Khác">
+                      <option value={roomNumber}>
+                        Phòng {roomNumber}
+                      </option>
+                    </optgroup>
+                  )}
                 </select>
               </div>
 
@@ -848,7 +892,6 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                     }}
                     placeholder="VD: Nguyễn Văn An"
                     className="w-full p-2.5 bg-white border border-slate-300 rounded-lg font-black text-xs tracking-wide focus:ring-2 focus:ring-rose-500 placeholder:normal-case"
-                    required
                   />
                 </div>
 
@@ -865,7 +908,6 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                       min={1}
                       max={120}
                       className="w-full p-2 bg-white border border-slate-300 rounded-lg font-black text-xs text-center focus:ring-2 focus:ring-rose-500"
-                      required
                     />
                   </div>
 
@@ -910,7 +952,6 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                     value={admissionDateTime}
                     onChange={(e) => setAdmissionDateTime(e.target.value)}
                     className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-xs focus:ring-2 focus:ring-rose-500 text-slate-700"
-                    required
                   />
                 </div>
               </div>
@@ -1101,7 +1142,6 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                   }}
                   placeholder="Nhập chẩn đoán lâm sàng: VD: Cơn đau thắt ngực không ổn định, Tăng huyết áp độ 2, ĐTĐ typ 2..."
                   className="w-full p-2 bg-white border border-slate-300 rounded-lg font-medium text-xs focus:ring-2 focus:ring-rose-500 leading-relaxed"
-                  required
                 />
 
                 {/* Mức độ nặng nhẹ */}
@@ -1384,7 +1424,12 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                 type="submit"
                 className="px-6 py-2.5 bg-[#0b4d8c] hover:bg-[#083a69] text-white font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-98 text-xs"
               >
-                {isEditing ? (
+                {isImportMode ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Hoàn Tất Bổ Sung & Nhập Viện (Ctrl+Enter)</span>
+                  </>
+                ) : isEditing ? (
                   <>
                     <FileEdit className="w-4 h-4" />
                     <span>Lưu Thay Đổi (Ctrl+Enter)</span>

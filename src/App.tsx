@@ -24,6 +24,7 @@ import { getSavedDoctorSession, saveDoctorSession, clearDoctorSession } from './
 import { loadAppSettings, saveAppSettings, getFontSizeScale, AppSettings } from './utils/settings';
 import { AppSettingsModal } from './components/AppSettingsModal';
 import { ExcelDataSyncModal } from './components/ExcelDataSyncModal';
+import { isRealAllergy } from './utils/clinicalTextParser';
 import { 
   subscribeToClinicalRecords, 
   checkSatelliteRecordCompleteness, 
@@ -1058,6 +1059,14 @@ export default function App() {
             }
             if (satelliteImportDraft.id) {
               handleDismissPendingSatellite(satelliteImportDraft.id);
+            }
+            if (satelliteImportDraft.fullName) {
+              const cleanName = satelliteImportDraft.fullName.trim().toLowerCase();
+              const remaining = loadPendingSatelliteRecords().filter(
+                (r) => (r.patientName || r.fullName || '').trim().toLowerCase() !== cleanName
+              );
+              savePendingSatelliteRecords(remaining);
+              setPendingSatelliteRecords(remaining);
             }
             setSatelliteImportDraft(null);
           }}
