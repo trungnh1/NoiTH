@@ -8,6 +8,7 @@ import {
   ClinicalTag,
   CLINICAL_TAGS_META
 } from '../types/patient';
+import { isRealAllergy } from '../utils/clinicalTextParser';
 import { 
   X, 
   Activity, 
@@ -369,7 +370,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
       primaryDiagnosis: diagnosis.trim() || patient.primaryDiagnosis,
       secondaryDiagnosis: undefined,
       tags: selectedTags,
-      allergies: selectedTags.includes('ALLERGY') ? (patient.allergies || 'Có dị ứng thuốc/thức ăn') : patient.allergies,
+      allergies: selectedTags.includes('ALLERGY') ? (isRealAllergy(patient.allergies) ? patient.allergies : 'Có dị ứng thuốc/thức ăn') : undefined,
       severity,
       admissionStatus,
       treatmentPlan: treatmentAction.trim() || patient.treatmentPlan,

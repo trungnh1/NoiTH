@@ -111,12 +111,24 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   // Tiền sử & Dị ứng (có nút tích chọn có dị ứng)
   const [medicalHistory, setMedicalHistory] = useState(patientToEdit?.medicalHistory || '');
   const [hasAllergy, setHasAllergy] = useState<boolean>(() => {
+    // Khi nhập dữ liệu từ Excel hoặc bệnh án vệ tinh (isImportMode), không tự động tích có dị ứng
+    if (isImportMode) {
+      return false;
+    }
     if (patientToEdit) {
-      return Boolean(patientToEdit.allergies || patientToEdit.tags?.includes('ALLERGY'));
+      return isRealAllergy(patientToEdit.allergies);
     }
     return false;
   });
-  const [allergyDetails, setAllergyDetails] = useState(patientToEdit?.allergies || '');
+  const [allergyDetails, setAllergyDetails] = useState<string>(() => {
+    if (isImportMode) {
+      return '';
+    }
+    if (patientToEdit && isRealAllergy(patientToEdit.allergies)) {
+      return patientToEdit.allergies.trim();
+    }
+    return '';
+  });
   const [mobileTab, setMobileTab] = useState<'admin' | 'clinical'>('admin');
 
   // Diễn tiến lâm sàng lúc tiếp nhận (tùy chọn)
@@ -128,7 +140,13 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   });
 
   const [severity, setSeverity] = useState<SeverityLevel>(patientToEdit?.severity || 'STABLE');
-  const [selectedTags, setSelectedTags] = useState<ClinicalTag[]>(patientToEdit?.tags || []);
+  const [selectedTags, setSelectedTags] = useState<ClinicalTag[]>(() => {
+    const rawTags = patientToEdit?.tags || [];
+    if (isImportMode || !isRealAllergy(patientToEdit?.allergies)) {
+      return rawTags.filter((t) => t !== 'ALLERGY');
+    }
+    return rawTags;
+  });
 
   // Bác sĩ phụ trách: Nếu nhập từ BN vệ tinh (isImportMode) hoặc chưa chọn, để trống bác sĩ điều trị ('')
   const [attendingDoctorId, setAttendingDoctorId] = useState<string>(() => {
@@ -390,7 +408,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
       allergies: hasAllergy ? (allergyDetails.trim() || 'Có dị ứng thuốc/thức ăn') : undefined,
       severity,
       admissionStatus: 'ADMITTED_TODAY',
-      tags: selectedTags,
+      tags: hasAllergy ? (selectedTags.includes('ALLERGY') ? selectedTags : [...selectedTags, 'ALLERGY' as ClinicalTag]) : selectedTags.filter(t => t !== 'ALLERGY'),
       treatmentPlan: treatmentPlan.trim() || 'Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa.',
       importantNotes: importantNotes.trim() || undefined,
       handoverNotes: handoverNotes.trim() || undefined,
@@ -444,7 +462,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
         medicalHistory: medicalHistory.trim() || undefined,
         allergies: hasAllergy ? (allergyDetails.trim() || 'Có dị ứng thuốc/thức ăn') : undefined,
         severity,
-        tags: selectedTags,
+        tags: hasAllergy ? (selectedTags.includes('ALLERGY') ? selectedTags : [...selectedTags, 'ALLERGY' as ClinicalTag]) : selectedTags.filter(t => t !== 'ALLERGY'),
         treatmentPlan: treatmentPlan.trim() || patientToEdit.treatmentPlan,
         importantNotes: importantNotes.trim() || undefined,
         handoverNotes: handoverNotes.trim() || undefined,

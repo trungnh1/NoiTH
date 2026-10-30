@@ -321,6 +321,10 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
   // Action: Review & Edit before Admission
   const handleReviewAndEdit = (record: ClinicalRecord) => {
     const patientObj = mapClinicalRecordToPatient(record, doctors, rooms, currentUser?.id);
+    if (!isRealAllergy(patientObj.allergies)) {
+      patientObj.allergies = undefined;
+      patientObj.tags = (patientObj.tags || []).filter((t) => t !== 'ALLERGY');
+    }
     onOpenEditAdmission(patientObj);
     onClose();
   };

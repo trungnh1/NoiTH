@@ -1,4 +1,4 @@
-﻿import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getFirestore, 
   collection, 
@@ -21,6 +21,7 @@ import {
 } from 'firebase/auth';
 import { Patient, Doctor, DepartmentRoom, VitalSign, ClinicalEvolution, SeverityLevel } from '../types/patient';
 import { DEFAULT_ROOM_DOCTORS } from '../data/mockData';
+import { isRealAllergy } from '../utils/clinicalTextParser';
 
 // 1. Cấu hình kết nối Firebase vệ tinh
 const firebaseConfig = {
@@ -579,6 +580,7 @@ export function mapClinicalRecordToPatient(
     primaryNurse: 'Điều dưỡng phụ trách phòng',
     primaryDiagnosis,
     medicalHistory: medicalHistory || undefined,
+    allergies: isRealAllergy(record.allergies) ? record.allergies : undefined,
     severity,
     admissionStatus: 'ADMITTED_TODAY',
     tags: parsedVitals.spO2 < 95 ? ['O2_CANULA'] : [],

@@ -1,5 +1,28 @@
 import { Patient, SeverityLevel, ClinicalTag, VitalSign, ClinicalEvolution } from '../types/patient';
 
+/**
+ * Kiểm tra xem chuỗi thông tin dị ứng có thực sự ghi nhận dị ứng hay không.
+ * Trả về false nếu là các cụm từ phủ định thường gặp trong bệnh án (VD: "Không ghi nhận", "Chưa rõ", "Không có tiền sử dị ứng").
+ */
+export function isRealAllergy(allergyText?: string | null): boolean {
+  if (!allergyText) return false;
+  const clean = allergyText.trim().toLowerCase();
+  if (!clean) return false;
+  if (/^(không|chưa|k|ko|none|no|chưa ghi nhận|không ghi nhận|chưa rõ|không có|không rõ|chưa phát hiện|bình thường|không dị ứng|chưa thấy|chưa phát hiện thấy|thuốc|thức ăn)$/i.test(clean)) {
+    return false;
+  }
+  if (/^(không|chưa|k|ko)\s+(có\s+)?(ghi\s+nhận\s+)?(tiền\s+sử\s+)?(bị\s+)?dị\s+ứng/i.test(clean)) {
+    return false;
+  }
+  if (/^(không|chưa)\s+(phát\s+hiện|thấy|rõ)\s+(dị\s+ứng|tiền\s+sử)/i.test(clean)) {
+    return false;
+  }
+  if (/không\s+(có\s+)?tiền\s+sử/i.test(clean) && !/dị\s+ứng\s+với/i.test(clean)) {
+    return false;
+  }
+  return true;
+}
+
 export interface ParsedClinicalNote {
   fullName: string;
   age: number;
@@ -168,7 +191,18 @@ export function parseClinicalNoteRegex(text: string): ParsedClinicalNote {
   if (/vận mạch|noradrenalin|adrenalin/i.test(clean)) {
     suggestedTags.push('VASOPRESSOR');
   }
-  if (/dị ứng|allergy/i.test(clean)) {
+  // Dị ứng: Chỉ gợi ý thẻ ALLERGY nếu có dị ứng thực tế, không gắn thẻ nếu ghi nhận "không dị ứng", "chưa ghi nhận"
+  const allergyMatch = clean.match(/(?:tiền sử dị ứng|dị ứng thuốc|dị ứng)[:\s]*([^\n.,;]+)/i);
+  if (allergyMatch && allergyMatch[1]) {
+    const val = allergyMatch[1].trim();
+    const hasNegative = /(?:không|chưa|k|ko)\s+(?:có\s+)?(?:tiền\s+sử\s+)?(?:ghi\s+nhận\s+)?(?:bị\s+)?dị\s+ứng|không\s+dị\s+ứng|chưa\s+ghi\s+nhận|không\s+ghi\s+nhận|chưa\s+rõ/i.test(clean);
+    if (!hasNegative && isRealAllergy(val)) {
+      suggestedTags.push('ALLERGY');
+    }
+  } else if (
+    /dị ứng|allergy/i.test(clean) &&
+    !/(?:không|chưa|k|ko)\s+(?:có\s+)?(?:tiền\s+sử\s+)?(?:ghi\s+nhận\s+)?(?:bị\s+)?dị\s+ứng|không\s+dị\s+ứng|chưa\s+ghi\s+nhận|không\s+ghi\s+nhận|chưa\s+rõ/i.test(clean)
+  ) {
     suggestedTags.push('ALLERGY');
   }
   if (/té ngã|nguy cơ ngã/i.test(clean)) {

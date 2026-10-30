@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { parseExcelAdmissionDate } from '../utils/excelParser';
+import { isRealAllergy } from '../utils/clinicalTextParser';
 import { 
   normalizeSearchText, 
   extractSearchRoomNumber, 
@@ -516,7 +517,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
           if (!isNewAdmissionFromYesterday1630(p.admissionDate)) return false;
         } else if (tagFilter === 'ALLERGY') {
           const hasTag = p.tags?.includes('ALLERGY');
-          const hasText = Boolean(p.allergies && p.allergies.trim());
+          const hasText = isRealAllergy(p.allergies);
           if (!hasTag && !hasText) return false;
         } else {
           if (!p.tags?.includes(tagFilter as ClinicalTag)) return false;
@@ -661,7 +662,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const dischargeTodayCount = activeGroupPatients.filter((p) => p.admissionStatus === 'DISCHARGE_TODAY').length;
   const dischargeTomorrowCount = activeGroupPatients.filter((p) => p.admissionStatus === 'DISCHARGE_TOMORROW').length;
   const newCount = activeGroupPatients.filter((p) => isNewAdmissionFromYesterday1630(p.admissionDate)).length;
-  const allergyCount = activeGroupPatients.filter((p) => p.tags?.includes('ALLERGY') || Boolean(p.allergies && p.allergies.trim())).length;
+  const allergyCount = activeGroupPatients.filter((p) => p.tags?.includes('ALLERGY') || isRealAllergy(p.allergies)).length;
 
   // Active doctors currently treating patients in the selected group (sorted alphabetically by Vietnamese given name)
   const activeDoctorsWithCounts = useMemo(() => {

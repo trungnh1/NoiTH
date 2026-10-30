@@ -904,7 +904,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 {/* Dị ứng thuốc - Cảnh báo đỏ nổi bật */}
                 <div className={`p-3.5 rounded-xl border ${
-                  patient.allergies && !patient.allergies.toLowerCase().includes('không')
+                  isRealAllergy(patient.allergies)
                     ? 'bg-rose-50 border-rose-300 ring-1 ring-rose-300'
                     : 'bg-white border-slate-200 shadow-2xs'
                 }`}>
@@ -913,7 +913,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                     <span>Dị ứng thuốc & Thận trọng</span>
                   </div>
                   <p className={`font-bold mt-1 ${
-                    patient.allergies && !patient.allergies.toLowerCase().includes('không')
+                    isRealAllergy(patient.allergies)
                       ? 'text-rose-950 font-black text-sm'
                       : 'text-slate-700'
                   }`}>

@@ -15,6 +15,7 @@ import {
   Firestore 
 } from 'firebase/firestore';
 import { Patient, SeverityLevel, VitalSign } from '../types/patient';
+import { isRealAllergy } from '../utils/clinicalTextParser';
 
 import firebaseAppletConfig from '../../firebase-applet-config.json';
 
@@ -168,7 +169,7 @@ export function mapFirestoreRecordToPatient(docId: string, record: DocumentData)
       primaryDiagnosis: record.primaryDiagnosis || 'Chưa ghi rõ chẩn đoán',
       icd10Primary: record.icd10Primary,
       secondaryDiagnosis: record.secondaryDiagnosis,
-      allergies: record.allergies || 'Không ghi nhận',
+      allergies: isRealAllergy(record.allergies) ? record.allergies : undefined,
       medicalHistory: record.medicalHistory || 'Chưa ghi nhận bệnh lý nền đặc biệt',
       severity: record.severity as SeverityLevel,
       admissionStatus: record.admissionStatus || 'ADMITTED_TODAY',
@@ -241,7 +242,7 @@ export function mapFirestoreRecordToPatient(docId: string, record: DocumentData)
     primaryDiagnosis: diagnosis,
     icd10Primary: record.icd10 || 'N/A',
     secondaryDiagnosis: record.secondaryDiagnosis || record.benhKemTheo || undefined,
-    allergies: record.allergies || record.diUng || 'Chưa ghi nhận',
+    allergies: isRealAllergy(record.allergies || record.diUng) ? (record.allergies || record.diUng) : undefined,
     medicalHistory: record.medicalHistory || record.tienSu || 'Tiền sử ghi nhận từ Cấp cứu',
     severity,
     admissionStatus: 'ADMITTED_TODAY',

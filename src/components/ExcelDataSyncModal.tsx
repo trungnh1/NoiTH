@@ -175,6 +175,9 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     if (excel.insuranceType) patientObj.insuranceType = excel.insuranceType;
     if (excel.treatmentDays !== undefined) patientObj.treatmentDays = excel.treatmentDays;
     patientObj.importantNotes = '';
+    // Theo yêu cầu: Khi nhập dữ liệu từ Excel / Ghép nối, không tự động tích có dị ứng
+    patientObj.allergies = undefined;
+    patientObj.tags = (patientObj.tags || []).filter(t => t !== 'ALLERGY');
 
     onImportPatientDirect(patientObj);
     setImportedIds((prev) => new Set(prev).add(sat.id));
@@ -251,6 +254,8 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       severity: 'UNCLASSIFIED',
       admissionStatus: 'ADMITTED_TODAY',
       tags: [],
+      // Theo yêu cầu BS: Khi nhập dữ liệu từ Excel, không tự động tích có dị ứng
+      allergies: undefined,
       // Bỏ hiển thị "Chăm sóc cấp 2, theo dõi sinh hiệu, ăn chế độ bệnh lý"
       treatmentPlan: excelRow.treatmentPlan || '',
       importantNotes: '',
