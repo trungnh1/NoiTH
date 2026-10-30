@@ -47,6 +47,7 @@ import {
 import { getCriticalLabAlerts } from '../utils/labAlerts';
 import { formatPatientDisplayName } from '../utils/storage';
 import { User as FirebaseUser } from 'firebase/auth';
+import { isRealAllergy } from '../utils/clinicalTextParser';
 
 interface SatelliteClinicalSyncModalProps {
   currentPatients: Patient[];

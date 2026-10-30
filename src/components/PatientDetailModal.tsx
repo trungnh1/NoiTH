@@ -15,6 +15,7 @@ import { formatDoctorShortName } from './DetailedPatientListView';
 import { formatPatientDisplayName } from '../utils/storage';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { getCriticalLabAlerts, parseRawLabsText, autoClassifyAndTagPatient } from '../utils/labAlerts';
+import { isRealAllergy } from '../utils/clinicalTextParser';
 import { 
   X, 
   Sparkles, 

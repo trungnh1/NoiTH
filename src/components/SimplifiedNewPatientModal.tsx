@@ -13,6 +13,7 @@ import {
 import { GROUP_1_ROOM_NUMBERS, GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS } from '../data/mockData';
 import { formatDoctorShortName } from './DetailedPatientListView';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
+import { isRealAllergy } from '../utils/clinicalTextParser';
 import { 
   X, 
   UserPlus, 
