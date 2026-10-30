@@ -207,7 +207,13 @@ export const subscribeToClinicalRecords = (onUpdate: (records: ClinicalRecord[])
       ...docSnap.data()
     } as ClinicalRecord));
     records.sort((a: ClinicalRecord, b: ClinicalRecord) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    onUpdate(filterOutDeletedSatelliteRecords(records));
+    const filtered = filterOutDeletedSatelliteRecords(records);
+    try {
+      localStorage.setItem('CACHED_SATELLITE_RECORDS', JSON.stringify(filtered));
+    } catch (e) {
+      console.warn(e);
+    }
+    onUpdate(filtered);
   };
 
   try {
@@ -329,6 +335,130 @@ export function checkSatelliteRecordCompleteness(record: ClinicalRecord): {
     isComplete: missingFields.length === 0,
     missingFields,
   };
+}
+
+/**
+ * Danh sách mẫu các bệnh nhân vệ tinh chờ bổ sung thông tin (chưa xếp buồng phòng hoặc thiếu tuổi)
+ */
+export const INITIAL_SAMPLE_PENDING_SATELLITE_RECORDS: ClinicalRecord[] = [
+  {
+    id: 'SAT-PENDING-001',
+    patientName: 'Nguyễn Văn Hưng',
+    patientAge: '62',
+    patientGender: 'Nam',
+    patientRoom: 'Chưa xếp phòng',
+    admissionDate: new Date().toISOString(),
+    vitalSigns: 'HA: 135/85 mmHg, Mạch: 82 l/p, SpO2: 96%, T: 37.2°C',
+    diagnosis: 'Đợt cấp Bệnh phổi tắc nghẽn mạn tính (COPD) / Tăng huyết áp',
+    treatmentPlan: 'Kế hoạch: Khí dung Salbutamol + Pulmicort, Ceftriaxone 2g/ngày, kiểm soát huyết áp.',
+    clinicalCourse: 'Bệnh nhân khó thở tăng dần 2 ngày nay, ho khạc đờm vàng đục, ran rít ngáy 2 phế trường.',
+    medicalHistory: 'COPD 5 năm, Tăng huyết áp 7 năm',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'SAT-PENDING-002',
+    patientName: 'Trần Thị Mai',
+    patientAge: '58',
+    patientGender: 'Nữ',
+    patientRoom: '',
+    admissionDate: new Date().toISOString(),
+    vitalSigns: 'HA: 150/90 mmHg, Mạch: 90 l/p, SpO2: 98%, T: 36.8°C',
+    diagnosis: 'Cơn đau thắt ngực không ổn định / Đái tháo đường type 2',
+    treatmentPlan: 'Kế hoạch: Kháng ngưng tập tiểu cầu kép, Atorvastatin 40mg, siêu âm tim, theo dõi Troponin T.',
+    clinicalCourse: 'Đau thắt sau xương ức khi gắng sức lan vai trái, kéo dài 15 phút.',
+    medicalHistory: 'ĐTĐ type 2 điều trị Metformin, THA 4 năm',
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+  },
+  {
+    id: 'SAT-PENDING-003',
+    patientName: 'Lê Văn Tuấn',
+    patientAge: '',
+    patientGender: 'Nam',
+    patientRoom: 'Chưa xếp phòng',
+    admissionDate: new Date().toISOString(),
+    vitalSigns: 'HA: 115/75 mmHg, Mạch: 80 l/p, SpO2: 99%, T: 37.0°C',
+    diagnosis: 'Viêm dạ dày ruột cấp / Rối loạn tiêu hóa',
+    treatmentPlan: 'Kế hoạch: Bù nước điện giải Oresol, giảm đau chống co thắt No-spa, men vi sinh.',
+    clinicalCourse: 'Đau quặn bụng quanh rốn kèm đi ngoài phân lỏng nhiều lần trong ngày, không sốt.',
+    medicalHistory: 'Chưa ghi nhận bệnh lý mạn tính',
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+  }
+];
+
+/**
+ * Đọc danh sách bệnh nhân vệ tinh chờ bổ sung thông tin từ LocalStorage
+ */
+export function loadPendingSatelliteRecords(): ClinicalRecord[] {
+  try {
+    const deletedIds: string[] = JSON.parse(localStorage.getItem('DELETED_SATELLITE_IDS') || '[]');
+    const processedIds: string[] = JSON.parse(localStorage.getItem('PROCESSED_SATELLITE_IDS') || '[]');
+    const saved = localStorage.getItem('PENDING_SATELLITE_RECORDS');
+    if (saved) {
+      const parsed: ClinicalRecord[] = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(r => !deletedIds.includes(r.id) && !processedIds.includes(r.id));
+      }
+    } else {
+      // Khởi tạo lần đầu tiên với dữ liệu mẫu chờ bổ sung
+      const filtered = INITIAL_SAMPLE_PENDING_SATELLITE_RECORDS.filter(
+        r => !deletedIds.includes(r.id) && !processedIds.includes(r.id)
+      );
+      localStorage.setItem('PENDING_SATELLITE_RECORDS', JSON.stringify(filtered));
+      return filtered;
+    }
+  } catch (e) {
+    console.warn('Lỗi đọc PENDING_SATELLITE_RECORDS:', e);
+  }
+  return [];
+}
+
+/**
+ * Lưu danh sách bệnh nhân vệ tinh chờ bổ sung thông tin vào LocalStorage
+ */
+export function savePendingSatelliteRecords(records: ClinicalRecord[]): void {
+  try {
+    localStorage.setItem('PENDING_SATELLITE_RECORDS', JSON.stringify(records));
+  } catch (e) {
+    console.warn('Lỗi ghi PENDING_SATELLITE_RECORDS:', e);
+  }
+}
+
+/**
+ * Đánh dấu đã tiếp nhận hoặc bỏ qua một bệnh nhân vệ tinh khỏi danh sách Chờ Bổ Sung
+ */
+export function dismissPendingSatelliteRecord(recordId: string): ClinicalRecord[] {
+  try {
+    const current = loadPendingSatelliteRecords();
+    const updated = current.filter(r => r.id !== recordId);
+    savePendingSatelliteRecords(updated);
+
+    const processedIds: string[] = JSON.parse(localStorage.getItem('PROCESSED_SATELLITE_IDS') || '[]');
+    if (!processedIds.includes(recordId)) {
+      processedIds.push(recordId);
+      localStorage.setItem('PROCESSED_SATELLITE_IDS', JSON.stringify(processedIds));
+    }
+    return updated;
+  } catch (e) {
+    console.warn(e);
+    return [];
+  }
+}
+
+/**
+ * Xóa vĩnh viễn bản ghi vệ tinh khỏi Chờ Bổ Sung và lưu vào DELETED_SATELLITE_IDS
+ */
+export function deletePendingSatelliteRecord(recordId: string): ClinicalRecord[] {
+  try {
+    const deletedIds: string[] = JSON.parse(localStorage.getItem('DELETED_SATELLITE_IDS') || '[]');
+    if (!deletedIds.includes(recordId)) {
+      deletedIds.push(recordId);
+      localStorage.setItem('DELETED_SATELLITE_IDS', JSON.stringify(deletedIds));
+    }
+    return dismissPendingSatelliteRecord(recordId);
+  } catch (e) {
+    console.warn(e);
+    return [];
+  }
 }
 
 /**

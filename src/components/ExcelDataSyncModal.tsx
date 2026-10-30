@@ -45,6 +45,7 @@ interface ExcelDataSyncModalProps {
   onImportMultiplePatients?: (patients: Patient[]) => void;
   onAutoDischargePatients?: (patients: Patient[]) => void;
   onReactivatePatient?: (patient: Patient) => void;
+  onDismissPendingSatelliteRecord?: (recordId: string) => void;
 }
 
 export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
@@ -58,6 +59,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
   onImportMultiplePatients,
   onAutoDischargePatients,
   onReactivatePatient,
+  onDismissPendingSatelliteRecord,
 }) => {
   const [excelRows, setExcelRows] = useState<ExcelPatientRow[]>([]);
   const [detectedColumns, setDetectedColumns] = useState<string[]>([]);
@@ -261,6 +263,9 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     patientObj.tags = (patientObj.tags || []).filter(t => t !== 'ALLERGY');
 
     onImportPatientDirect(patientObj);
+    if (onDismissPendingSatelliteRecord) {
+      onDismissPendingSatelliteRecord(sat.id);
+    }
     setImportedIds((prev) => new Set(prev).add(sat.id));
 
     setNotification({

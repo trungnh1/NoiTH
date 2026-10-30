@@ -10,6 +10,7 @@ import {
 } from '../types/patient';
 import { 
   ChevronDown,
+  ChevronUp,
   X,
   Building2,
   Search, 
@@ -31,6 +32,12 @@ import {
   Clock,
   Filter
 } from 'lucide-react';
+import { 
+  ClinicalRecord, 
+  checkSatelliteRecordCompleteness, 
+  formatSatelliteDateTime, 
+  parseAgeNumber 
+} from '../services/clinicalFirebase';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { parseExcelAdmissionDate } from '../utils/excelParser';
 import { isRealAllergy } from '../utils/clinicalTextParser';
@@ -125,6 +132,10 @@ interface DetailedPatientListViewProps {
   onAddPatient?: (patient: Patient) => void;
   onOpenSatelliteSync?: () => void;
   pendingSatelliteCount?: number;
+  pendingSatelliteRecords?: ClinicalRecord[];
+  onOpenSatelliteDraft?: (record: ClinicalRecord) => void;
+  onDismissPendingSatelliteRecord?: (recordId: string) => void;
+  onOpenExcelImport?: () => void;
 }
 
 /**
@@ -406,8 +417,14 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   onAddPatient,
   onOpenSatelliteSync,
   pendingSatelliteCount,
+  pendingSatelliteRecords = [],
+  onOpenSatelliteDraft,
+  onDismissPendingSatelliteRecord,
+  onOpenExcelImport,
 }) => {
   const [selectedGroup, setSelectedGroup] = useState<'ALL' | 'GROUP_1' | 'GROUP_2' | 'CARDIO'>('ALL');
+  const [isPendingSectionExpanded, setIsPendingSectionExpanded] = useState<boolean>(true);
+  const [isPendingOnlyView, setIsPendingOnlyView] = useState<boolean>(false);
   const [showEmptyRooms, setShowEmptyRooms] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | SeverityLevel | 'DISCHARGE_TODAY' | 'DISCHARGE_TOMORROW'>('ALL');
@@ -919,6 +936,29 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                 Tất cả ({activeGroupPatients.length})
               </button>
 
+              {/* Nút lọc Bệnh nhân vệ tinh Chờ bổ sung */}
+              {((pendingSatelliteCount !== undefined && pendingSatelliteCount > 0) || pendingSatelliteRecords.length > 0) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPendingOnlyView(!isPendingOnlyView);
+                    if (!isPendingOnlyView) {
+                      setIsPendingSectionExpanded(true);
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-lg font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isPendingOnlyView
+                      ? 'bg-amber-500 text-white shadow-xs font-black ring-2 ring-amber-300'
+                      : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300'
+                  }`}
+                  title="Xem danh sách bệnh nhân chuyển từ vệ tinh đang chờ bổ sung thông tin"
+                >
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Chờ bổ sung ({pendingSatelliteCount || pendingSatelliteRecords.length})</span>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => setStatusFilter(statusFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')}
@@ -1117,6 +1157,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           { id: 'UNCLASSIFIED', type: 'status', label: '⚪ Chưa Phân Loại', count: unclassifiedCount, color: 'text-slate-600 font-semibold' },
                           { id: 'NEW', type: 'tag', label: '✨ Bệnh Nhân Mới (24h)', count: newCount, color: 'text-rose-600 font-bold' },
                           { id: 'ALLERGY', type: 'tag', label: '⚠️ Bệnh Nhân Dị Ứng', count: allergyCount, color: 'text-amber-800 font-bold' },
+                          ...(pendingSatelliteRecords.length > 0 ? [
+                            { id: 'PENDING_SATELLITE', type: 'pending_satellite', label: '📋 BN Chờ Bổ Sung (Vệ Tinh)', count: pendingSatelliteRecords.length, color: 'text-amber-900 font-black bg-amber-50' }
+                          ] : []),
                         ].map((f) => {
                           const isSelected = f.type === 'status' ? statusFilter === f.id && tagFilter === 'ALL' : tagFilter === f.id;
                           return (
@@ -1124,10 +1167,15 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               key={f.id}
                               type="button"
                               onClick={() => {
-                                if (f.type === 'status') {
+                                if (f.type === 'pending_satellite') {
+                                  setIsPendingOnlyView(true);
+                                  setIsPendingSectionExpanded(true);
+                                } else if (f.type === 'status') {
+                                  setIsPendingOnlyView(false);
                                   setStatusFilter(f.id as any);
                                   setTagFilter('ALL');
                                 } else {
+                                  setIsPendingOnlyView(false);
                                   setTagFilter(f.id as any);
                                   setStatusFilter('ALL');
                                 }
@@ -1255,8 +1303,217 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         </div>
       )}
 
+      {/* BỆNH NHÂN VỆ TINH CHỜ BỔ SUNG THÔNG TIN */}
+      {pendingSatelliteRecords && pendingSatelliteRecords.length > 0 && (
+        <div className={`bg-gradient-to-r from-amber-50/90 via-amber-100/50 to-orange-50/80 rounded-2xl border ${
+          isPendingOnlyView ? 'border-amber-400 ring-2 ring-amber-300 shadow-md' : 'border-amber-300 shadow-xs'
+        } overflow-hidden transition-all mb-4`}>
+          {/* Header */}
+          <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 bg-amber-100/80 border-b border-amber-200/80 flex items-center justify-between gap-2.5 flex-wrap">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-2xs font-black">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-xs sm:text-sm font-black text-amber-950 uppercase tracking-tight">
+                    Bệnh Nhân Vệ Tinh Chờ Bổ Sung Thông Tin
+                  </h3>
+                  <span className="px-2 py-0.2 rounded-full bg-amber-500 text-white text-[11px] font-black shadow-2xs animate-pulse">
+                    {pendingSatelliteRecords.length} ca
+                  </span>
+                  {isPendingOnlyView && (
+                    <span className="px-2 py-0.2 rounded-md bg-amber-200 text-amber-900 text-[10.5px] font-bold">
+                      Đang lọc hiển thị riêng
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-amber-800 font-medium truncate mt-0.5 hidden sm:block">
+                  Hồ sơ chuyển từ vệ tinh còn thiếu thông tin (số phòng, tuổi hoặc họ tên). Bác sĩ bấm "Bổ sung & Nhập viện" để xếp phòng vào khoa.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+              {onOpenExcelImport && (
+                <button
+                  type="button"
+                  onClick={onOpenExcelImport}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                  title="Ghép nối tự động số phòng từ file Excel"
+                >
+                  <Database className="w-3 h-3" />
+                  <span className="hidden sm:inline">Ghép Phòng Excel</span>
+                  <span className="sm:hidden text-[10.5px]">Excel</span>
+                </button>
+              )}
+
+              {onOpenSatelliteSync && (
+                <button
+                  type="button"
+                  onClick={onOpenSatelliteSync}
+                  className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                  title="Xem toàn bộ bệnh án trên Cloud Vệ Tinh"
+                >
+                  <Building2 className="w-3 h-3" />
+                  <span className="hidden sm:inline">Xem Toàn Bộ Vệ Tinh</span>
+                  <span className="sm:hidden text-[10.5px]">Cloud</span>
+                </button>
+              )}
+
+              {isPendingOnlyView && (
+                <button
+                  type="button"
+                  onClick={() => setIsPendingOnlyView(false)}
+                  className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold transition-all cursor-pointer"
+                  title="Quay lại hiển thị toàn bộ buồng bệnh"
+                >
+                  ✕ Thoát lọc
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsPendingSectionExpanded(!isPendingSectionExpanded)}
+                className="p-1 rounded-lg hover:bg-amber-200/80 text-amber-900 transition-colors cursor-pointer"
+                title={isPendingSectionExpanded ? 'Thu gọn danh sách' : 'Mở rộng danh sách'}
+              >
+                {isPendingSectionExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Body: Danh sách thẻ bệnh nhân chờ bổ sung */}
+          {isPendingSectionExpanded && (
+            <div className="p-3 sm:p-4 space-y-2.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {pendingSatelliteRecords.map((record) => {
+                  const comp = checkSatelliteRecordCompleteness(record);
+                  const name = record.patientName || record.fullName || 'Bệnh nhân vệ tinh (Chưa có tên)';
+                  const parsedAgeNum = parseAgeNumber(record.patientAge || record.age);
+                  const age = parsedAgeNum ? `${parsedAgeNum}t` : null;
+                  const rawGender = String(record.patientGender || record.gender || 'Nam');
+                  const isFemale = /nữ|nu|female/i.test(rawGender);
+                  const rawRoom = String(record.patientRoom || record.roomNumber || '').trim();
+                  const diag = record.diagnosis || 'Theo dõi bệnh nội khoa';
+                  const vitals = record.vitalSigns || '';
+
+                  return (
+                    <div
+                      key={record.id}
+                      className="bg-white rounded-xl border border-amber-200 p-3.5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between gap-2.5 group"
+                    >
+                      {/* Top row: Họ tên & Missing Info */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-start justify-between gap-1.5">
+                          <h4 className="text-sm font-black text-slate-900 tracking-tight leading-tight group-hover:text-[#0b4d8c] transition-colors">
+                            {formatPatientDisplayName(name)}
+                          </h4>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 font-mono text-slate-600 font-bold shrink-0">
+                            {record.id.length > 12 ? record.id.slice(-8) : record.id}
+                          </span>
+                        </div>
+
+                        {/* Badges: Tuổi, Giới tính, Phòng */}
+                        <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                          {age ? (
+                            <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-bold text-[11px] border border-blue-200">
+                              {age} • {isFemale ? '♀ Nữ' : '♂ Nam'}
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-extrabold text-[11px] border border-rose-200 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3 text-rose-600" />
+                              <span>Thiếu tuổi</span>
+                            </span>
+                          )}
+
+                          {rawRoom && rawRoom !== 'Chưa xếp phòng' && /\d/.test(rawRoom) ? (
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold text-[11px] border border-indigo-200 flex items-center gap-1">
+                              <Building2 className="w-3 h-3" />
+                              <span>P.${rawRoom}</span>
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-extrabold text-[11px] border border-amber-300 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3 text-amber-600" />
+                              <span>Chưa xếp phòng</span>
+                            </span>
+                          )}
+
+                          {record.admissionDate && (
+                            <span className="text-[10.5px] text-slate-500 font-medium flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              <span>{formatSatelliteDateTime(record.admissionDate)}</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Missing fields notice */}
+                        {comp.missingFields.length > 0 && (
+                          <div className="text-[11px] text-amber-900 bg-amber-50 px-2 py-1 rounded-md border border-amber-200/80 font-semibold flex items-center gap-1">
+                            <span className="text-amber-600 font-black">⚠️ Cần bổ sung:</span>
+                            <span className="font-bold text-amber-950">{comp.missingFields.join(', ')}</span>
+                          </div>
+                        )}
+
+                        {/* Diagnosis */}
+                        <div className="text-xs text-slate-800 font-medium line-clamp-2 pt-0.5 flex items-start gap-1">
+                          <Stethoscope className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                          <span><strong className="text-slate-900 font-bold">CĐ:</strong> {diag}</span>
+                        </div>
+
+                        {/* Vitals */}
+                        {vitals && (
+                          <div className="text-[11px] text-slate-600 font-medium truncate flex items-center gap-1">
+                            <Activity className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span className="truncate">{vitals}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                        {onDismissPendingSatelliteRecord && (
+                          <button
+                            type="button"
+                            onClick={() => onDismissPendingSatelliteRecord(record.id)}
+                            className="px-2 py-1 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                            title="Bỏ qua / Xóa ca này khỏi danh sách chờ"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Bỏ qua</span>
+                          </button>
+                        )}
+
+                        {onOpenSatelliteDraft && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenSatelliteDraft(record)}
+                            className="ml-auto px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                            title="Mở hồ sơ để bổ sung buồng phòng và tiếp nhận vào khoa"
+                          >
+                            <UserPlus className="w-3.5 h-3.5" />
+                            <span>Bổ Sung & Nhập Viện</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Main Vertical List of Rooms */}
-      {roomGroups.length === 0 ? (
+      {isPendingOnlyView ? (
+        <div className="bg-amber-50/70 rounded-2xl border border-dashed border-amber-300 p-8 text-center text-amber-900 space-y-2 mb-6">
+          <p className="text-sm font-bold">Đang hiển thị riêng danh sách Bệnh nhân Vệ tinh Chờ Bổ Sung ({pendingSatelliteRecords.length} ca).</p>
+          <button type="button" onClick={() => setIsPendingOnlyView(false)} className="px-4 py-1.5 bg-[#0b4d8c] hover:bg-[#083a69] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer">
+            Quay lại hiển thị toàn bộ buồng bệnh
+          </button>
+        </div>
+      ) : roomGroups.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 shadow-sm">
           <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="font-extrabold text-slate-800 text-base">

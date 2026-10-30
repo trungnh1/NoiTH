@@ -59,6 +59,8 @@ interface SatelliteClinicalSyncModalProps {
   onImportMultiplePatients?: (patients: Patient[]) => void;
   onOpenEditAdmission: (prefilledPatient: Patient) => void;
   onOpenExcelImport?: () => void;
+  pendingSatelliteRecords?: ClinicalRecord[];
+  onDismissPendingRecord?: (recordId: string) => void;
 }
 
 export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProps> = ({
@@ -71,8 +73,27 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
   onImportMultiplePatients,
   onOpenEditAdmission,
   onOpenExcelImport,
+  pendingSatelliteRecords,
+  onDismissPendingRecord,
 }) => {
-  const [records, setRecords] = useState<ClinicalRecord[]>([]);
+  const [records, setRecords] = useState<ClinicalRecord[]>(() => {
+    try {
+      const cached = localStorage.getItem('CACHED_SATELLITE_RECORDS');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      const pendingCached = localStorage.getItem('PENDING_SATELLITE_RECORDS');
+      if (pendingCached) {
+        const parsed = JSON.parse(pendingCached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    if (pendingSatelliteRecords && pendingSatelliteRecords.length > 0) {
+      return pendingSatelliteRecords;
+    }
+    return [];
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -81,8 +102,18 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
 
   // Count pending records that are incomplete (missing name, age, or room)
   const pendingRecordsCount = useMemo(() => {
-    return records.filter((rec) => !checkSatelliteRecordCompleteness(rec).isComplete).length;
-  }, [records]);
+    const list = records.length > 0 ? records : (pendingSatelliteRecords || []);
+    let deletedIds: string[] = [];
+    try {
+      deletedIds = JSON.parse(localStorage.getItem('DELETED_SATELLITE_IDS') || '[]');
+    } catch {
+      deletedIds = [];
+    }
+    return list.filter((rec) => {
+      if (deletedIds.includes(rec.id)) return false;
+      return !checkSatelliteRecordCompleteness(rec).isComplete;
+    }).length;
+  }, [records, pendingSatelliteRecords]);
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
   
@@ -107,14 +138,25 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
       (data) => {
         setIsLoading(false);
         setIsRefreshing(false);
-        setRecords(data || []);
+        if (data && data.length > 0) {
+          setRecords(data);
+        } else if (pendingSatelliteRecords && pendingSatelliteRecords.length > 0) {
+          setRecords(pendingSatelliteRecords);
+        } else {
+          setRecords(data || []);
+        }
         setErrorMessage(null);
       },
       (err: any) => {
         setIsLoading(false);
         setIsRefreshing(false);
         console.warn('Satellite Firestore sync listener warning:', err.message);
-        setRecords([]);
+        // Không xóa trắng dữ liệu đã có trong cache
+        setRecords((prev) => {
+          if (prev.length > 0) return prev;
+          if (pendingSatelliteRecords && pendingSatelliteRecords.length > 0) return pendingSatelliteRecords;
+          return [];
+        });
         if (err.code === 'permission-denied' || err.message?.includes('permission')) {
           setErrorMessage('Lỗi phân quyền Cloud (permission-denied). Firestore vệ tinh yêu cầu tài khoản đã đăng nhập.');
         } else {
@@ -198,11 +240,30 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
   const checkIsAlreadyInDept = (rec: ClinicalRecord) => {
     const name = (rec.patientName || rec.fullName || '').toLowerCase().trim();
     const mrn = (rec.medicalRecordNumber || '').toLowerCase().trim();
+    const dummyNames = ['bệnh nhân', 'bệnh nhân vệ tinh', 'chưa có tên', 'vô danh', 'bn', 'n/a', ''];
+    const dummyMrns = ['n/a', '0', '-', 'chưa có', ''];
+
     return currentPatients.some((p) => {
-      const pName = p.fullName.toLowerCase().trim();
+      // 1. Khớp theo mã patientCode
+      if (p.patientCode && p.patientCode === rec.id) return true;
+      if (p.id && p.id === rec.id) return true;
+
+      // 2. Khớp theo mã hồ sơ hợp lệ
       const pMrn = (p.medicalRecordNumber || '').toLowerCase().trim();
-      if (mrn && pMrn && mrn === pMrn) return true;
-      if (name && pName && pName === name) return true;
+      if (mrn && pMrn && !dummyMrns.includes(mrn) && !dummyMrns.includes(pMrn) && mrn === pMrn) {
+        return true;
+      }
+
+      // 3. Khớp theo họ tên thật
+      const pName = p.fullName.toLowerCase().trim();
+      if (name && pName && !dummyNames.includes(name) && name.length >= 3 && pName === name) {
+        const recRoom = String(rec.patientRoom || rec.roomNumber || '').replace(/\D/g, '');
+        const pRoom = String(p.roomNumber || '').replace(/\D/g, '');
+        if (recRoom && pRoom && recRoom !== pRoom) {
+          return false;
+        }
+        return true;
+      }
       return false;
     });
   };
@@ -216,9 +277,19 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
       deletedIds = [];
     }
 
-    return records.filter((rec) => {
+    const effectiveRecords = records.length > 0 ? records : (pendingSatelliteRecords || []);
+
+    return effectiveRecords.filter((rec) => {
       if (deletedIds.includes(rec.id)) return false;
-      if (checkIsAlreadyInDept(rec)) return false;
+
+      // Trong tab 'Chờ bổ sung': Chỉ lọc bỏ ca đã thực sự tiếp nhận vào khoa
+      if (filterMode === 'pending') {
+        const comp = checkSatelliteRecordCompleteness(rec);
+        if (comp.isComplete) return false;
+        if (currentPatients.some(p => p.patientCode === rec.id || p.id === rec.id)) return false;
+      } else {
+        if (checkIsAlreadyInDept(rec)) return false;
+      }
 
       // Search term
       if (searchTerm.trim()) {
@@ -243,11 +314,8 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
         if (!matches) return false;
       }
 
-      // Filter tabs
-      if (filterMode === 'pending') {
-        const comp = checkSatelliteRecordCompleteness(rec);
-        if (comp.isComplete) return false;
-      } else if (filterMode === 'critical') {
+      // Ca nặng
+      if (filterMode === 'critical') {
         const parsedVitals = parseVitalSignsText(rec.vitalSigns);
         const isCritical = parsedVitals.bpSystolic >= 160 || parsedVitals.spO2 < 94;
         if (!isCritical) return false;
@@ -255,7 +323,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
 
       return true;
     });
-  }, [records, searchTerm, filterMode, currentPatients]);
+  }, [records, pendingSatelliteRecords, searchTerm, filterMode, currentPatients]);
 
   // Action: Direct Import
   const handleImportDirect = (record: ClinicalRecord) => {
@@ -342,6 +410,9 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
     setRecords((prev) => prev.filter((r) => r.id !== record.id));
 
     // 2. Persist deletion in localStorage & Firestore
+    if (onDismissPendingRecord) {
+      onDismissPendingRecord(record.id);
+    }
     await deleteSatelliteRecord(record.id);
 
     setNotification({

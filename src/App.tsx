@@ -28,7 +28,11 @@ import {
   subscribeToClinicalRecords, 
   checkSatelliteRecordCompleteness, 
   mapClinicalRecordToPatient, 
-  ClinicalRecord 
+  ClinicalRecord,
+  loadPendingSatelliteRecords,
+  savePendingSatelliteRecords,
+  dismissPendingSatelliteRecord,
+  deletePendingSatelliteRecord
 } from './services/clinicalFirebase';
 
 import { ChangePasswordModal } from './components/ChangePasswordModal';
@@ -70,7 +74,7 @@ export default function App() {
   const [isAutoSyncing, setIsAutoSyncing] = useState(false);
   const [lastAutoSyncTime, setLastAutoSyncTime] = useState<string | null>(null);
   const [emergencyAlert, setEmergencyAlert] = useState<{ message: string; patient: Patient } | null>(null);
-  const [pendingSatelliteRecords, setPendingSatelliteRecords] = useState<ClinicalRecord[]>([]);
+  const [pendingSatelliteRecords, setPendingSatelliteRecords] = useState<ClinicalRecord[]>(() => loadPendingSatelliteRecords());
 
   // Main active view: 'detailed_list' (Default and primary screen)
   const [activeView, setActiveView] = useState<'detailed_list' | 'map' | 'table' | 'doctors'>('detailed_list');
@@ -167,8 +171,14 @@ export default function App() {
     // 2. Real-time background subscriber to Satellite Cloud Firestore (iron-foundation-kbcxw)
     const unsubSatellite = subscribeToClinicalRecords((satelliteRecords) => {
       if (!satelliteRecords || satelliteRecords.length === 0) {
-        setPendingSatelliteRecords([]);
         return;
+      }
+
+      // Lưu cache danh sách bệnh án vệ tinh
+      try {
+        localStorage.setItem('CACHED_SATELLITE_RECORDS', JSON.stringify(satelliteRecords));
+      } catch (e) {
+        console.warn(e);
       }
 
       let processedIds: string[] = [];
@@ -178,23 +188,30 @@ export default function App() {
         console.warn(e);
       }
 
+      let deletedIds: string[] = [];
+      try {
+        deletedIds = JSON.parse(localStorage.getItem('DELETED_SATELLITE_IDS') || '[]');
+      } catch (e) {
+        console.warn(e);
+      }
+
       const pendingQueue: ClinicalRecord[] = [];
 
       satelliteRecords.forEach((rec) => {
         const recordId = rec.id;
-        const completeness = checkSatelliteRecordCompleteness(rec);
-
-        // Check if already processed
-        if (processedIds.includes(recordId)) {
+        if (deletedIds.includes(recordId) || processedIds.includes(recordId)) {
           return;
         }
 
+        const completeness = checkSatelliteRecordCompleteness(rec);
+
         if (completeness.isComplete) {
-          // Auto-admit complete patient if not already in active list
+          // Tự động nhập viện nếu đầy đủ thông tin (Họ tên, tuổi, số phòng)
           const name = (rec.patientName || rec.fullName || '').toLowerCase().trim();
           const rawRoom = String(rec.patientRoom || rec.roomNumber || '').replace(/\D/g, '');
 
-          const alreadyInDept = initialPatients.some((p) => {
+          const currentPatientsList = loadPatients();
+          const alreadyInDept = currentPatientsList.some((p) => {
             const pName = p.fullName.toLowerCase().trim();
             const pRoom = p.roomNumber.replace(/\D/g, '');
             return pName === name && (pRoom === rawRoom || !rawRoom);
@@ -203,7 +220,6 @@ export default function App() {
           if (!alreadyInDept) {
             const mappedPatient = mapClinicalRecordToPatient(rec, loadedDocs, loadRooms(), savedDoc?.id);
             
-            // Add patient to department and sync
             setPatients((prev) => {
               if (prev.some((p) => p.id === mappedPatient.id || p.fullName.toLowerCase() === name)) {
                 return prev;
@@ -214,7 +230,6 @@ export default function App() {
               return updated;
             });
 
-            // Mark processed
             processedIds.push(recordId);
             try {
               localStorage.setItem('PROCESSED_SATELLITE_IDS', JSON.stringify(processedIds));
@@ -222,19 +237,21 @@ export default function App() {
               console.warn(e);
             }
 
-            // Show auto-admission banner
             setEmergencyAlert({
               message: `🎉 Tự động tiếp nhận Bệnh nhân mới từ Vệ Tinh: ${mappedPatient.fullName} (${mappedPatient.age}t, ${mappedPatient.gender}) -> Phòng ${mappedPatient.roomNumber} - ${mappedPatient.bedNumber}`,
               patient: mappedPatient,
             });
           }
         } else {
-          // Incomplete record -> queue into pending for manual entry via button "Lấy dữ liệu BN"
+          // Hồ sơ thiếu thông tin -> Đưa vào hàng đợi 'Chờ bổ sung'
           pendingQueue.push(rec);
         }
       });
 
-      setPendingSatelliteRecords(pendingQueue);
+      if (pendingQueue.length > 0) {
+        setPendingSatelliteRecords(pendingQueue);
+        savePendingSatelliteRecords(pendingQueue);
+      }
     });
 
     return () => {
@@ -377,6 +394,28 @@ export default function App() {
     } finally {
       setIsAutoSyncing(false);
     }
+  };
+
+  // Mở hồ sơ bệnh nhân vệ tinh chờ bổ sung để hoàn thiện thông tin và tiếp nhận
+  const handleOpenSatelliteDraft = (record: ClinicalRecord) => {
+    const mapped = mapClinicalRecordToPatient(record, doctors, rooms, authenticatedDoctor?.id);
+    if (!isRealAllergy(mapped.allergies)) {
+      mapped.allergies = undefined;
+      mapped.tags = (mapped.tags || []).filter((t) => t !== 'ALLERGY');
+    }
+    setSatelliteImportDraft(mapped);
+  };
+
+  // Bỏ qua hoặc đánh dấu đã xử lý ca vệ tinh chờ bổ sung
+  const handleDismissPendingSatellite = (recordId: string) => {
+    const remaining = dismissPendingSatelliteRecord(recordId);
+    setPendingSatelliteRecords(remaining);
+  };
+
+  // Xóa vĩnh viễn ca vệ tinh khỏi danh sách chờ bổ sung
+  const handleDeletePendingSatellite = (recordId: string) => {
+    const remaining = deletePendingSatelliteRecord(recordId);
+    setPendingSatelliteRecords(remaining);
   };
 
   // Manual push on demand button handler
@@ -755,6 +794,10 @@ export default function App() {
             onAddPatient={handleAddPatient}
             onOpenSatelliteSync={() => setIsSatelliteSyncOpen(true)}
             pendingSatelliteCount={pendingSatelliteRecords.length}
+            pendingSatelliteRecords={pendingSatelliteRecords}
+            onOpenSatelliteDraft={handleOpenSatelliteDraft}
+            onDismissPendingSatelliteRecord={handleDeletePendingSatellite}
+            onOpenExcelImport={() => setIsExcelImportOpen(true)}
           />
         )}
 
@@ -976,13 +1019,23 @@ export default function App() {
           onClose={() => setIsSatelliteSyncOpen(false)}
           onImportPatientDirect={(newPat) => {
             handleAddPatient(newPat);
+            if (newPat.patientCode) {
+              handleDismissPendingSatellite(newPat.patientCode);
+            }
           }}
-          onImportMultiplePatients={handleImportMultiplePatients}
+          onImportMultiplePatients={(newPatientsList) => {
+            handleImportMultiplePatients(newPatientsList);
+            newPatientsList.forEach(p => {
+              if (p.patientCode) handleDismissPendingSatellite(p.patientCode);
+            });
+          }}
           onOpenEditAdmission={(prefilledPatient) => {
             setSatelliteImportDraft(prefilledPatient);
             setIsSatelliteSyncOpen(false);
           }}
           onOpenExcelImport={() => setIsExcelImportOpen(true)}
+          pendingSatelliteRecords={pendingSatelliteRecords}
+          onDismissPendingRecord={handleDeletePendingSatellite}
         />
       )}
 
@@ -998,6 +1051,12 @@ export default function App() {
           onClose={() => setSatelliteImportDraft(null)}
           onAddPatient={(newPatient) => {
             handleAddPatient(newPatient);
+            if (newPatient.patientCode) {
+              handleDismissPendingSatellite(newPatient.patientCode);
+            }
+            if (satelliteImportDraft.id) {
+              handleDismissPendingSatellite(satelliteImportDraft.id);
+            }
             setSatelliteImportDraft(null);
           }}
         />
@@ -1024,12 +1083,16 @@ export default function App() {
           onClose={() => setIsExcelImportOpen(false)}
           onImportPatientDirect={(newPat) => {
             handleAddPatient(newPat);
+            if (newPat.patientCode) {
+              handleDismissPendingSatellite(newPat.patientCode);
+            }
           }}
           onImportMultiplePatients={handleImportMultiplePatients}
           onAutoDischargePatients={handleAutoDischargePatients}
           onReactivatePatient={(pat) => {
             handleUpdatePatient(pat);
           }}
+          onDismissPendingSatelliteRecord={handleDismissPendingSatellite}
         />
       )}
 
