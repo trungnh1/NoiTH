@@ -87,6 +87,13 @@ export function loadPatients(): Patient[] {
         }
       }
 
+      // Filter out auto-generated doctor assignment timeline items so clinical timeline stays strictly medical
+      const cleanedEvolutions = (p.evolutions || []).filter(
+        (e) =>
+          !e.clinicalNote?.startsWith('Phân công Bác sĩ điều trị buồng:') &&
+          !e.clinicalNote?.startsWith('Chuyển phân công Bác sĩ điều trị chính sang:')
+      );
+
       return {
         ...p,
         roomNumber: p.roomNumber === '704' ? '707' : p.roomNumber,
@@ -96,6 +103,7 @@ export function loadPatients(): Patient[] {
         importantNotes: notes,
         admissionStatus: admStatus,
         dischargeTomorrowSetDate: dsSetDate,
+        evolutions: cleanedEvolutions,
         medications: enrichedMeds,
         labs: enrichedLabs,
       };

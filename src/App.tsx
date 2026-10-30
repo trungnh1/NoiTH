@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trash2, LogOut } from 'lucide-react';
 import { 
   Patient, 
@@ -508,25 +508,11 @@ export default function App() {
 
   // Handle doctor reassignment
   const handleReassignDoctor = (patientId: string, newDoctorId: string) => {
-    const newDoc = doctors.find((d) => d.id === newDoctorId);
     const updated = patients.map((p) => {
       if (p.id === patientId) {
-        const now = new Date();
-        const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         return {
           ...p,
           attendingDoctorId: newDoctorId,
-          evolutions: [
-            {
-              id: `EV-${Date.now()}`,
-              timestamp: timeStr,
-              doctorName: newDoc?.name || 'Trưởng khoa',
-              shift: 'Sáng' as const,
-              clinicalNote: `Chuyển phân công Bác sĩ điều trị chính sang: ${newDoc?.name || ''}.`,
-              treatmentAction: 'Tiếp nhận ca bệnh và rà soát phác đồ.',
-            },
-            ...p.evolutions,
-          ],
         };
       }
       return p;
@@ -549,29 +535,15 @@ export default function App() {
       return updated;
     });
 
-    // 2. Update all active patients in this room
-    const targetDoc = doctors.find((d) => d.id === doctorId);
+    // 2. Update all active patients in this room without adding into Clinical Timeline
     const affectedPatients: Patient[] = [];
 
     const updatedPatients = patients.map((p) => {
       const pRoom = (p.roomNumber || '').replace(/^(phòng|p\.?)\s*/i, '').trim();
       if (pRoom === cleanRoom && p.status === 'ACTIVE') {
-        const now = new Date();
-        const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        
-        const docEvolution = {
-          id: `EV-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
-          timestamp: timeStr,
-          doctorName: targetDoc?.name || 'BS Điều trị',
-          shift: 'Sáng' as const,
-          clinicalNote: `Phân công Bác sĩ điều trị buồng: BS. ${targetDoc?.name || ''}.`,
-          treatmentAction: 'Tiếp nhận phụ trách buồng và rà soát phác đồ.',
-        };
-
         const patUpdated: Patient = {
           ...p,
           attendingDoctorId: doctorId,
-          evolutions: [docEvolution, ...(p.evolutions || [])],
         };
         affectedPatients.push(patUpdated);
         return patUpdated;
