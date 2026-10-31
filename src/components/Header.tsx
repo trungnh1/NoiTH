@@ -29,8 +29,8 @@ import { formatDoctorShortName } from './DetailedPatientListView';
 
 interface HeaderProps {
   patients: Patient[];
-  activeView: 'detailed_list' | 'map' | 'table' | 'doctors';
-  onViewChange: (view: 'detailed_list' | 'map' | 'table' | 'doctors') => void;
+  activeView: 'detailed_list' | 'horizontal_rows' | 'map' | 'table' | 'doctors';
+  onViewChange: (view: 'detailed_list' | 'horizontal_rows' | 'map' | 'table' | 'doctors') => void;
   onOpenNewPatient: () => void;
   onOpenHandover?: () => void;
   onOpenWatchlist?: () => void;
@@ -418,7 +418,20 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Danh Sách Bệnh Nhân</span>
+              <span>Dạng Thẻ</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onViewChange('horizontal_rows')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeView === 'horizontal_rows'
+                  ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
+                  : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-blue-50/60'
+              }`}
+            >
+              <TableProperties className="w-3.5 h-3.5" />
+              <span>Dạng Hàng Ngang</span>
             </button>
 
             <button
@@ -499,7 +512,20 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <LayoutGrid className="w-3 h-3" />
-              <span>Bệnh Nhân</span>
+              <span>Thẻ</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onViewChange('horizontal_rows')}
+              className={`px-2 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                activeView === 'horizontal_rows'
+                  ? 'bg-[#0b4d8c] text-white font-black shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <TableProperties className="w-3 h-3" />
+              <span>Hàng Ngang</span>
             </button>
 
             <button

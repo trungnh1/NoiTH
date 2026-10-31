@@ -78,7 +78,7 @@ export default function App() {
   const [pendingSatelliteRecords, setPendingSatelliteRecords] = useState<ClinicalRecord[]>(() => loadPendingSatelliteRecords());
 
   // Main active view: 'detailed_list' (Default and primary screen)
-  const [activeView, setActiveView] = useState<'detailed_list' | 'map' | 'table' | 'doctors'>('detailed_list');
+  const [activeView, setActiveView] = useState<'detailed_list' | 'horizontal_rows' | 'map' | 'table' | 'doctors'>('detailed_list');
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Quick room doctor assignments map (persisted in localStorage)
@@ -766,7 +766,7 @@ export default function App() {
 
       {/* Main Content Area - Dynamic View Based on Tab */}
       <main className="flex-1 w-full px-2 sm:px-4 py-3">
-        {activeView === 'detailed_list' && (
+        {(activeView === 'detailed_list' || activeView === 'horizontal_rows') && (
           <DetailedPatientListView
             patients={patients}
             doctors={doctors}
@@ -800,6 +800,8 @@ export default function App() {
             onOpenSatelliteDraft={handleOpenSatelliteDraft}
             onDismissPendingSatelliteRecord={handleDeletePendingSatellite}
             onOpenExcelImport={() => setIsExcelImportOpen(true)}
+            initialLayoutMode={activeView === 'horizontal_rows' ? 'rows' : 'cards'}
+            onLayoutModeChange={(mode) => setActiveView(mode === 'rows' ? 'horizontal_rows' : 'detailed_list')}
           />
         )}
 

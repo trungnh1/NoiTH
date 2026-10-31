@@ -31,7 +31,9 @@ import {
   Database,
   AlertTriangle,
   Clock,
-  Filter
+  Filter,
+  TableProperties,
+  LayoutGrid
 } from 'lucide-react';
 import { 
   ClinicalRecord, 
@@ -138,6 +140,8 @@ interface DetailedPatientListViewProps {
   onOpenSatelliteDraft?: (record: ClinicalRecord) => void;
   onDismissPendingSatelliteRecord?: (recordId: string) => void;
   onOpenExcelImport?: () => void;
+  initialLayoutMode?: 'cards' | 'rows';
+  onLayoutModeChange?: (mode: 'cards' | 'rows') => void;
 }
 
 /**
@@ -424,7 +428,34 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   onOpenSatelliteDraft,
   onDismissPendingSatelliteRecord,
   onOpenExcelImport,
+  initialLayoutMode,
+  onLayoutModeChange,
 }) => {
+  const [layoutMode, setLayoutMode] = useState<'cards' | 'rows'>(() => {
+    if (initialLayoutMode) return initialLayoutMode;
+    try {
+      const saved = localStorage.getItem('PATIENT_LIST_LAYOUT_MODE');
+      if (saved === 'rows' || saved === 'cards') return saved;
+    } catch {}
+    return 'cards';
+  });
+
+  useEffect(() => {
+    if (initialLayoutMode && initialLayoutMode !== layoutMode) {
+      setLayoutMode(initialLayoutMode);
+    }
+  }, [initialLayoutMode]);
+
+  const handleSetLayoutMode = (mode: 'cards' | 'rows') => {
+    setLayoutMode(mode);
+    try {
+      localStorage.setItem('PATIENT_LIST_LAYOUT_MODE', mode);
+    } catch {}
+    if (onLayoutModeChange) {
+      onLayoutModeChange(mode);
+    }
+  };
+
   const [selectedGroup, setSelectedGroup] = useState<'ALL' | 'GROUP_1' | 'GROUP_2' | 'CARDIO'>('ALL');
   const [isPendingSectionExpanded, setIsPendingSectionExpanded] = useState<boolean>(true);
   const [isPendingOnlyView, setIsPendingOnlyView] = useState<boolean>(false);
@@ -930,9 +961,39 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={onOpenNewPatient}
+              {/* View Mode Switcher: Thẻ vs Hàng Ngang */}
+              <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs shrink-0 mr-1">
+                <button
+                  type="button"
+                  onClick={() => handleSetLayoutMode('cards')}
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    layoutMode === 'cards'
+                      ? 'bg-[#0b4d8c] text-white font-black shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Hiển thị theo dạng thẻ buồng phòng"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Dạng Thẻ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetLayoutMode('rows')}
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    layoutMode === 'rows'
+                      ? 'bg-[#0b4d8c] text-white font-black shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Hiển thị theo dạng hàng ngang (Bảng danh sách theo buồng phòng)"
+                >
+                  <TableProperties className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Dạng Hàng Ngang</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={onOpenNewPatient}
               className="flex-1 sm:flex-initial px-2.5 sm:px-3.5 py-1.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white font-black text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-98"
             >
               <UserPlus className="w-3.5 h-3.5 shrink-0" />
@@ -1675,6 +1736,515 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                         <span>+ Tiếp nhận bệnh nhân vào Phòng {group.roomNumber}</span>
                       </button>
                     )}
+                  </div>
+                ) : layoutMode === 'rows' ? (
+                  /* ==================================================================== */
+                  /* CHẾ ĐỘ VIEW HÀNG NGANG THEO YÊU CẦU:                                  */
+                  /* Header: Phòng, BS điều trị                                           */
+                  /* Ở dưới là hàng ngang:                                                */
+                  /* Cột 1: Tên BN, giới, tuổi, ngày/tháng vào, số ngày điều trị          */
+                  /* Cột 2: Chẩn đoán mới nhất & phân loại mức độ                         */
+                  /* Cột 3: Thay đổi lâm sàng & sinh hiệu                                 */
+                  /* Cột 4: Ghi chú và bàn giao bệnh                                      */
+                  /* Cột 5: Thao tác                                                      */
+                  /* ==================================================================== */
+                  <div className="overflow-x-auto bg-white">
+                    <table className="w-full text-left text-xs border-collapse min-w-[860px]">
+                      <thead className="bg-slate-100/90 text-slate-700 text-[11px] font-black uppercase tracking-wider border-b border-slate-200">
+                        <tr>
+                          <th className="py-2.5 px-3.5 w-[22%] min-w-[210px]">
+                            1. Bệnh Nhân (Tên, Tuổi, Ngày NV, Số Ngày ĐT)
+                          </th>
+                          <th className="py-2.5 px-3 w-[25%] min-w-[220px]">
+                            2. Chẩn Đoán Mới Nhất
+                          </th>
+                          <th className="py-2.5 px-3 w-[26%] min-w-[230px]">
+                            3. Thay Đổi Lâm Sàng & Sinh Hiệu
+                          </th>
+                          <th className="py-2.5 px-3 w-[22%] min-w-[210px]">
+                            4. Ghi Chú & Bàn Giao Bệnh
+                          </th>
+                          <th className="py-2.5 px-3 w-[5%] min-w-[95px] text-right">
+                            Thao Tác
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {group.patients.map((patient, pIdx) => {
+                          const isCritical = patient.severity === 'CRITICAL';
+                          const isModerate = patient.severity === 'MODERATE';
+                          const isDischargeTomorrow = patient.admissionStatus === 'DISCHARGE_TOMORROW';
+                          const isDischargeToday = patient.admissionStatus === 'DISCHARGE_TODAY';
+                          const isStable = patient.severity === 'STABLE';
+                          const isUnclassified = !patient.severity || patient.severity === 'UNCLASSIFIED';
+                          const isNewPatient = isNewAdmissionFromYesterday1630(patient.admissionDate);
+                          const treatmentInfo = calculateTreatmentDays(patient.admissionDate);
+                          
+                          // Màu sắc tên Bệnh Nhân theo tình trạng bệnh
+                          const nameColorClass = isCritical
+                            ? 'text-rose-700'
+                            : isModerate
+                            ? 'text-amber-700'
+                            : isStable
+                            ? 'text-emerald-700'
+                            : 'text-slate-900';
+
+                          // Chẩn đoán cập nhật mới nhất
+                          const latestDiagnosis = getLatestDiagnosis(patient);
+
+                          // Cảnh báo cận lâm sàng bất thường nặng, nguy hiểm
+                          const criticalAlerts = getCriticalLabAlerts(patient);
+
+                          // Diễn tiến lâm sàng & thay đổi mới nhất
+                          const latestEvolution = patient.evolutions && patient.evolutions.length > 0 ? patient.evolutions[0] : null;
+                          const clinicalNote = latestEvolution?.clinicalNote || 'Tình trạng bệnh tỉnh táo, tiếp xúc tốt, tiếp tục điều trị theo phác đồ.';
+
+                          // Sinh hiệu gần nhất
+                          const latestVital = patient.vitals && patient.vitals.length > 0 
+                            ? patient.vitals[patient.vitals.length - 1] 
+                            : null;
+
+                          // Kế hoạch điều trị
+                          const currentPlan = patient.treatmentPlan || 
+                            patient.evolutions?.[0]?.treatmentAction || 
+                            patient.initialMedicationsText || 
+                            '';
+
+                          // Ghi chú của BS & Bàn giao bệnh
+                          const doctorNotes = patient.importantNotes?.trim() || '';
+                          const handoverNotes = patient.handoverNotes?.trim() || '';
+
+                          return (
+                            <tr
+                              key={patient.id}
+                              className={`transition-colors border-b border-slate-100 ${
+                                isCritical
+                                  ? 'bg-rose-50/20 hover:bg-rose-50/45 border-l-4 border-l-rose-500'
+                                  : isModerate
+                                  ? 'bg-amber-50/15 hover:bg-amber-50/35 border-l-4 border-l-amber-500'
+                                  : isStable
+                                  ? 'hover:bg-emerald-50/20 border-l-4 border-l-emerald-500'
+                                  : 'hover:bg-slate-50/80 border-l-4 border-l-slate-300'
+                              }`}
+                            >
+                              {/* CỘT 1: 1 CỘT CHỨA TÊN BN, GIỚI, TUỔI, NGÀY/THÁNG VÀO, SỐ NGÀY ĐIỀU TRỊ */}
+                              <td className="py-3 px-3.5 align-top">
+                                <div className="space-y-1.5">
+                                  {/* Họ và tên BN */}
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[10px] font-mono text-slate-400 font-bold shrink-0">
+                                      #{pIdx + 1}
+                                    </span>
+                                    <h4
+                                      onClick={() => onSelectPatient(patient)}
+                                      className={`text-sm sm:text-[14.5px] font-black tracking-tight cursor-pointer hover:underline transition-colors ${nameColorClass}`}
+                                      title="Bấm để xem bệnh án chi tiết"
+                                    >
+                                      {formatPatientDisplayName(patient.fullName)}
+                                    </h4>
+                                    {isNewPatient && (
+                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white animate-pulse shrink-0">
+                                        NEW
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Giới tính & Tuổi */}
+                                  <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                                    {patient.gender === 'Nam' ? (
+                                      <span className="text-blue-700 font-extrabold flex items-center gap-0.5" title="Nam">
+                                        <span className="text-sm font-black">♂</span> Nam
+                                      </span>
+                                    ) : (
+                                      <span className="text-rose-600 font-extrabold flex items-center gap-0.5" title="Nữ">
+                                        <span className="text-sm font-black">♀</span> Nữ
+                                      </span>
+                                    )}
+                                    <span className="text-slate-300">•</span>
+                                    <span className="text-slate-800">{patient.age} tuổi</span>
+                                  </div>
+
+                                  {/* Ngày vào viện & Số ngày điều trị */}
+                                  <div className="flex items-center gap-1.5 flex-wrap text-[11px] pt-0.5">
+                                    <span className="text-slate-600 font-medium flex items-center gap-1" title="Ngày vào viện">
+                                      <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <span>{formatAdmissionDateShort(patient.admissionDate)}</span>
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-md bg-blue-50 text-[#0b4d8c] font-black border border-blue-200/80 flex items-center gap-1 shadow-2xs">
+                                      <Clock className="w-2.5 h-2.5 text-[#0b4d8c]" />
+                                      <span>{treatmentInfo.label}</span>
+                                    </span>
+                                  </div>
+
+                                  {/* Nhãn lâm sàng (nếu có) */}
+                                  {patient.tags && patient.tags.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                                      {patient.tags.map((tag) => {
+                                        const meta = CLINICAL_TAGS_META[tag];
+                                        if (!meta) return null;
+                                        return (
+                                          <span
+                                            key={tag}
+                                            className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200"
+                                            title={meta.description}
+                                          >
+                                            {meta.shortLabel}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* CỘT 2: CHẨN ĐOÁN MỚI NHẤT */}
+                              <td className="py-3 px-3 align-top">
+                                <div className="space-y-1.5">
+                                  {/* Khối chẩn đoán */}
+                                  <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200/80 shadow-2xs">
+                                    <div className="flex items-center gap-1 text-[#0b4d8c] mb-0.5">
+                                      <Activity className="w-3.5 h-3.5 text-[#0b4d8c] shrink-0" />
+                                      <span className="text-[10px] uppercase font-black tracking-wide">Chẩn đoán mới nhất:</span>
+                                    </div>
+                                    <p className="font-bold text-xs text-slate-900 leading-snug" title={latestDiagnosis}>
+                                      {latestDiagnosis}
+                                    </p>
+                                    {patient.icd10Primary && (
+                                      <span className="text-[10px] font-mono font-bold text-slate-500 mt-0.5 block">
+                                        ICD-10: {patient.icd10Primary}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Sửa phân loại Nặng / TB / Nhẹ 1-chạm & Dự ra viện */}
+                                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                    <div className="relative">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenSeverityMenuPatientId(
+                                            openSeverityMenuPatientId === patient.id ? null : patient.id
+                                          );
+                                        }}
+                                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs border ${
+                                          isCritical
+                                            ? 'bg-rose-600 text-white border-rose-700'
+                                            : isModerate
+                                            ? 'bg-amber-500 text-white border-amber-600'
+                                            : isStable
+                                            ? 'bg-emerald-600 text-white border-emerald-700'
+                                            : 'bg-slate-200 text-slate-700 border-slate-300'
+                                        }`}
+                                        title="Bấm để sửa nhanh phân loại bệnh nhân: Nặng / Trung bình / Nhẹ"
+                                      >
+                                        {isCritical && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
+                                        <span>{isCritical ? 'Nặng' : isModerate ? 'Trung bình' : isStable ? 'Nhẹ' : 'Chưa phân loại'}</span>
+                                        <ChevronDown className="w-3 h-3 opacity-80 shrink-0" />
+                                      </button>
+
+                                      {/* Dropdown 1-chạm đổi phân loại */}
+                                      {openSeverityMenuPatientId === patient.id && (
+                                        <>
+                                          <div
+                                            className="fixed inset-0 z-40"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setOpenSeverityMenuPatientId(null);
+                                            }}
+                                          />
+                                          <div
+                                            className="absolute left-0 top-full mt-1.5 w-44 bg-white rounded-2xl shadow-2xl border border-slate-200 p-1.5 z-50 animate-in fade-in zoom-in-95 text-left"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <div className="px-2 py-1 text-[10px] font-black uppercase text-slate-400 border-b border-slate-100 flex items-center justify-between">
+                                              <span>Phân loại bệnh:</span>
+                                              <span className="text-[9px] text-slate-400 font-mono">1 chạm</span>
+                                            </div>
+                                            <div className="py-1 space-y-0.5">
+                                              <button
+                                                type="button"
+                                                onClick={() => handleQuickUpdateSeverity(patient, 'CRITICAL')}
+                                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                                  patient.severity === 'CRITICAL'
+                                                    ? 'bg-rose-600 text-white shadow-xs'
+                                                    : 'text-rose-700 hover:bg-rose-50'
+                                                }`}
+                                              >
+                                                <span className="flex items-center gap-1.5">
+                                                  <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                                                  <span>Nặng</span>
+                                                </span>
+                                                {patient.severity === 'CRITICAL' && <Check className="w-3.5 h-3.5" />}
+                                              </button>
+
+                                              <button
+                                                type="button"
+                                                onClick={() => handleQuickUpdateSeverity(patient, 'MODERATE')}
+                                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                                  patient.severity === 'MODERATE'
+                                                    ? 'bg-amber-500 text-white shadow-xs'
+                                                    : 'text-amber-800 hover:bg-amber-50'
+                                                }`}
+                                              >
+                                                <span className="flex items-center gap-1.5">
+                                                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                                                  <span>Trung bình</span>
+                                                </span>
+                                                {patient.severity === 'MODERATE' && <Check className="w-3.5 h-3.5" />}
+                                              </button>
+
+                                              <button
+                                                type="button"
+                                                onClick={() => handleQuickUpdateSeverity(patient, 'STABLE')}
+                                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                                  patient.severity === 'STABLE'
+                                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                                    : 'text-emerald-800 hover:bg-emerald-50'
+                                                }`}
+                                              >
+                                                <span className="flex items-center gap-1.5">
+                                                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                                                  <span>Nhẹ (Ổn định)</span>
+                                                </span>
+                                                {patient.severity === 'STABLE' && <Check className="w-3.5 h-3.5" />}
+                                              </button>
+
+                                              <button
+                                                type="button"
+                                                onClick={() => handleQuickUpdateSeverity(patient, 'UNCLASSIFIED')}
+                                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                                  !patient.severity || patient.severity === 'UNCLASSIFIED'
+                                                    ? 'bg-slate-700 text-white shadow-xs font-black'
+                                                    : 'text-slate-600 hover:bg-slate-100'
+                                                }`}
+                                              >
+                                                <span className="flex items-center gap-1.5">
+                                                  <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
+                                                  <span>Chưa phân loại</span>
+                                                </span>
+                                                {(!patient.severity || patient.severity === 'UNCLASSIFIED') && (
+                                                  <Check className="w-3.5 h-3.5" />
+                                                )}
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+
+                                    {isDischargeToday && (
+                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-600 text-white shadow-2xs">
+                                        RV hôm nay
+                                      </span>
+                                    )}
+                                    {isDischargeTomorrow && (
+                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-600 text-white shadow-2xs">
+                                        Dự RV mai
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* CỘT 3: THAY ĐỔI LÂM SÀNG & SINH HIỆU */}
+                              <td className="py-3 px-3 align-top">
+                                <div className="space-y-1.5">
+                                  {/* Diễn tiến lâm sàng & thay đổi mới nhất */}
+                                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                                    <div className="flex items-center justify-between gap-1 text-slate-600 mb-1">
+                                      <span className="text-[10px] uppercase font-black tracking-wide flex items-center gap-1 text-[#0b4d8c]">
+                                        <Activity className="w-3 h-3 text-[#0b4d8c] shrink-0" />
+                                        <span>Thay đổi / Diễn tiến mới nhất:</span>
+                                      </span>
+                                      {latestEvolution && (
+                                        <span className="text-[10px] text-slate-400 font-mono">
+                                          {latestEvolution.shift ? `${latestEvolution.shift} • ` : ''}{latestEvolution.timestamp ? latestEvolution.timestamp.slice(11, 16) : ''}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-slate-800 font-medium leading-relaxed line-clamp-3" title={clinicalNote}>
+                                      {clinicalNote}
+                                    </p>
+                                  </div>
+
+                                  {/* Sinh hiệu gần nhất */}
+                                  {latestVital && (
+                                    <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
+                                      {latestVital.bpSystolic && latestVital.bpDiastolic ? (
+                                        <span className={`px-1.5 py-0.5 rounded border ${
+                                          latestVital.bpSystolic >= 140 || latestVital.bpSystolic < 90
+                                            ? 'bg-rose-50 text-rose-700 border-rose-300 font-black'
+                                            : 'bg-slate-100 text-slate-700 border-slate-200'
+                                        }`}>
+                                          HA: {latestVital.bpSystolic}/{latestVital.bpDiastolic}
+                                        </span>
+                                      ) : null}
+
+                                      {latestVital.heartRate ? (
+                                        <span className={`px-1.5 py-0.5 rounded border ${
+                                          latestVital.heartRate > 100 || latestVital.heartRate < 60
+                                            ? 'bg-rose-50 text-rose-700 border-rose-300 font-black'
+                                            : 'bg-slate-100 text-slate-700 border-slate-200'
+                                        }`}>
+                                          M: {latestVital.heartRate} l/p
+                                        </span>
+                                      ) : null}
+
+                                      {latestVital.spO2 ? (
+                                        <span className={`px-1.5 py-0.5 rounded border ${
+                                          latestVital.spO2 < 95
+                                            ? 'bg-rose-50 text-rose-700 border-rose-300 font-black'
+                                            : 'bg-cyan-50 text-cyan-800 border-cyan-200'
+                                        }`}>
+                                          SpO2: {latestVital.spO2}%
+                                        </span>
+                                      ) : null}
+
+                                      {latestVital.temperature ? (
+                                        <span className={`px-1.5 py-0.5 rounded border ${
+                                          latestVital.temperature >= 38
+                                            ? 'bg-amber-50 text-amber-800 border-amber-300 font-black'
+                                            : 'bg-slate-100 text-slate-700 border-slate-200'
+                                        }`}>
+                                          T°: {latestVital.temperature}°C
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  )}
+
+                                  {/* Cảnh báo cận lâm sàng nguy hiểm */}
+                                  {criticalAlerts.length > 0 && (
+                                    <div className="p-1.5 rounded-lg bg-rose-50 border border-rose-300 text-rose-900 text-[10.5px] font-bold flex items-start gap-1">
+                                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                                      <span className="line-clamp-2">{criticalAlerts.join(' • ')}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* CỘT 4: GHI CHÚ VÀ BÀN GIAO BỆNH */}
+                              <td className="py-3 px-3 align-top">
+                                <div className="space-y-1.5">
+                                  {/* Bàn giao ca trực */}
+                                  {handoverNotes ? (
+                                    <div className="p-2 rounded-xl bg-indigo-50/70 border border-indigo-200/80">
+                                      <div className="flex items-center gap-1 text-indigo-900 mb-0.5">
+                                        <ArrowRightLeft className="w-3 h-3 text-indigo-700 shrink-0" />
+                                        <span className="text-[10px] font-black uppercase text-indigo-950">Bàn giao ca trực:</span>
+                                      </div>
+                                      <p className="text-xs text-indigo-950 font-medium leading-relaxed line-clamp-3" title={handoverNotes}>
+                                        {handoverNotes}
+                                      </p>
+                                    </div>
+                                  ) : null}
+
+                                  {/* Ghi chú của BS */}
+                                  {doctorNotes ? (
+                                    <div className="p-2 rounded-xl bg-amber-50/70 border border-amber-200/80">
+                                      <div className="flex items-center gap-1 text-amber-900 mb-0.5">
+                                        <AlertCircle className="w-3 h-3 text-amber-700 shrink-0" />
+                                        <span className="text-[10px] font-black uppercase text-amber-950">Ghi chú BS:</span>
+                                      </div>
+                                      <p className="text-xs text-amber-950 font-medium leading-relaxed line-clamp-3" title={doctorNotes}>
+                                        {doctorNotes}
+                                      </p>
+                                    </div>
+                                  ) : null}
+
+                                  {/* Kế hoạch điều trị nếu có */}
+                                  {currentPlan ? (
+                                    <div className="p-2 rounded-xl bg-emerald-50/60 border border-emerald-200/80">
+                                      <div className="flex items-center gap-1 text-emerald-800 mb-0.5">
+                                        <Stethoscope className="w-3 h-3 text-emerald-700 shrink-0" />
+                                        <span className="text-[10px] font-black uppercase text-emerald-950">Kế hoạch điều trị:</span>
+                                      </div>
+                                      <p className="text-xs text-emerald-950 font-medium leading-relaxed line-clamp-2" title={currentPlan}>
+                                        {currentPlan}
+                                      </p>
+                                    </div>
+                                  ) : null}
+
+                                  {/* Cảnh báo dị ứng nếu có */}
+                                  {patient.allergies && isRealAllergy(patient.allergies) && (
+                                    <div className="p-1 px-2 rounded-md bg-rose-50 border border-rose-300 text-rose-800 text-[10.5px] font-black flex items-center gap-1">
+                                      <span>⚠️ Dị ứng:</span>
+                                      <span className="truncate">{patient.allergies}</span>
+                                    </div>
+                                  )}
+
+                                  {!handoverNotes && !doctorNotes && !currentPlan && (
+                                    <span className="text-[11px] text-slate-400 italic block py-2">
+                                      Chưa có ghi chú / bàn giao
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* CỘT 5: THAO TÁC */}
+                              <td className="py-3 px-3 align-top text-right">
+                                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenEvolution(patient)}
+                                    className="w-full py-1.5 px-2.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-lg font-black text-xs shadow-xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                                    title="Nhập diễn tiến và y lệnh điều trị mới"
+                                  >
+                                    <Activity className="w-3 h-3 text-white" />
+                                    <span>+ Diễn Tiến</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => onSelectPatient(patient)}
+                                    className="w-full py-1 px-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0b4d8c] border border-slate-200 hover:border-blue-300 rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap"
+                                    title="Xem chi tiết hồ sơ bệnh nhân"
+                                  >
+                                    <FileEdit className="w-3 h-3" />
+                                    <span>Chi tiết</span>
+                                  </button>
+
+                                  <div className="flex items-center gap-1 w-full justify-end pt-0.5">
+                                    {onTransferPatient && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onTransferPatient(patient)}
+                                        className="p-1 rounded-md text-slate-500 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 transition-colors cursor-pointer"
+                                        title="Chuyển buồng phòng / giường bệnh"
+                                      >
+                                        <ArrowRightLeft className="w-3 h-3" />
+                                      </button>
+                                    )}
+
+                                    {onDischargePatient && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onDischargePatient(patient)}
+                                        className="p-1 rounded-md text-slate-500 hover:text-purple-700 hover:bg-purple-50 border border-slate-200 transition-colors cursor-pointer"
+                                        title="Lập phiếu ra viện / chuyển viện"
+                                      >
+                                        <LogOut className="w-3 h-3" />
+                                      </button>
+                                    )}
+
+                                    {onEditPatient && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onEditPatient(patient)}
+                                        className="p-1 rounded-md text-slate-500 hover:text-blue-700 hover:bg-blue-50 border border-slate-200 transition-colors cursor-pointer"
+                                        title="Chỉnh sửa thông tin bệnh nhân"
+                                      >
+                                        <FileEdit className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-slate-100/60">
