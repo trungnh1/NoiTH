@@ -1645,25 +1645,25 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         /* ==================================================================== */
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
-              <thead className="bg-[#0b4d8c] text-white text-[11px] font-black uppercase tracking-wider sticky top-0 z-20 shadow-xs">
+            <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
+              <thead className="bg-[#0b4d8c] text-white text-[10.5px] font-black uppercase tracking-wider sticky top-0 z-20 shadow-xs">
                 <tr>
-                  <th className="py-2.5 px-3.5 min-w-[210px] w-[20%]">
+                  <th className="py-1.5 px-2 min-w-[170px] w-[18%]">
                     1. Bệnh Nhân (Tên, Tuổi, Ngày NV, Số Ngày ĐT)
                   </th>
-                  <th className="py-2.5 px-3 min-w-[210px] w-[20%]">
+                  <th className="py-1.5 px-2 min-w-[190px] w-[21%]">
                     2. Chẩn Đoán Mới Nhất
                   </th>
-                  <th className="py-2.5 px-3 min-w-[220px] w-[21%]">
+                  <th className="py-1.5 px-2 min-w-[200px] w-[22%]">
                     3. Thay Đổi Lâm Sàng & Sinh Hiệu
                   </th>
-                  <th className="py-2.5 px-3 min-w-[190px] w-[18%]">
+                  <th className="py-1.5 px-2 min-w-[170px] w-[18%]">
                     4. Hướng Xử Trí
                   </th>
-                  <th className="py-2.5 px-3 min-w-[180px] w-[16%]">
+                  <th className="py-1.5 px-2 min-w-[160px] w-[16%]">
                     5. Ghi Chú & Bàn Giao Bệnh
                   </th>
-                  <th className="py-2.5 px-3 min-w-[95px] w-[5%] text-right">
+                  <th className="py-1.5 px-2 min-w-[85px] w-[5%] text-right">
                     Thao Tác
                   </th>
                 </tr>
@@ -1676,25 +1676,25 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     <React.Fragment key={group.roomNumber}>
                       {/* Dòng buồng phòng phân cách: Số phòng, BS điều trị, Số lượng BN, Nút Thêm BN */}
                       <tr className="bg-slate-100/90 border-y-2 border-slate-200/90 sticky z-10">
-                        <td colSpan={6} className="py-2 px-3.5">
+                        <td colSpan={6} className="py-1 px-2.5">
                           <div className="flex flex-wrap items-center justify-between gap-2.5">
                             {/* Left: Số phòng & Chọn BS Điều Trị */}
-                            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5">
-                              <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#0b4d8c]" />
-                                <span className="text-[#0b4d8c] font-black text-sm sm:text-base tracking-tight">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-[#0b4d8c]" />
+                                <span className="text-[#0b4d8c] font-black text-sm tracking-tight">
                                   Phòng {group.roomNumber}
                                 </span>
-                                <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-[#0b4d8c] border border-blue-200/60 shrink-0">
+                                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-50 text-[#0b4d8c] border border-blue-200/60 shrink-0">
                                   {groupInfo.label}
                                 </span>
                               </div>
                               <span className="text-slate-300 font-light">•</span>
 
                               {/* Quick Doctor Selector */}
-                              <div className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-blue-300 rounded-lg px-2 sm:px-2.5 py-1 transition-colors shadow-2xs max-w-[160px] sm:max-w-none">
-                                <Stethoscope className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[#0b4d8c] shrink-0" />
-                                <span className="text-slate-500 text-xs font-semibold hidden sm:inline">
+                              <div className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-blue-300 rounded-md px-1.5 py-0.5 transition-colors shadow-2xs max-w-[150px] sm:max-w-none">
+                                <Stethoscope className="w-3.5 h-3.5 text-[#0b4d8c] shrink-0" />
+                                <span className="text-slate-500 text-[11px] font-semibold hidden sm:inline">
                                   BS phụ trách:
                                 </span>
                                 <select
@@ -1729,7 +1729,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </div>
 
                               {group.assignedDoctorName && (
-                                <span className="text-xs text-[#0b4d8c] font-bold bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md hidden md:inline">
+                                <span className="text-[11px] text-[#0b4d8c] font-bold bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded-md hidden md:inline">
                                   {group.assignedDoctorName}
                                 </span>
                               )}
@@ -1737,17 +1737,17 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                             {/* Right: Số lượng bệnh nhân & Nút + Thêm BN */}
                             <div className="flex items-center gap-2">
-                              <span className="px-2.5 py-0.5 rounded-lg bg-white text-slate-700 text-xs font-bold border border-slate-200 shadow-2xs">
+                              <span className="px-2 py-0.2 rounded-md bg-white text-slate-700 text-[10px] font-bold border border-slate-200 shadow-2xs">
                                 {group.patients.length} bệnh nhân
                               </span>
                               {onOpenNewPatientForRoom && (
                                 <button
                                   type="button"
                                   onClick={() => onOpenNewPatientForRoom(group.roomNumber)}
-                                  className="px-2.5 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+                                  className="px-2 py-0.2 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-300 flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
                                   title={`Tiếp nhận bệnh nhân mới vào Phòng ${group.roomNumber}`}
                                 >
-                                  <Plus className="w-3.5 h-3.5 text-emerald-700" />
+                                  <Plus className="w-3 h-3 text-emerald-700" />
                                   <span>Thêm BN</span>
                                 </button>
                               )}
@@ -1759,7 +1759,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                       {/* Bệnh nhân trong buồng phòng */}
                       {group.patients.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="py-3 px-4 text-center text-slate-400 italic bg-slate-50/40">
+                          <td colSpan={6} className="py-2 px-3 text-center text-slate-400 italic bg-slate-50/40 text-xs">
                             Phòng {group.roomNumber} hiện chưa có bệnh nhân nội trú.
                           </td>
                         </tr>
@@ -1822,8 +1822,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               }`}
                             >
                               {/* CỘT 1: BỆNH NHÂN (Tên, Tuổi, Ngày NV, Số Ngày ĐT) */}
-                              <td className="py-3 px-3.5 align-top">
-                                <div className="space-y-1.5">
+                              <td className="py-1.5 px-2 align-top">
+                                <div className="space-y-1">
                                   {/* Họ và tên BN */}
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="text-[10px] font-mono text-slate-400 font-bold shrink-0">
@@ -1831,27 +1831,27 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     </span>
                                     <h4
                                       onClick={() => onSelectPatient(patient)}
-                                      className={`text-sm sm:text-[14.5px] font-black tracking-tight cursor-pointer hover:underline transition-colors ${nameColorClass}`}
+                                      className={`text-[13px] sm:text-sm font-black tracking-tight cursor-pointer hover:underline transition-colors ${nameColorClass}`}
                                       title="Bấm để xem bệnh án chi tiết"
                                     >
                                       {formatPatientDisplayName(patient.fullName)}
                                     </h4>
                                     {isNewPatient && (
-                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white animate-pulse shrink-0">
+                                      <span className="px-1 py-0.2 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-rose-600 text-white animate-pulse shrink-0">
                                         NEW
                                       </span>
                                     )}
                                   </div>
 
                                   {/* Giới tính & Tuổi */}
-                                  <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                                  <div className="flex items-center gap-2 text-[11px] font-bold text-slate-600">
                                     {patient.gender === 'Nam' ? (
                                       <span className="text-blue-700 font-extrabold flex items-center gap-0.5" title="Nam">
-                                        <span className="text-sm font-black">♂</span> Nam
+                                        <span className="text-xs font-black">♂</span> Nam
                                       </span>
                                     ) : (
                                       <span className="text-rose-600 font-extrabold flex items-center gap-0.5" title="Nữ">
-                                        <span className="text-sm font-black">♀</span> Nữ
+                                        <span className="text-xs font-black">♀</span> Nữ
                                       </span>
                                     )}
                                     <span className="text-slate-300">•</span>
@@ -1859,12 +1859,12 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   </div>
 
                                   {/* Ngày vào viện & Số ngày điều trị */}
-                                  <div className="flex items-center gap-1.5 flex-wrap text-[11px] pt-0.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap text-[10.5px]">
                                     <span className="text-slate-600 font-medium flex items-center gap-1" title="Ngày vào viện">
-                                      <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <Calendar className="w-2.5 h-2.5 text-slate-400 shrink-0" />
                                       <span>{formatAdmissionDateShort(patient.admissionDate)}</span>
                                     </span>
-                                    <span className="px-2 py-0.5 rounded-md bg-blue-50 text-[#0b4d8c] font-black border border-blue-200/80 flex items-center gap-1 shadow-2xs">
+                                    <span className="px-1.5 py-0.2 rounded bg-blue-50 text-[#0b4d8c] font-black border border-blue-200/80 flex items-center gap-1 shadow-2xs">
                                       <Clock className="w-2.5 h-2.5 text-[#0b4d8c]" />
                                       <span>{treatmentInfo.label}</span>
                                     </span>
@@ -1879,7 +1879,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                         return (
                                           <span
                                             key={tag}
-                                            className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200"
+                                            className="px-1 py-0.2 rounded text-[9.5px] font-bold bg-slate-100 text-slate-700 border border-slate-200"
                                             title={meta.description}
                                           >
                                             {meta.shortLabel}
@@ -1892,16 +1892,16 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </td>
 
                               {/* CỘT 2: CHẨN ĐOÁN MỚI NHẤT */}
-                              <td className="py-3 px-3 align-top">
-                                <div className="space-y-1.5">
+                              <td className="py-1.5 px-2 align-top">
+                                <div className="space-y-1">
                                   {/* Khối chẩn đoán */}
-                                  <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200/80 shadow-2xs">
+                                  <div className="p-1.5 px-2 rounded-lg bg-blue-50/70 border border-blue-200/80 shadow-2xs">
                                     
-                                    <p className="font-bold text-xs text-slate-900 leading-snug" title={latestDiagnosis}>
+                                    <p className="font-bold text-[11.5px] text-slate-900 leading-snug" title={latestDiagnosis}>
                                       {latestDiagnosis}
                                     </p>
                                     {patient.icd10Primary && (
-                                      <span className="text-[10px] font-mono font-bold text-slate-500 mt-0.5 block">
+                                      <span className="text-[9.5px] font-mono font-bold text-slate-500 mt-0.5 block">
                                         ICD-10: {patient.icd10Primary}
                                       </span>
                                     )}
@@ -1918,7 +1918,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                             openSeverityMenuPatientId === patient.id ? null : patient.id
                                           );
                                         }}
-                                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs border ${
+                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs border ${
                                           isCritical
                                             ? 'bg-rose-600 text-white border-rose-700'
                                             : isModerate
@@ -1931,7 +1931,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                       >
                                         {isCritical && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
                                         <span>{isCritical ? 'Nặng' : isModerate ? 'Trung bình' : isStable ? 'Nhẹ' : 'Chưa phân loại'}</span>
-                                        <ChevronDown className="w-3 h-3 opacity-80 shrink-0" />
+                                        <ChevronDown className="w-2.5 h-2.5 opacity-80 shrink-0" />
                                       </button>
 
                                       {/* Dropdown 1-chạm đổi phân loại */}
@@ -1945,7 +1945,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                             }}
                                           />
                                           <div
-                                            className="absolute left-0 top-full mt-1.5 w-44 bg-white rounded-2xl shadow-2xl border border-slate-200 p-1.5 z-50 animate-in fade-in zoom-in-95 text-left"
+                                            className="absolute left-0 top-full mt-1 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 p-1 z-50 animate-in fade-in zoom-in-95 text-left"
                                             onClick={(e) => e.stopPropagation()}
                                           >
                                             <div className="px-2 py-1 text-[10px] font-black uppercase text-slate-400 border-b border-slate-100 flex items-center justify-between">
@@ -1956,7 +1956,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                               <button
                                                 type="button"
                                                 onClick={() => handleQuickUpdateSeverity(patient, 'CRITICAL')}
-                                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                                className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
                                                   patient.severity === 'CRITICAL'
                                                     ? 'bg-rose-600 text-white shadow-xs'
                                                     : 'text-rose-700 hover:bg-rose-50'
@@ -1972,7 +1972,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                               <button
                                                 type="button"
                                                 onClick={() => handleQuickUpdateSeverity(patient, 'MODERATE')}
-                                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                                className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
                                                   patient.severity === 'MODERATE'
                                                     ? 'bg-amber-500 text-white shadow-xs'
                                                     : 'text-amber-800 hover:bg-amber-50'
@@ -1988,7 +1988,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                               <button
                                                 type="button"
                                                 onClick={() => handleQuickUpdateSeverity(patient, 'STABLE')}
-                                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                                className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
                                                   patient.severity === 'STABLE'
                                                     ? 'bg-emerald-600 text-white shadow-xs'
                                                     : 'text-emerald-800 hover:bg-emerald-50'
@@ -2004,7 +2004,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                               <button
                                                 type="button"
                                                 onClick={() => handleQuickUpdateSeverity(patient, 'UNCLASSIFIED')}
-                                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                                className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
                                                   !patient.severity || patient.severity === 'UNCLASSIFIED'
                                                     ? 'bg-slate-700 text-white shadow-xs font-black'
                                                     : 'text-slate-600 hover:bg-slate-100'
@@ -2025,12 +2025,12 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     </div>
 
                                     {isDischargeToday && (
-                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-600 text-white shadow-2xs">
+                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase bg-purple-600 text-white shadow-2xs">
                                         RV hôm nay
                                       </span>
                                     )}
                                     {isDischargeTomorrow && (
-                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-600 text-white shadow-2xs">
+                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase bg-blue-600 text-white shadow-2xs">
                                         Dự RV mai
                                       </span>
                                     )}
@@ -2039,19 +2039,19 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </td>
 
                               {/* CỘT 3: THAY ĐỔI LÂM SÀNG & SINH HIỆU */}
-                              <td className="py-3 px-3 align-top">
-                                <div className="space-y-1.5">
+                              <td className="py-1.5 px-2 align-top">
+                                <div className="space-y-1">
                                   {/* Diễn tiến lâm sàng & thay đổi mới nhất */}
-                                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                                  <div className="p-1.5 px-2 rounded-lg bg-slate-50 border border-slate-200">
                                     <div className="flex items-center justify-between gap-1 text-slate-600 mb-1">
                                       
                                       {latestEvolution && (
-                                        <span className="text-[10px] text-slate-400 font-mono">
+                                        <span className="text-[9.5px] text-slate-400 font-mono">
                                           {latestEvolution.shift ? `${latestEvolution.shift} • ` : ''}{latestEvolution.timestamp ? latestEvolution.timestamp.slice(11, 16) : ''}
                                         </span>
                                       )}
                                     </div>
-                                    <p className="text-xs text-slate-800 font-medium leading-relaxed line-clamp-3" title={clinicalNote}>
+                                    <p className="text-[11.5px] text-slate-800 font-medium leading-snug line-clamp-3" title={clinicalNote}>
                                       {clinicalNote}
                                     </p>
                                   </div>
@@ -2060,7 +2060,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   {latestVital && (
                                     <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
                                       {latestVital.bpSystolic && latestVital.bpDiastolic ? (
-                                        <span className={`px-1.5 py-0.5 rounded border ${
+                                        <span className={`px-1 py-0.2 rounded border ${
                                           latestVital.bpSystolic >= 140 || latestVital.bpSystolic < 90
                                             ? 'bg-rose-50 text-rose-700 border-rose-300 font-black'
                                             : 'bg-slate-100 text-slate-700 border-slate-200'
@@ -2070,7 +2070,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                       ) : null}
 
                                       {latestVital.heartRate ? (
-                                        <span className={`px-1.5 py-0.5 rounded border ${
+                                        <span className={`px-1 py-0.2 rounded border ${
                                           latestVital.heartRate > 100 || latestVital.heartRate < 60
                                             ? 'bg-rose-50 text-rose-700 border-rose-300 font-black'
                                             : 'bg-slate-100 text-slate-700 border-slate-200'
@@ -2080,7 +2080,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                       ) : null}
 
                                       {latestVital.spO2 ? (
-                                        <span className={`px-1.5 py-0.5 rounded border ${
+                                        <span className={`px-1 py-0.2 rounded border ${
                                           latestVital.spO2 < 95
                                             ? 'bg-rose-50 text-rose-700 border-rose-300 font-black'
                                             : 'bg-cyan-50 text-cyan-800 border-cyan-200'
@@ -2090,7 +2090,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                       ) : null}
 
                                       {latestVital.temperature ? (
-                                        <span className={`px-1.5 py-0.5 rounded border ${
+                                        <span className={`px-1 py-0.2 rounded border ${
                                           latestVital.temperature >= 38
                                             ? 'bg-amber-50 text-amber-800 border-amber-300 font-black'
                                             : 'bg-slate-100 text-slate-700 border-slate-200'
@@ -2103,8 +2103,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                                   {/* Cảnh báo cận lâm sàng nguy hiểm */}
                                   {criticalAlerts.length > 0 && (
-                                    <div className="p-1.5 rounded-lg bg-rose-50 border border-rose-300 text-rose-900 text-[10.5px] font-bold flex items-start gap-1">
-                                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                                    <div className="p-1 px-1.5 rounded-md bg-rose-50 border border-rose-300 text-rose-900 text-[10px] font-bold flex items-start gap-1">
+                                      <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0 mt-0.5" />
                                       <span className="line-clamp-2">{criticalAlerts.join(' • ')}</span>
                                     </div>
                                   )}
@@ -2112,32 +2112,32 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </td>
 
                               {/* CỘT 4: HƯỚNG XỬ TRÍ */}
-                              <td className="py-3 px-3 align-top">
-                                <div className="space-y-1.5">
+                              <td className="py-1.5 px-2 align-top">
+                                <div className="space-y-1">
                                   {currentPlan ? (
-                                    <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/90 shadow-2xs">
+                                    <div className="p-1.5 px-2 rounded-lg bg-emerald-50/70 border border-emerald-200/90 shadow-2xs">
                                       
-                                      <p className="text-xs text-emerald-950 font-medium leading-relaxed whitespace-pre-line line-clamp-4" title={currentPlan}>
+                                      <p className="text-[11.5px] text-emerald-950 font-medium leading-snug whitespace-pre-line line-clamp-4" title={currentPlan}>
                                         {currentPlan}
                                       </p>
                                     </div>
                                   ) : (
-                                    <span className="text-slate-300 font-bold block text-center py-2">-</span>
+                                    <span className="text-slate-300 font-bold block text-center py-1">-</span>
                                   )}
                                 </div>
                               </td>
 
                               {/* CỘT 5: GHI CHÚ & BÀN GIAO BỆNH */}
-                              <td className="py-3 px-3 align-top">
-                                <div className="space-y-1.5">
+                              <td className="py-1.5 px-2 align-top">
+                                <div className="space-y-1">
                                   {/* Bàn giao ca trực */}
                                   {handoverNotes ? (
-                                    <div className="p-2 rounded-xl bg-indigo-50/70 border border-indigo-200/80">
+                                    <div className="p-1.5 px-2 rounded-lg bg-indigo-50/70 border border-indigo-200/80">
                                       <div className="flex items-center gap-1 text-indigo-900 mb-0.5">
                                         <ArrowRightLeft className="w-3 h-3 text-indigo-700 shrink-0" />
                                         <span className="text-[10px] font-black uppercase text-indigo-950">Bàn giao ca trực:</span>
                                       </div>
-                                      <p className="text-xs text-indigo-950 font-medium leading-relaxed line-clamp-3" title={handoverNotes}>
+                                      <p className="text-[11.5px] text-indigo-950 font-medium leading-snug line-clamp-3" title={handoverNotes}>
                                         {handoverNotes}
                                       </p>
                                     </div>
@@ -2145,12 +2145,12 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                                   {/* Ghi chú của BS */}
                                   {doctorNotes ? (
-                                    <div className="p-2 rounded-xl bg-amber-50/70 border border-amber-200/80">
+                                    <div className="p-1.5 px-2 rounded-lg bg-amber-50/70 border border-amber-200/80">
                                       <div className="flex items-center gap-1 text-amber-900 mb-0.5">
                                         <AlertCircle className="w-3 h-3 text-amber-700 shrink-0" />
                                         <span className="text-[10px] font-black uppercase text-amber-950">Ghi chú BS:</span>
                                       </div>
-                                      <p className="text-xs text-amber-950 font-medium leading-relaxed line-clamp-3" title={doctorNotes}>
+                                      <p className="text-[11.5px] text-amber-950 font-medium leading-snug line-clamp-3" title={doctorNotes}>
                                         {doctorNotes}
                                       </p>
                                     </div>
@@ -2158,25 +2158,25 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                                   {/* Cảnh báo dị ứng nếu có */}
                                   {patient.allergies && isRealAllergy(patient.allergies) && (
-                                    <div className="p-1 px-2 rounded-md bg-rose-50 border border-rose-300 text-rose-800 text-[10.5px] font-black flex items-center gap-1">
+                                    <div className="p-0.5 px-1.5 rounded-md bg-rose-50 border border-rose-300 text-rose-800 text-[10px] font-black flex items-center gap-1">
                                       <span>⚠️ Dị ứng:</span>
                                       <span className="truncate">{patient.allergies}</span>
                                     </div>
                                   )}
 
                                   {!handoverNotes && !doctorNotes && (!patient.allergies || !isRealAllergy(patient.allergies)) && (
-                                    <span className="text-slate-300 font-bold block text-center py-2">-</span>
+                                    <span className="text-slate-300 font-bold block text-center py-1">-</span>
                                   )}
                                 </div>
                               </td>
 
                               {/* THAO TÁC */}
-                              <td className="py-3 px-3 align-top text-right">
-                                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <td className="py-1.5 px-2 align-top text-right">
+                                <div className="flex flex-col items-end gap-1 shrink-0">
                                   <button
                                     type="button"
                                     onClick={() => onOpenEvolution(patient)}
-                                    className="w-full py-1.5 px-2 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-lg font-black text-xs shadow-xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                                    className="w-full py-1 px-1.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-md font-black text-[11px] shadow-xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                                     title="Nhập diễn tiến và y lệnh điều trị mới"
                                   >
                                     <Activity className="w-3 h-3 text-white" />
@@ -2186,7 +2186,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   <button
                                     type="button"
                                     onClick={() => onSelectPatient(patient)}
-                                    className="w-full py-1 px-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0b4d8c] border border-slate-200 hover:border-blue-300 rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap"
+                                    className="w-full py-0.5 px-1.5 bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0b4d8c] border border-slate-200 hover:border-blue-300 rounded-md font-bold text-[10.5px] transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap"
                                     title="Xem chi tiết hồ sơ bệnh nhân"
                                   >
                                     <FileEdit className="w-3 h-3" />
