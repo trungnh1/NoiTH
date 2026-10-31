@@ -1776,7 +1776,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                           // Diễn tiến lâm sàng & thay đổi mới nhất
                           const latestEvolution = patient.evolutions && patient.evolutions.length > 0 ? patient.evolutions[0] : null;
-                          const clinicalNote = latestEvolution?.clinicalNote || 'Tình trạng bệnh tỉnh táo, tiếp xúc tốt, tiếp tục điều trị theo phác đồ.';
+                          const rawClinicalNote = latestEvolution?.clinicalNote || 'Tình trạng bệnh tỉnh táo, tiếp xúc tốt, tiếp tục điều trị theo phác đồ.';
+                          const clinicalNote = rawClinicalNote.split(/\[Sinh hiệu:.*?\]/i)[0].trim();
 
                           // Sinh hiệu gần nhất
                           const latestVital = patient.vitals && patient.vitals.length > 0 
@@ -2028,59 +2029,44 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 <div className="space-y-1">
                                   {/* Diễn tiến lâm sàng & thay đổi mới nhất */}
                                   <div className="p-1.5 px-2 rounded-lg bg-slate-50 border border-slate-200">
-                                    <div className="flex items-center justify-between gap-1 text-slate-600 mb-1">
-                                      
-                                      {latestEvolution && (
-                                        <span className="text-[9.5px] text-slate-400 font-mono">
-                                          {latestEvolution.shift ? `${latestEvolution.shift} • ` : ''}{latestEvolution.timestamp ? latestEvolution.timestamp.slice(11, 16) : ''}
-                                        </span>
-                                      )}
-                                    </div>
                                     <p className="text-[11.5px] text-slate-800 font-medium leading-snug line-clamp-3" title={clinicalNote}>
                                       {clinicalNote}
                                     </p>
                                   </div>
 
-                                  {/* Sinh hiệu gần nhất */}
-                                  {showVitals && latestVital && (
-                                    <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
+                                  {/* Sinh hiệu gần nhất - Gọn gàng trên 1 thanh inline pill duy nhất */}
+                                  {showVitals && latestVital && (latestVital.bpSystolic || latestVital.heartRate || latestVital.spO2 || latestVital.temperature) && (
+                                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100/90 border border-slate-200/90 text-[10.5px] font-bold text-slate-700 shadow-2xs flex-wrap">
                                       {latestVital.bpSystolic && latestVital.bpDiastolic ? (
-                                        <span className={`px-1 py-0.2 rounded border ${
-                                          latestVital.bpSystolic >= 140 || latestVital.bpSystolic < 90
-                                            ? 'bg-rose-50 text-rose-700 border-rose-300 font-black'
-                                            : 'bg-slate-100 text-slate-700 border-slate-200'
-                                        }`}>
-                                          HA: {latestVital.bpSystolic}/{latestVital.bpDiastolic}
+                                        <span className={latestVital.bpSystolic >= 140 || latestVital.bpSystolic < 90 ? 'text-rose-700 font-black' : 'text-slate-900'}>
+                                          HA {latestVital.bpSystolic}/{latestVital.bpDiastolic}
                                         </span>
                                       ) : null}
 
                                       {latestVital.heartRate ? (
-                                        <span className={`px-1 py-0.2 rounded border ${
-                                          latestVital.heartRate > 100 || latestVital.heartRate < 60
-                                            ? 'bg-rose-50 text-rose-700 border-rose-300 font-black'
-                                            : 'bg-slate-100 text-slate-700 border-slate-200'
-                                        }`}>
-                                          M: {latestVital.heartRate} l/p
+                                        <span className="flex items-center gap-1.5">
+                                          {latestVital.bpSystolic && <span className="text-slate-300 font-light">•</span>}
+                                          <span className={latestVital.heartRate > 100 || latestVital.heartRate < 60 ? 'text-rose-700 font-black' : 'text-slate-700'}>
+                                            M {latestVital.heartRate}
+                                          </span>
                                         </span>
                                       ) : null}
 
                                       {latestVital.spO2 ? (
-                                        <span className={`px-1 py-0.2 rounded border ${
-                                          latestVital.spO2 < 95
-                                            ? 'bg-rose-50 text-rose-700 border-rose-300 font-black'
-                                            : 'bg-cyan-50 text-cyan-800 border-cyan-200'
-                                        }`}>
-                                          SpO2: {latestVital.spO2}%
+                                        <span className="flex items-center gap-1.5">
+                                          {(latestVital.bpSystolic || latestVital.heartRate) && <span className="text-slate-300 font-light">•</span>}
+                                          <span className={latestVital.spO2 < 95 ? 'text-rose-700 font-black' : 'text-cyan-800'}>
+                                            SpO2 {latestVital.spO2}%
+                                          </span>
                                         </span>
                                       ) : null}
 
                                       {latestVital.temperature ? (
-                                        <span className={`px-1 py-0.2 rounded border ${
-                                          latestVital.temperature >= 38
-                                            ? 'bg-amber-50 text-amber-800 border-amber-300 font-black'
-                                            : 'bg-slate-100 text-slate-700 border-slate-200'
-                                        }`}>
-                                          T°: {latestVital.temperature}°C
+                                        <span className="flex items-center gap-1.5">
+                                          {(latestVital.bpSystolic || latestVital.heartRate || latestVital.spO2) && <span className="text-slate-300 font-light">•</span>}
+                                          <span className={latestVital.temperature >= 38 ? 'text-amber-800 font-black bg-amber-100/80 px-1 rounded' : 'text-slate-700'}>
+                                            {latestVital.temperature}°C
+                                          </span>
                                         </span>
                                       ) : null}
                                     </div>
