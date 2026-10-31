@@ -293,36 +293,86 @@ export function formatAdmissionDateDisplay(dateStr: string): string {
 }
 
 /**
- * Kiểm tra xem bệnh nhân có nhập viện từ 16h30 tối hôm trước tới thời điểm hiện tại không
+ * Kiểm tra xem bệnh nhân có mới nhập viện trong vòng 24 giờ qua (tính từ thời điểm nhập viện tới hiện tại) hay không.
  */
-export function isNewAdmissionFromYesterday1630(admissionDateStr: string): boolean {
+export function isNewAdmissionWithin24Hours(admissionDateStr: string, referenceTime: Date = new Date()): boolean {
   if (!admissionDateStr) return false;
   try {
-    const normalized = parseExcelAdmissionDate(admissionDateStr).formatted || admissionDateStr;
-    let admDate: Date;
-    if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(normalized)) {
-      const parts = normalized.split(/[ /\-:]/);
-      admDate = new Date(
-        Number(parts[2]),
-        Number(parts[1]) - 1,
-        Number(parts[0]),
-        Number(parts[3] || 8),
-        Number(parts[4] || 0)
-      );
-    } else {
-      admDate = new Date(normalized.replace(' ', 'T'));
+    const rawStr = String(admissionDateStr).trim();
+    const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+
+    // Nếu là chuẩn ISO UTC đầy đủ (ví dụ từ new Date().toISOString())
+    if (rawStr.endsWith('Z') || /[\+\-]\d{2}:?\d{2}$/.test(rawStr)) {
+      const d = new Date(rawStr);
+      if (!isNaN(d.getTime())) {
+        const diffMs = referenceTime.getTime() - d.getTime();
+        return diffMs >= -2 * 60 * 60 * 1000 && diffMs <= twentyFourHoursMs;
+      }
     }
-    if (isNaN(admDate.getTime())) return false;
 
-    const now = new Date();
-    // 16:30 yesterday
-    const yesterday1630 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 16, 30, 0, 0);
+    const hasExplicitTime = /(?:[01]?\d|2[0-3])[:h][0-5]\d/.test(rawStr);
+    const normalized = parseExcelAdmissionDate(rawStr).formatted || rawStr;
 
-    return admDate.getTime() >= yesterday1630.getTime();
+    let admDate: Date | null = null;
+
+    // 1. Chuẩn YYYY-MM-DD hoặc YYYY-MM-DD HH:mm
+    const isoMatch = normalized.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s]+(\d{1,2})[:h](\d{1,2})(?::(\d{1,2}))?)?/i);
+    if (isoMatch) {
+      const y = parseInt(isoMatch[1], 10);
+      const m = parseInt(isoMatch[2], 10) - 1;
+      const d = parseInt(isoMatch[3], 10);
+      const h = isoMatch[4] !== undefined ? parseInt(isoMatch[4], 10) : (hasExplicitTime ? 8 : 0);
+      const min = isoMatch[5] !== undefined ? parseInt(isoMatch[5], 10) : 0;
+      const s = isoMatch[6] !== undefined ? parseInt(isoMatch[6], 10) : 0;
+      admDate = new Date(y, m, d, h, min, s);
+    } else {
+      // 2. Chuẩn DD/MM/YYYY hoặc DD/MM/YYYY HH:mm
+      const dmyMatch = normalized.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[T\s]+(\d{1,2})[:h](\d{1,2})(?::(\d{1,2}))?)?/i);
+      if (dmyMatch) {
+        const d = parseInt(dmyMatch[1], 10);
+        const m = parseInt(dmyMatch[2], 10) - 1;
+        const y = parseInt(dmyMatch[3], 10);
+        const h = dmyMatch[4] !== undefined ? parseInt(dmyMatch[4], 10) : (hasExplicitTime ? 8 : 0);
+        const min = dmyMatch[5] !== undefined ? parseInt(dmyMatch[5], 10) : 0;
+        const s = dmyMatch[6] !== undefined ? parseInt(dmyMatch[6], 10) : 0;
+        admDate = new Date(y, m, d, h, min, s);
+      } else {
+        const parsed = new Date(normalized);
+        if (!isNaN(parsed.getTime())) {
+          admDate = parsed;
+        }
+      }
+    }
+
+    if (!admDate || isNaN(admDate.getTime())) return false;
+
+    const diffMs = referenceTime.getTime() - admDate.getTime();
+
+    // Trường hợp có ghi rõ giờ nhập viện: tính chính xác trong vòng 24 giờ kể từ thời điểm nhập viện
+    if (hasExplicitTime) {
+      // Cho phép dung sai 2 giờ tương lai trong trường hợp đồng hồ máy tính lệch nhẹ
+      return diffMs >= -2 * 60 * 60 * 1000 && diffMs <= twentyFourHoursMs;
+    }
+
+    // Trường hợp không có giờ cụ thể (chỉ ghi ngày DD/MM/YYYY):
+    // 1. Nếu ngày nhập viện là hôm nay -> Chắc chắn < 24h
+    const isToday =
+      referenceTime.getFullYear() === admDate.getFullYear() &&
+      referenceTime.getMonth() === admDate.getMonth() &&
+      referenceTime.getDate() === admDate.getDate();
+    if (isToday) return true;
+
+    // 2. Nếu ngày nhập viện là hôm qua -> Kiểm tra chênh lệch thời gian có trong 24 giờ hay không
+    return diffMs >= 0 && diffMs <= twentyFourHoursMs;
   } catch {
     return false;
   }
 }
+
+/**
+ * Alias tương thích ngược với các component cũ
+ */
+export const isNewAdmissionFromYesterday1630 = isNewAdmissionWithin24Hours;
 
 /**
  * Trích xuất các cảnh báo cận lâm sàng bất thường nặng, nguy hiểm (Panic Values)
@@ -763,7 +813,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         } else if (pulseFilter === 'UNCLASSIFIED') {
           if (p.severity && p.severity !== 'UNCLASSIFIED') return false;
         } else if (pulseFilter === 'NEW') {
-          if (!isNewAdmissionFromYesterday1630(p.admissionDate)) return false;
+          if (!isNewAdmissionWithin24Hours(p.admissionDate)) return false;
         } else if (pulseFilter === 'FEVER') {
           if (!latestVital?.temperature || latestVital.temperature < 38.0) return false;
         } else if (pulseFilter === 'O2') {
@@ -807,7 +857,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
       // Tag / Label filter (NEW, ALLERGY, etc.)
       if (tagFilter !== 'ALL') {
         if (tagFilter === 'NEW') {
-          if (!isNewAdmissionFromYesterday1630(p.admissionDate)) return false;
+          if (!isNewAdmissionWithin24Hours(p.admissionDate)) return false;
         } else if (tagFilter === 'ALLERGY') {
           const hasTag = p.tags?.includes('ALLERGY');
           const hasText = isRealAllergy(p.allergies);
@@ -978,7 +1028,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const unclassifiedCount = activeGroupPatients.filter((p) => p.severity === 'UNCLASSIFIED' || !p.severity).length;
   const dischargeTodayCount = activeGroupPatients.filter((p) => p.admissionStatus === 'DISCHARGE_TODAY').length;
   const dischargeTomorrowCount = activeGroupPatients.filter((p) => p.admissionStatus === 'DISCHARGE_TOMORROW').length;
-  const newCount = activeGroupPatients.filter((p) => isNewAdmissionFromYesterday1630(p.admissionDate)).length;
+  const newCount = activeGroupPatients.filter((p) => isNewAdmissionWithin24Hours(p.admissionDate)).length;
   const allergyCount = activeGroupPatients.filter((p) => p.tags?.includes('ALLERGY') || isRealAllergy(p.allergies)).length;
 
   const feverCount = activeGroupPatients.filter((p) => {
@@ -1354,7 +1404,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     ? 'bg-rose-500 text-white font-black shadow-xs ring-2 ring-rose-300'
                     : 'bg-white/10 hover:bg-white/20 text-rose-200 border border-rose-500/30'
                 }`}
-                title="Bệnh nhân mới nhập viện từ 16h30 hôm qua đến nay"
+                title="Bệnh nhân mới nhập viện trong vòng 24 giờ qua"
               >
                 <span>🆕 Mới &lt;24h: {newCount}</span>
               </button>
@@ -1568,7 +1618,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     ? 'bg-rose-600 text-white shadow-2xs'
                     : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
                 }`}
-                title="Bệnh mới nhập viện từ 16h30 hôm qua đến nay"
+                title="Bệnh mới nhập viện trong vòng 24 giờ qua"
               >
                 <span className="px-1 py-0.2 rounded bg-rose-600 text-white text-[9px] font-black">NEW</span>
                 <span>Mới ({newCount})</span>
@@ -2217,7 +2267,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           const isDischargeToday = patient.admissionStatus === 'DISCHARGE_TODAY';
                           const isStable = patient.severity === 'STABLE';
                           const isUnclassified = !patient.severity || patient.severity === 'UNCLASSIFIED';
-                          const isNewPatient = isNewAdmissionFromYesterday1630(patient.admissionDate);
+                          const isNewPatient = isNewAdmissionWithin24Hours(patient.admissionDate);
                           const treatmentInfo = calculateTreatmentDays(patient.admissionDate);
 
                           // Màu sắc tên Bệnh Nhân theo tình trạng bệnh
@@ -2855,7 +2905,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                       const isDischargeToday = patient.admissionStatus === 'DISCHARGE_TODAY';
                       const isStable = patient.severity === 'STABLE';
                       const isUnclassified = !patient.severity || patient.severity === 'UNCLASSIFIED';
-                      const isNewPatient = isNewAdmissionFromYesterday1630(patient.admissionDate);
+                      const isNewPatient = isNewAdmissionWithin24Hours(patient.admissionDate);
                       const treatmentInfo = calculateTreatmentDays(patient.admissionDate);
                       
                       // Màu sắc tên Bệnh Nhân theo tình trạng bệnh lâm sàng

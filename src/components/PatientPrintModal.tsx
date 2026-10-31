@@ -12,6 +12,7 @@ import {
   getLatestDiagnosis,
   formatAdmissionDateShort,
   calculateTreatmentDays,
+  isNewAdmissionWithin24Hours,
   isNewAdmissionFromYesterday1630
 } from './DetailedPatientListView';
 import { AppSettings } from '../utils/settings';
@@ -128,7 +129,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
       critical: printablePatients.filter((p) => p.severity === 'CRITICAL').length,
       moderate: printablePatients.filter((p) => p.severity === 'MODERATE').length,
       stable: printablePatients.filter((p) => p.severity === 'STABLE').length,
-      newAdmit: printablePatients.filter((p) => isNewAdmissionFromYesterday1630(p.admissionDate)).length,
+      newAdmit: printablePatients.filter((p) => isNewAdmissionWithin24Hours(p.admissionDate)).length,
       discharge: printablePatients.filter((p) => p.admissionStatus === 'DISCHARGE_TODAY' || p.admissionStatus === 'DISCHARGE_TOMORROW').length,
     };
   }, [printablePatients]);
@@ -456,7 +457,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                   {' • '}
                   {printLayout === 'briefing' ? (
                     <span>
-                      Tổng: <b>{briefingStats.total}</b> BN • Nặng: <b className="text-rose-700">{briefingStats.critical}</b> • Vừa: <b className="text-amber-700">{briefingStats.moderate}</b> • Nhẹ: <b className="text-emerald-700">{briefingStats.stable}</b> • Mới: <b>{briefingStats.newAdmit}</b> • Dự RV: <b>{briefingStats.discharge}</b>
+                      Tổng: <b>{briefingStats.total}</b> BN • Nặng: <b className="text-rose-700">{briefingStats.critical}</b> • Vừa: <b className="text-amber-700">{briefingStats.moderate}</b> • Nhẹ: <b className="text-emerald-700">{briefingStats.stable}</b> • Mới (<24h): <b>{briefingStats.newAdmit}</b> • Dự RV: <b>{briefingStats.discharge}</b>
                     </span>
                   ) : (
                     <span>Tổng số: <b>{printablePatients.length}</b> bệnh nhân</span>
@@ -494,7 +495,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                       const isCritical = patient.severity === 'CRITICAL';
                       const isModerate = patient.severity === 'MODERATE';
                       const isStable = patient.severity === 'STABLE';
-                      const isNew = isNewAdmissionFromYesterday1630(patient.admissionDate);
+                      const isNew = isNewAdmissionWithin24Hours(patient.admissionDate);
                       
                       const latestEvo = patient.evolutions?.[0];
                       const rawEvo = latestEvo?.clinicalNote || '';
