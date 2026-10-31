@@ -1631,146 +1631,139 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
             )}
           </div>
         </div>
-      ) : (
-        <div className="space-y-6">
-          {roomGroups.map((group) => {
-            const groupInfo = getRoomGroupName(group.roomNumber);
+      ) : layoutMode === 'rows' ? (
+        /* ==================================================================== */
+        /* CHẾ ĐỘ VIEW HÀNG NGANG TỔNG THỂ:                                     */
+        /* 1 Header ở trên cùng là đủ, không lặp lại:                           */
+        /* 1. Bệnh Nhân (Tên, Tuổi, Ngày NV, Số Ngày ĐT)                         */
+        /* 2. Chẩn Đoán Mới Nhất                                                */
+        /* 3. Thay Đổi Lâm Sàng & Sinh Hiệu                                     */
+        /* 4. Hướng Xử Trí                                                      */
+        /* 5. Ghi Chú & Bàn Giao Bệnh                                           */
+        /* Thao Tác                                                             */
+        /* ==================================================================== */
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
+              <thead className="bg-[#0b4d8c] text-white text-[11px] font-black uppercase tracking-wider sticky top-0 z-20 shadow-xs">
+                <tr>
+                  <th className="py-2.5 px-3.5 min-w-[210px] w-[20%]">
+                    1. Bệnh Nhân (Tên, Tuổi, Ngày NV, Số Ngày ĐT)
+                  </th>
+                  <th className="py-2.5 px-3 min-w-[210px] w-[20%]">
+                    2. Chẩn Đoán Mới Nhất
+                  </th>
+                  <th className="py-2.5 px-3 min-w-[220px] w-[21%]">
+                    3. Thay Đổi Lâm Sàng & Sinh Hiệu
+                  </th>
+                  <th className="py-2.5 px-3 min-w-[190px] w-[18%]">
+                    4. Hướng Xử Trí
+                  </th>
+                  <th className="py-2.5 px-3 min-w-[180px] w-[16%]">
+                    5. Ghi Chú & Bàn Giao Bệnh
+                  </th>
+                  <th className="py-2.5 px-3 min-w-[95px] w-[5%] text-right">
+                    Thao Tác
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {roomGroups.map((group) => {
+                  const groupInfo = getRoomGroupName(group.roomNumber);
 
-            return (
-              <div 
-                key={group.roomNumber}
-                className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs overflow-hidden"
-              >
-                {/* 1. Header: Số phòng - Bs điều trị - Màu nhạt nhẹ nhàng, thanh thoát, không đóng khung tối */}
-                <div className="bg-slate-50/80 text-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100">
-                  
-                  {/* Left: Phòng & Chọn nhanh Bác Sĩ Điều Trị */}
-                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#0b4d8c]" />
-                      <span className="text-[#0b4d8c] font-black text-base sm:text-lg tracking-tight">
-                        Phòng {group.roomNumber}
-                      </span>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-[#0b4d8c] border border-blue-200/60 shrink-0">
-                        {groupInfo.label}
-                      </span>
-                    </div>
-                    <span className="text-slate-300 font-light">•</span>
-                    
-                    {/* Quick Doctor Selector */}
-                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-blue-300 rounded-lg px-2 sm:px-2.5 py-1 transition-colors shadow-2xs max-w-[155px] sm:max-w-none">
-                      <Stethoscope className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[#0b4d8c] shrink-0" />
-                      <span className="text-slate-500 text-xs font-semibold hidden sm:inline">
-                        BS phụ trách:
-                      </span>
-                      <select
-                        value={group.assignedDoctorId || ''}
-                        onChange={(e) => handleQuickAssignDoctor(group.roomNumber, e.target.value)}
-                        className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer w-full truncate"
-                        title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber}`}
-                      >
-                        <option value="" className="text-slate-900 bg-white">-- Chọn BS điều trị --</option>
-                        <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)" className="text-slate-900 bg-white font-bold">
-                          {group1Doctors.map((doc) => (
-                            <option key={doc.id} value={doc.id}>
-                              BS. {formatDoctorShortName(doc.name)}
-                            </option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Bác sĩ Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)" className="text-slate-900 bg-white font-bold">
-                          {group2Doctors.map((doc) => (
-                            <option key={doc.id} value={doc.id}>
-                              BS. {formatDoctorShortName(doc.name)}
-                            </option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam, Luận)" className="text-slate-900 bg-white font-bold">
-                          {cardioDoctors.map((doc) => (
-                            <option key={doc.id} value={doc.id}>
-                              BS. {formatDoctorShortName(doc.name)}
-                            </option>
-                          ))}
-                        </optgroup>
-                      </select>
-                    </div>
+                  return (
+                    <React.Fragment key={group.roomNumber}>
+                      {/* Dòng buồng phòng phân cách: Số phòng, BS điều trị, Số lượng BN, Nút Thêm BN */}
+                      <tr className="bg-slate-100/90 border-y-2 border-slate-200/90 sticky z-10">
+                        <td colSpan={6} className="py-2 px-3.5">
+                          <div className="flex flex-wrap items-center justify-between gap-2.5">
+                            {/* Left: Số phòng & Chọn BS Điều Trị */}
+                            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#0b4d8c]" />
+                                <span className="text-[#0b4d8c] font-black text-sm sm:text-base tracking-tight">
+                                  Phòng {group.roomNumber}
+                                </span>
+                                <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-[#0b4d8c] border border-blue-200/60 shrink-0">
+                                  {groupInfo.label}
+                                </span>
+                              </div>
+                              <span className="text-slate-300 font-light">•</span>
 
-                    {group.assignedDoctorName && (
-                      <span className="text-xs text-[#0b4d8c] font-bold bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md hidden md:inline">
-                        {group.assignedDoctorName}
-                      </span>
-                    )}
-                  </div>
+                              {/* Quick Doctor Selector */}
+                              <div className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-blue-300 rounded-lg px-2 sm:px-2.5 py-1 transition-colors shadow-2xs max-w-[160px] sm:max-w-none">
+                                <Stethoscope className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[#0b4d8c] shrink-0" />
+                                <span className="text-slate-500 text-xs font-semibold hidden sm:inline">
+                                  BS phụ trách:
+                                </span>
+                                <select
+                                  value={group.assignedDoctorId || ''}
+                                  onChange={(e) => handleQuickAssignDoctor(group.roomNumber, e.target.value)}
+                                  className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer w-full truncate"
+                                  title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber}`}
+                                >
+                                  <option value="" className="text-slate-900 bg-white">-- Chọn BS điều trị --</option>
+                                  <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)" className="text-slate-900 bg-white font-bold">
+                                    {group1Doctors.map((doc) => (
+                                      <option key={doc.id} value={doc.id}>
+                                        BS. {formatDoctorShortName(doc.name)}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                  <optgroup label="Bác sĩ Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)" className="text-slate-900 bg-white font-bold">
+                                    {group2Doctors.map((doc) => (
+                                      <option key={doc.id} value={doc.id}>
+                                        BS. {formatDoctorShortName(doc.name)}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                  <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam, Luận)" className="text-slate-900 bg-white font-bold">
+                                    {cardioDoctors.map((doc) => (
+                                      <option key={doc.id} value={doc.id}>
+                                        BS. {formatDoctorShortName(doc.name)}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                </select>
+                              </div>
 
-                  {/* Right: Số lượng bệnh nhân & Nút + Thêm BN */}
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-lg bg-white text-slate-700 text-xs font-bold border border-slate-200 shadow-2xs">
-                      {group.patients.length} bệnh nhân
-                    </span>
-                    {onOpenNewPatientForRoom && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenNewPatientForRoom(group.roomNumber)}
-                        className="px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
-                        title={`Tiếp nhận bệnh nhân mới vào Phòng ${group.roomNumber}`}
-                      >
-                        <Plus className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>Thêm BN</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
+                              {group.assignedDoctorName && (
+                                <span className="text-xs text-[#0b4d8c] font-bold bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md hidden md:inline">
+                                  {group.assignedDoctorName}
+                                </span>
+                              )}
+                            </div>
 
-                {/* 2. 3-Column Patient Grid: 3 cột là 3 bệnh nhân, 6 bệnh nhân là 2 dòng 3 cột */}
-                {group.patients.length === 0 ? (
-                  <div className="p-8 bg-slate-50/70 text-center">
-                    <p className="text-xs sm:text-sm text-slate-500 font-medium mb-3">
-                      Phòng {group.roomNumber} hiện chưa có bệnh nhân nội trú.
-                    </p>
-                    {onOpenNewPatientForRoom && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenNewPatientForRoom(group.roomNumber)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-dashed border-[#0b4d8c]/40 text-[#0b4d8c] bg-white hover:bg-blue-50 text-xs sm:text-sm font-bold transition-colors cursor-pointer shadow-2xs"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>+ Tiếp nhận bệnh nhân vào Phòng {group.roomNumber}</span>
-                      </button>
-                    )}
-                  </div>
-                ) : layoutMode === 'rows' ? (
-                  /* ==================================================================== */
-                  /* CHẾ ĐỘ VIEW HÀNG NGANG THEO YÊU CẦU:                                  */
-                  /* Header: Phòng, BS điều trị                                           */
-                  /* Ở dưới là hàng ngang:                                                */
-                  /* Cột 1: Tên BN, giới, tuổi, ngày/tháng vào, số ngày điều trị          */
-                  /* Cột 2: Chẩn đoán mới nhất & phân loại mức độ                         */
-                  /* Cột 3: Thay đổi lâm sàng & sinh hiệu                                 */
-                  /* Cột 4: Ghi chú và bàn giao bệnh                                      */
-                  /* Cột 5: Thao tác                                                      */
-                  /* ==================================================================== */
-                  <div className="overflow-x-auto bg-white">
-                    <table className="w-full text-left text-xs border-collapse min-w-[860px]">
-                      <thead className="bg-slate-100/90 text-slate-700 text-[11px] font-black uppercase tracking-wider border-b border-slate-200">
+                            {/* Right: Số lượng bệnh nhân & Nút + Thêm BN */}
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-0.5 rounded-lg bg-white text-slate-700 text-xs font-bold border border-slate-200 shadow-2xs">
+                                {group.patients.length} bệnh nhân
+                              </span>
+                              {onOpenNewPatientForRoom && (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenNewPatientForRoom(group.roomNumber)}
+                                  className="px-2.5 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+                                  title={`Tiếp nhận bệnh nhân mới vào Phòng ${group.roomNumber}`}
+                                >
+                                  <Plus className="w-3.5 h-3.5 text-emerald-700" />
+                                  <span>Thêm BN</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Bệnh nhân trong buồng phòng */}
+                      {group.patients.length === 0 ? (
                         <tr>
-                          <th className="py-2.5 px-3.5 w-[22%] min-w-[210px]">
-                            1. Bệnh Nhân (Tên, Tuổi, Ngày NV, Số Ngày ĐT)
-                          </th>
-                          <th className="py-2.5 px-3 w-[25%] min-w-[220px]">
-                            2. Chẩn Đoán Mới Nhất
-                          </th>
-                          <th className="py-2.5 px-3 w-[26%] min-w-[230px]">
-                            3. Thay Đổi Lâm Sàng & Sinh Hiệu
-                          </th>
-                          <th className="py-2.5 px-3 w-[22%] min-w-[210px]">
-                            4. Ghi Chú & Bàn Giao Bệnh
-                          </th>
-                          <th className="py-2.5 px-3 w-[5%] min-w-[95px] text-right">
-                            Thao Tác
-                          </th>
+                          <td colSpan={6} className="py-3 px-4 text-center text-slate-400 italic bg-slate-50/40">
+                            Phòng {group.roomNumber} hiện chưa có bệnh nhân nội trú.
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
-                        {group.patients.map((patient, pIdx) => {
+                      ) : (
+                        group.patients.map((patient, pIdx) => {
                           const isCritical = patient.severity === 'CRITICAL';
                           const isModerate = patient.severity === 'MODERATE';
                           const isDischargeTomorrow = patient.admissionStatus === 'DISCHARGE_TOMORROW';
@@ -1779,7 +1772,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           const isUnclassified = !patient.severity || patient.severity === 'UNCLASSIFIED';
                           const isNewPatient = isNewAdmissionFromYesterday1630(patient.admissionDate);
                           const treatmentInfo = calculateTreatmentDays(patient.admissionDate);
-                          
+
                           // Màu sắc tên Bệnh Nhân theo tình trạng bệnh
                           const nameColorClass = isCritical
                             ? 'text-rose-700'
@@ -1804,7 +1797,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                             ? patient.vitals[patient.vitals.length - 1] 
                             : null;
 
-                          // Kế hoạch điều trị
+                          // Hướng xử trí / Kế hoạch điều trị
                           const currentPlan = patient.treatmentPlan || 
                             patient.evolutions?.[0]?.treatmentAction || 
                             patient.initialMedicationsText || 
@@ -1827,7 +1820,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   : 'hover:bg-slate-50/80 border-l-4 border-l-slate-300'
                               }`}
                             >
-                              {/* CỘT 1: 1 CỘT CHỨA TÊN BN, GIỚI, TUỔI, NGÀY/THÁNG VÀO, SỐ NGÀY ĐIỀU TRỊ */}
+                              {/* CỘT 1: BỆNH NHÂN (Tên, Tuổi, Ngày NV, Số Ngày ĐT) */}
                               <td className="py-3 px-3.5 align-top">
                                 <div className="space-y-1.5">
                                   {/* Họ và tên BN */}
@@ -2123,7 +2116,30 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 </div>
                               </td>
 
-                              {/* CỘT 4: GHI CHÚ VÀ BÀN GIAO BỆNH */}
+                              {/* CỘT 4: HƯỚNG XỬ TRÍ */}
+                              <td className="py-3 px-3 align-top">
+                                <div className="space-y-1.5">
+                                  {currentPlan ? (
+                                    <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/90 shadow-2xs">
+                                      <div className="flex items-center gap-1 text-emerald-800 mb-1">
+                                        <Stethoscope className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                        <span className="text-[10px] font-black uppercase text-emerald-950">
+                                          Hướng xử trí:
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-emerald-950 font-medium leading-relaxed whitespace-pre-line line-clamp-4" title={currentPlan}>
+                                        {currentPlan}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="p-2.5 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-slate-400 italic text-[11px]">
+                                      Theo dõi & điều trị theo phác đồ
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* CỘT 5: GHI CHÚ & BÀN GIAO BỆNH */}
                               <td className="py-3 px-3 align-top">
                                 <div className="space-y-1.5">
                                   {/* Bàn giao ca trực */}
@@ -2152,19 +2168,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     </div>
                                   ) : null}
 
-                                  {/* Kế hoạch điều trị nếu có */}
-                                  {currentPlan ? (
-                                    <div className="p-2 rounded-xl bg-emerald-50/60 border border-emerald-200/80">
-                                      <div className="flex items-center gap-1 text-emerald-800 mb-0.5">
-                                        <Stethoscope className="w-3 h-3 text-emerald-700 shrink-0" />
-                                        <span className="text-[10px] font-black uppercase text-emerald-950">Kế hoạch điều trị:</span>
-                                      </div>
-                                      <p className="text-xs text-emerald-950 font-medium leading-relaxed line-clamp-2" title={currentPlan}>
-                                        {currentPlan}
-                                      </p>
-                                    </div>
-                                  ) : null}
-
                                   {/* Cảnh báo dị ứng nếu có */}
                                   {patient.allergies && isRealAllergy(patient.allergies) && (
                                     <div className="p-1 px-2 rounded-md bg-rose-50 border border-rose-300 text-rose-800 text-[10.5px] font-black flex items-center gap-1">
@@ -2173,7 +2176,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     </div>
                                   )}
 
-                                  {!handoverNotes && !doctorNotes && !currentPlan && (
+                                  {!handoverNotes && !doctorNotes && (!patient.allergies || !isRealAllergy(patient.allergies)) && (
                                     <span className="text-[11px] text-slate-400 italic block py-2">
                                       Chưa có ghi chú / bàn giao
                                     </span>
@@ -2181,13 +2184,13 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 </div>
                               </td>
 
-                              {/* CỘT 5: THAO TÁC */}
+                              {/* THAO TÁC */}
                               <td className="py-3 px-3 align-top text-right">
                                 <div className="flex flex-col items-end gap-1.5 shrink-0">
                                   <button
                                     type="button"
                                     onClick={() => onOpenEvolution(patient)}
-                                    className="w-full py-1.5 px-2.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-lg font-black text-xs shadow-xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                                    className="w-full py-1.5 px-2 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-lg font-black text-xs shadow-xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                                     title="Nhập diễn tiến và y lệnh điều trị mới"
                                   >
                                     <Activity className="w-3 h-3 text-white" />
@@ -2242,9 +2245,121 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </td>
                             </tr>
                           );
-                        })}
-                      </tbody>
-                    </table>
+                        })
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+
+        <div className="space-y-6">
+          {roomGroups.map((group) => {
+            const groupInfo = getRoomGroupName(group.roomNumber);
+
+            return (
+              <div 
+                key={group.roomNumber}
+                className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs overflow-hidden"
+              >
+                {/* 1. Header: Số phòng - Bs điều trị - Màu nhạt nhẹ nhàng, thanh thoát, không đóng khung tối */}
+                <div className="bg-slate-50/80 text-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100">
+                  
+                  {/* Left: Phòng & Chọn nhanh Bác Sĩ Điều Trị */}
+                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#0b4d8c]" />
+                      <span className="text-[#0b4d8c] font-black text-base sm:text-lg tracking-tight">
+                        Phòng {group.roomNumber}
+                      </span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-[#0b4d8c] border border-blue-200/60 shrink-0">
+                        {groupInfo.label}
+                      </span>
+                    </div>
+                    <span className="text-slate-300 font-light">•</span>
+                    
+                    {/* Quick Doctor Selector */}
+                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-blue-300 rounded-lg px-2 sm:px-2.5 py-1 transition-colors shadow-2xs max-w-[155px] sm:max-w-none">
+                      <Stethoscope className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[#0b4d8c] shrink-0" />
+                      <span className="text-slate-500 text-xs font-semibold hidden sm:inline">
+                        BS phụ trách:
+                      </span>
+                      <select
+                        value={group.assignedDoctorId || ''}
+                        onChange={(e) => handleQuickAssignDoctor(group.roomNumber, e.target.value)}
+                        className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer w-full truncate"
+                        title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber}`}
+                      >
+                        <option value="" className="text-slate-900 bg-white">-- Chọn BS điều trị --</option>
+                        <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)" className="text-slate-900 bg-white font-bold">
+                          {group1Doctors.map((doc) => (
+                            <option key={doc.id} value={doc.id}>
+                              BS. {formatDoctorShortName(doc.name)}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Bác sĩ Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)" className="text-slate-900 bg-white font-bold">
+                          {group2Doctors.map((doc) => (
+                            <option key={doc.id} value={doc.id}>
+                              BS. {formatDoctorShortName(doc.name)}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam, Luận)" className="text-slate-900 bg-white font-bold">
+                          {cardioDoctors.map((doc) => (
+                            <option key={doc.id} value={doc.id}>
+                              BS. {formatDoctorShortName(doc.name)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    {group.assignedDoctorName && (
+                      <span className="text-xs text-[#0b4d8c] font-bold bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md hidden md:inline">
+                        {group.assignedDoctorName}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Right: Số lượng bệnh nhân & Nút + Thêm BN */}
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-lg bg-white text-slate-700 text-xs font-bold border border-slate-200 shadow-2xs">
+                      {group.patients.length} bệnh nhân
+                    </span>
+                    {onOpenNewPatientForRoom && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenNewPatientForRoom(group.roomNumber)}
+                        className="px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+                        title={`Tiếp nhận bệnh nhân mới vào Phòng ${group.roomNumber}`}
+                      >
+                        <Plus className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Thêm BN</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. 3-Column Patient Grid: 3 cột là 3 bệnh nhân, 6 bệnh nhân là 2 dòng 3 cột */}
+                {group.patients.length === 0 ? (
+                  <div className="p-8 bg-slate-50/70 text-center">
+                    <p className="text-xs sm:text-sm text-slate-500 font-medium mb-3">
+                      Phòng {group.roomNumber} hiện chưa có bệnh nhân nội trú.
+                    </p>
+                    {onOpenNewPatientForRoom && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenNewPatientForRoom(group.roomNumber)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-dashed border-[#0b4d8c]/40 text-[#0b4d8c] bg-white hover:bg-blue-50 text-xs sm:text-sm font-bold transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>+ Tiếp nhận bệnh nhân vào Phòng {group.roomNumber}</span>
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-slate-100/60">
