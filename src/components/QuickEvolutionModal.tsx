@@ -287,6 +287,13 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
     }
   };
 
+  // Chèn khung bàn giao chuẩn quốc tế SBAR (Situation - Background - Assessment - Recommendation)
+  const handleInsertSbarTemplate = () => {
+    const sbarTemplate = `[S - Tình trạng]: Bệnh tỉnh, tiếp xúc tốt, sinh hiệu tạm ổn\n[B - Tiền sử/Bệnh nền]: Bệnh nền kiểm soát ổn\n[A - Đánh giá]: Đáp ứng phác đồ điều trị ca trực\n[R - Dặn dò ca sau]: Theo dõi sinh hiệu theo cữ, kiểm tra kết quả xét nghiệm`;
+    setHandoverNotes((prev) => (prev.trim() ? `${prev}\n${sbarTemplate}` : sbarTemplate));
+    showToast('✨ Đã chèn mẫu bàn giao ca trực chuẩn SBAR!');
+  };
+
   // Áp dụng trực tiếp 1 entry trong lịch sử
   const handleApplyHistoricalEntry = (evo: ClinicalEvolution) => {
     if (evo.clinicalNote) setClinicalNote(evo.clinicalNote);
@@ -1065,20 +1072,31 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                       <ArrowRightLeft className="w-3 h-3 text-slate-600" />
                       <span>5. Bàn Giao Ca Sau</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleCopyLatestHandover}
-                      className="text-[9.5px] font-bold text-slate-600 hover:text-slate-900 px-1.5 py-0.2 rounded hover:bg-slate-100"
-                    >
-                      Sao chép
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleInsertSbarTemplate}
+                        className="text-[9.5px] font-bold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-1.5 py-0.5 rounded flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                        title="Chèn khung bàn giao ca trực chuẩn SBAR"
+                      >
+                        <Sparkles className="w-2.5 h-2.5 text-teal-600" />
+                        <span>Mẫu SBAR</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCopyLatestHandover}
+                        className="text-[9.5px] font-bold text-slate-600 hover:text-slate-900 px-1.5 py-0.5 rounded hover:bg-slate-100 cursor-pointer"
+                      >
+                        Sao chép
+                      </button>
+                    </div>
                   </div>
                   <textarea
-                    rows={2}
+                    rows={3}
                     value={handoverNotes}
                     onChange={(e) => setHandoverNotes(e.target.value)}
-                    placeholder="Dặn dò theo dõi ca sau..."
-                    className="w-full p-2 bg-slate-50/50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white"
+                    placeholder="Dặn dò theo dõi ca sau hoặc bấm 'Mẫu SBAR'..."
+                    className="w-full p-2 bg-slate-50/50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white leading-relaxed font-sans"
                   />
                 </div>
 

@@ -11,7 +11,8 @@ import {
   formatCombinedDiagnosis,
   getLatestDiagnosis,
   formatAdmissionDateShort,
-  calculateTreatmentDays
+  calculateTreatmentDays,
+  isNewAdmissionFromYesterday1630
 } from './DetailedPatientListView';
 import { AppSettings } from '../utils/settings';
 
@@ -39,9 +40,9 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
   const [printOrientation, setPrintOrientation] = useState<'portrait' | 'landscape'>(
     settings?.defaultPrintOrientation || 'landscape'
   );
-  // Tùy chọn định dạng: Dạng Bảng hàng ngang hoặc Dạng Thẻ
-  const [printLayout, setPrintLayout] = useState<'table' | 'cards'>(
-    settings?.defaultPrintLayout || 'table'
+  // Tùy chọn định dạng: Bảng Giao Ban Sáng, Dạng Bảng hoặc Dạng Thẻ
+  const [printLayout, setPrintLayout] = useState<'briefing' | 'table' | 'cards'>(
+    'briefing'
   );
 
   // Group 1 doctors (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)
@@ -119,6 +120,18 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
       return a.fullName.localeCompare(b.fullName, 'vi');
     });
   }, [patients, filterMode, selectedRoom, selectedDoctorId]);
+
+  // Thống kê nhanh phục vụ giao ban
+  const briefingStats = useMemo(() => {
+    return {
+      total: printablePatients.length,
+      critical: printablePatients.filter((p) => p.severity === 'CRITICAL').length,
+      moderate: printablePatients.filter((p) => p.severity === 'MODERATE').length,
+      stable: printablePatients.filter((p) => p.severity === 'STABLE').length,
+      newAdmit: printablePatients.filter((p) => isNewAdmissionFromYesterday1630(p.admissionDate)).length,
+      discharge: printablePatients.filter((p) => p.admissionStatus === 'DISCHARGE_TODAY' || p.admissionStatus === 'DISCHARGE_TOMORROW').length,
+    };
+  }, [printablePatients]);
 
   const handlePrint = () => {
     window.print();
@@ -338,17 +351,30 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                 </button>
               </div>
 
-              {/* Layout style: Bảng vs Thẻ */}
+              {/* Layout style: Báo cáo giao ban vs Bảng vs Thẻ */}
               <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-300 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setPrintLayout('briefing')}
+                  className={`px-2.5 py-1.5 rounded-lg font-black text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                    printLayout === 'briefing'
+                      ? 'bg-[#0b4d8c] text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                  title="Biên bản giao ban lâm sàng buổi sáng 07h15"
+                >
+                  <span>📋 Bảng Giao Ban Sáng</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setPrintLayout('table')}
                   className={`px-2.5 py-1.5 rounded-lg font-black text-xs transition-all cursor-pointer flex items-center gap-1 ${
                     printLayout === 'table'
-                      ? 'bg-slate-800 text-white shadow-xs'
+                      ? 'bg-[#0b4d8c] text-white shadow-xs'
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
-                  title="Định dạng Bảng hàng ngang"
+                  title="Định dạng Bảng danh sách hàng ngang"
                 >
                   <span>📊 Dạng Bảng</span>
                 </button>
@@ -358,12 +384,12 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                   onClick={() => setPrintLayout('cards')}
                   className={`px-2.5 py-1.5 rounded-lg font-black text-xs transition-all cursor-pointer flex items-center gap-1 ${
                     printLayout === 'cards'
-                      ? 'bg-slate-800 text-white shadow-xs'
+                      ? 'bg-[#0b4d8c] text-white shadow-xs'
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
                   title="Định dạng Thẻ ghi chú"
                 >
-                  <span>📋 Dạng Thẻ</span>
+                  <span>📇 Dạng Thẻ</span>
                 </button>
               </div>
 
@@ -419,7 +445,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
               </div>
               <div className="text-center pt-1">
                 <h2 className="text-base sm:text-lg font-black uppercase tracking-tight text-slate-900 font-sans">
-                  DANH SÁCH BỆNH NHÂN NỘI TRÚ ĐANG ĐIỀU TRỊ
+                  {printLayout === 'briefing' ? 'BIÊN BẢN GIAO BAN LÂM SÀNG & BÀN GIAO CA TRỰC SÁNG' : 'DANH SÁCH BỆNH NHÂN NỘI TRÚ ĐANG ĐIỀU TRỊ'}
                 </h2>
                 <p className="text-xs font-sans text-slate-600 font-medium mt-0.5">
                   {filterMode === 'BY_ROOM' && selectedRoom !== 'ALL'
@@ -427,7 +453,14 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                     : filterMode === 'BY_DOCTOR' && selectedDoctorId !== 'ALL'
                     ? `Bác sĩ: ${doctorMap.get(selectedDoctorId)?.name || selectedDoctorId}`
                     : 'Toàn bộ bệnh nhân Buồng phòng Nhóm 1'}
-                  {' • Tổng số: '}<b>{printablePatients.length}</b> bệnh nhân
+                  {' • '}
+                  {printLayout === 'briefing' ? (
+                    <span>
+                      Tổng: <b>{briefingStats.total}</b> BN • Nặng: <b className="text-rose-700">{briefingStats.critical}</b> • Vừa: <b className="text-amber-700">{briefingStats.moderate}</b> • Nhẹ: <b className="text-emerald-700">{briefingStats.stable}</b> • Mới: <b>{briefingStats.newAdmit}</b> • Dự RV: <b>{briefingStats.discharge}</b>
+                    </span>
+                  ) : (
+                    <span>Tổng số: <b>{printablePatients.length}</b> bệnh nhân</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -436,6 +469,111 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
             {printablePatients.length === 0 ? (
               <div className="py-12 text-center text-slate-400 font-sans text-xs">
                 Không tìm thấy bệnh nhân nào theo điều kiện lọc hiện tại.
+              </div>
+            ) : printLayout === 'briefing' ? (
+              /* DẠNG BẢNG GIAO BAN SÁNG (MORNING BRIEFING SHEET) */
+              <div className="overflow-x-auto space-y-3">
+                <table className="w-full text-left border-collapse border border-slate-700 text-[10.5px] font-sans">
+                  <thead>
+                    <tr className="bg-slate-800 text-white font-black uppercase tracking-wider text-[10px]">
+                      <th className="p-1.5 border border-slate-600 text-center w-[32px]">STT</th>
+                      <th className="p-1.5 border border-slate-600 text-center w-[52px]">Phòng</th>
+                      <th className="p-1.5 border border-slate-600 min-w-[140px] w-[20%]">Bệnh Nhân (Tuổi/Giới)</th>
+                      <th className="p-1.5 border border-slate-600 text-center min-w-[70px] w-[8%]">Ngày NV/ĐT</th>
+                      <th className="p-1.5 border border-slate-600 min-w-[150px] w-[21%]">Chẩn Đoán & Mức Độ</th>
+                      <th className="p-1.5 border border-slate-600 min-w-[160px] w-[23%]">Diễn Tiến Ca Trực & Sinh Hiệu</th>
+                      <th className="p-1.5 border border-slate-600 min-w-[150px] w-[20%]">Y Lệnh & Bàn Giao Ca Sáng</th>
+                      <th className="p-1.5 border border-slate-600 text-center min-w-[75px] w-[8%]">BS Buồng/Ký</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {printablePatients.map((patient, index) => {
+                      const roomName = (patient.roomNumber || '').replace(/^(phòng|p\.?)\s*/i, '').trim();
+                      const latestDiag = getLatestDiagnosis(patient);
+                      const treatmentInfo = calculateTreatmentDays(patient.admissionDate);
+                      const isCritical = patient.severity === 'CRITICAL';
+                      const isModerate = patient.severity === 'MODERATE';
+                      const isStable = patient.severity === 'STABLE';
+                      const isNew = isNewAdmissionFromYesterday1630(patient.admissionDate);
+                      
+                      const latestEvo = patient.evolutions?.[0];
+                      const rawEvo = latestEvo?.clinicalNote || '';
+                      const clinicalEvo = rawEvo.split(/\[Sinh hiệu:.*?\]/i)[0].trim();
+                      const latestVital = patient.vitals && patient.vitals.length > 0 ? patient.vitals[patient.vitals.length - 1] : null;
+                      const plan = patient.treatmentPlan || patient.evolutions?.[0]?.treatmentAction || '';
+                      const handover = patient.handoverNotes || patient.importantNotes || '';
+                      const docName = doctorMap.get(patient.attendingDoctorId)?.name;
+
+                      return (
+                        <tr key={patient.id} className="border-b border-slate-400 break-inside-avoid hover:bg-slate-50">
+                          <td className="p-1 border border-slate-400 text-center font-bold text-slate-700">
+                            {index + 1}
+                          </td>
+                          <td className="p-1 border border-slate-400 text-center font-black text-rose-800 text-[11px]">
+                            P.{roomName}
+                          </td>
+                          <td className="p-1 border border-slate-400 font-bold text-slate-900 leading-tight">
+                            <div className="text-[11px] font-black">{formatPatientDisplayName(patient.fullName)}</div>
+                            <div className="text-[10px] text-slate-600 font-semibold flex items-center gap-1.5">
+                              <span>{patient.age}t</span>
+                              <span>•</span>
+                              <span className={patient.gender === 'Nam' ? 'text-blue-700 font-bold' : 'text-pink-700 font-bold'}>
+                                {patient.gender === 'Nam' ? 'Nam' : 'Nữ'}
+                              </span>
+                              {isNew && (
+                                <span className="text-[8.5px] bg-rose-600 text-white px-1 py-0.2 rounded font-black">MỚI</span>
+                              )}
+                              {patient.admissionStatus === 'DISCHARGE_TODAY' && (
+                                <span className="text-[8.5px] bg-purple-700 text-white px-1 py-0.2 rounded font-black">RV HÔM NAY</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-1 border border-slate-400 text-center text-[10px]">
+                            <div className="text-slate-700 font-medium">{formatAdmissionDateShort(patient.admissionDate)}</div>
+                            <div className="font-bold text-[#0b4d8c]">{treatmentInfo.label}</div>
+                          </td>
+                          <td className="p-1 border border-slate-400 leading-tight">
+                            <div className="font-bold text-slate-900 text-[10.5px]">{latestDiag}</div>
+                            <div className="mt-0.5">
+                              <span className={`inline-block px-1 py-0.2 rounded text-[8.5px] font-black uppercase ${
+                                isCritical ? 'bg-rose-100 text-rose-800 border border-rose-300' :
+                                isModerate ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                                isStable ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                                'bg-slate-100 text-slate-700 border border-slate-300'
+                              }`}>
+                                {isCritical ? '🚨 NẶNG' : isModerate ? '⚠️ VỪA' : isStable ? '🟢 NHẸ' : '⚪ CHƯA PL'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-1 border border-slate-400 leading-tight">
+                            <div className="text-slate-800 text-[10px] line-clamp-2">
+                              {clinicalEvo || 'Bệnh tỉnh, tiếp xúc tốt, tạm ổn.'}
+                            </div>
+                            {latestVital && (latestVital.bpSystolic || latestVital.heartRate || latestVital.spO2 || latestVital.temperature) && (
+                              <div className="text-[9.5px] font-bold text-slate-700 mt-0.5 bg-slate-100 p-0.5 px-1 rounded border border-slate-300">
+                                {latestVital.bpSystolic && latestVital.bpDiastolic ? `HA ${latestVital.bpSystolic}/${latestVital.bpDiastolic} ` : ''}
+                                {latestVital.heartRate ? `• M ${latestVital.heartRate} ` : ''}
+                                {latestVital.spO2 ? `• SpO2 ${latestVital.spO2}% ` : ''}
+                                {latestVital.temperature ? `• ${latestVital.temperature}°C` : ''}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-1 border border-slate-400 leading-tight">
+                            <div className="text-slate-900 font-medium text-[10px] line-clamp-3">
+                              {handover || plan || 'Duy trì phác đồ điều trị, theo dõi sinh hiệu theo cữ.'}
+                            </div>
+                          </td>
+                          <td className="p-1 border border-slate-400 text-center text-[10px]">
+                            <div className="font-bold text-slate-800">
+                              {docName ? formatDoctorShortName(docName) : '-'}
+                            </div>
+                            <div className="h-5 border-b border-dotted border-slate-400 mt-1" />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             ) : printLayout === 'table' ? (
               /* DẠNG BẢNG HÀNG NGANG */
@@ -580,6 +718,49 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
               </div>
             )}
 
+            {/* Chữ ký 4 bên dành cho Bảng Giao Ban Sáng */}
+            {printLayout === 'briefing' && (
+              <div className="mt-6 pt-4 border-t-2 border-slate-700 break-inside-avoid">
+                <div className="text-[11px] font-bold text-slate-700 italic text-right mb-3">
+                  Gia Lai, ngày {new Date().getDate()} tháng {new Date().getMonth() + 1} năm {new Date().getFullYear()}
+                </div>
+                <div className="grid grid-cols-4 gap-4 text-center text-xs font-sans">
+                  <div>
+                    <div className="font-black text-slate-900 uppercase">BS TRỰC CA ĐÊM</div>
+                    <div className="text-[10px] text-slate-500 italic">(Bàn giao tình hình bệnh nhân)</div>
+                    <div className="h-14" />
+                    <div className="text-[11px] font-bold text-slate-700 border-t border-dotted border-slate-400 pt-1">
+                      Ký & ghi rõ họ tên
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-black text-slate-900 uppercase">BS TIẾP NHẬN SÁNG</div>
+                    <div className="text-[10px] text-slate-500 italic">(Tiếp nhận theo dõi buồng)</div>
+                    <div className="h-14" />
+                    <div className="text-[11px] font-bold text-slate-700 border-t border-dotted border-slate-400 pt-1">
+                      Ký & ghi rõ họ tên
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-black text-slate-900 uppercase">ĐIỀU DƯỠNG TRỰC</div>
+                    <div className="text-[10px] text-slate-500 italic">(Bàn giao thuốc & sinh hiệu)</div>
+                    <div className="h-14" />
+                    <div className="text-[11px] font-bold text-slate-700 border-t border-dotted border-slate-400 pt-1">
+                      Ký & ghi rõ họ tên
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-black text-[#0b4d8c] uppercase">TRƯỞNG KHOA / LÃNH ĐẠO</div>
+                    <div className="text-[10px] text-slate-500 italic">(Chỉ đạo giao ban & ký duyệt)</div>
+                    <div className="h-14" />
+                    <div className="text-[11px] font-bold text-slate-700 border-t border-dotted border-slate-400 pt-1">
+                      Ký & ghi rõ họ tên
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
 
         </div>
@@ -592,7 +773,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
             </span>
             <span>•</span>
             <span>
-              Định dạng: <b>{printLayout === 'table' ? 'Bảng Hàng Ngang' : 'Thẻ Ghi Chú'}</b>
+              Định dạng: <b>{printLayout === 'briefing' ? '📋 Bảng Giao Ban Sáng' : printLayout === 'table' ? '📊 Bảng Hàng Ngang' : '📇 Thẻ Ghi Chú'}</b>
             </span>
           </div>
           <div className="flex items-center gap-2">

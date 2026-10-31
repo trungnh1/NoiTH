@@ -33,7 +33,11 @@ import {
   Clock,
   Filter,
   TableProperties,
-  LayoutGrid
+  LayoutGrid,
+  HeartPulse,
+  Sparkles,
+  Edit3,
+  Flame
 } from 'lucide-react';
 import { 
   ClinicalRecord, 
@@ -404,6 +408,118 @@ export function getCriticalLabAlerts(patient: Patient): string[] {
 
   return Array.from(new Set(alerts));
 }
+/**
+ * Hệ thống Cảnh Báo Sớm Y Khoa Tự Động (Clinical Early Warning & Panic Alerts)
+ * Dựa trên thang điểm NEWS2, sinh hiệu nguy hiểm và cận lâm sàng bất thường
+ */
+export interface ClinicalEarlyWarning {
+  level: 'PANIC' | 'WARNING' | 'NORMAL';
+  title: string;
+  badgeText: string;
+  reasons: string[];
+}
+
+export function getPatientEarlyWarning(patient: Patient): ClinicalEarlyWarning {
+  const latestVital = patient.vitals && patient.vitals.length > 0 
+    ? patient.vitals[patient.vitals.length - 1] 
+    : null;
+
+  const reasons: string[] = [];
+  let isPanic = false;
+  let isWarning = false;
+
+  if (latestVital) {
+    // SpO2
+    if (latestVital.spO2 !== undefined && latestVital.spO2 !== null) {
+      if (latestVital.spO2 < 92) {
+        isPanic = true;
+        reasons.push(`SpO2 ${latestVital.spO2}%`);
+      } else if (latestVital.spO2 < 95) {
+        isWarning = true;
+        reasons.push(`SpO2 ${latestVital.spO2}%`);
+      }
+    }
+
+    // Mạch
+    if (latestVital.heartRate !== undefined && latestVital.heartRate !== null) {
+      if (latestVital.heartRate > 125 || latestVital.heartRate < 48) {
+        isPanic = true;
+        reasons.push(`Mạch ${latestVital.heartRate} l/p`);
+      } else if (latestVital.heartRate > 105 || latestVital.heartRate < 55) {
+        isWarning = true;
+        reasons.push(`Mạch ${latestVital.heartRate} l/p`);
+      }
+    }
+
+    // Huyết áp
+    if (latestVital.bpSystolic !== undefined && latestVital.bpSystolic !== null) {
+      if (latestVital.bpSystolic >= 180 || latestVital.bpSystolic < 85) {
+        isPanic = true;
+        reasons.push(`HA ${latestVital.bpSystolic}/${latestVital.bpDiastolic || ''}`);
+      } else if (latestVital.bpSystolic >= 150 || latestVital.bpSystolic < 90) {
+        isWarning = true;
+        reasons.push(`HA ${latestVital.bpSystolic}/${latestVital.bpDiastolic || ''}`);
+      }
+    }
+
+    // Thân nhiệt
+    if (latestVital.temperature !== undefined && latestVital.temperature !== null) {
+      if (latestVital.temperature >= 39.2 || latestVital.temperature < 35.5) {
+        isPanic = true;
+        reasons.push(`Nhiệt ${latestVital.temperature}°C`);
+      } else if (latestVital.temperature >= 38.2) {
+        isWarning = true;
+        reasons.push(`Sốt ${latestVital.temperature}°C`);
+      }
+    }
+  }
+
+  // Critical Lab Alerts
+  const criticalLabs = getCriticalLabAlerts(patient);
+  if (criticalLabs.length > 0) {
+    isPanic = true;
+    reasons.push(...criticalLabs);
+  }
+
+  if (isPanic) {
+    return {
+      level: 'PANIC',
+      title: 'BÁO ĐỘNG ĐỎ Y KHOA',
+      badgeText: `🚨 Báo động: ${reasons[0]}`,
+      reasons,
+    };
+  }
+
+  if (isWarning) {
+    return {
+      level: 'WARNING',
+      title: 'Cần Theo Dõi Sát',
+      badgeText: `⚠️ Theo dõi: ${reasons[0]}`,
+      reasons,
+    };
+  }
+
+  return {
+    level: 'NORMAL',
+    title: 'Ổn định',
+    badgeText: 'Ổn định',
+    reasons: [],
+  };
+}
+
+
+export type PulseFilterType = 
+  | 'ALL'
+  | 'CRITICAL'
+  | 'MODERATE'
+  | 'STABLE'
+  | 'UNCLASSIFIED'
+  | 'NEW'
+  | 'FEVER'
+  | 'O2'
+  | 'LONG_STAY'
+  | 'DISCHARGE_TODAY'
+  | 'MISSING_DIAG';
 
 export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = ({
   patients,
@@ -473,6 +589,60 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const [isMobileFilterMenuOpen, setIsMobileFilterMenuOpen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [hoveredPatientId, setHoveredPatientId] = useState<string | null>(null);
+  // Thanh Nhịp Đập Khoa Lâm Sàng - Bộ lọc 1-chạm
+
+  const [pulseFilter, setPulseFilter] = useState<PulseFilterType>('ALL');
+
+  // Ghi Chú Nhanh Tại Chỗ (Inline Quick Note)
+  const [inlineNotePatientId, setInlineNotePatientId] = useState<string | null>(null);
+  const [inlineNoteText, setInlineNoteText] = useState<string>('');
+  const [isSavingInlineNote, setIsSavingInlineNote] = useState<boolean>(false);
+
+  const handleTogglePulseFilter = (filterType: PulseFilterType) => {
+    if (pulseFilter === filterType) {
+      setPulseFilter('ALL');
+    } else {
+      setPulseFilter(filterType);
+      setStatusFilter('ALL');
+      setTagFilter('ALL');
+    }
+  };
+
+  const handleOpenInlineNote = (patient: Patient, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setInlineNotePatientId(patient.id);
+    setInlineNoteText(patient.handoverNotes || patient.importantNotes || '');
+  };
+
+  const handleSaveInlineNote = async (patient: Patient, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setIsSavingInlineNote(true);
+    try {
+      const trimmed = inlineNoteText.trim();
+      const updated: Patient = {
+        ...patient,
+        handoverNotes: trimmed,
+        importantNotes: trimmed,
+      };
+      if (onUpdatePatient) {
+        await onUpdatePatient(updated);
+      }
+      setInlineNotePatientId(null);
+      setNotification(`Đã lưu dặn dò trực cho BN "${formatPatientDisplayName(patient.fullName)}"`);
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err) {
+      console.error('Failed to save inline note:', err);
+    } finally {
+      setIsSavingInlineNote(false);
+    }
+  };
+
+  const handleCancelInlineNote = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setInlineNotePatientId(null);
+    setInlineNoteText('');
+  };
+
 
   // Group 1 doctors (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)
   const group1Doctors = useMemo(() => {
@@ -545,6 +715,37 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const filteredPatients = useMemo(() => {
     return baseSearchPatients.filter((p) => {
       // Status & Severity filter
+      
+      // Pulse filter check
+      if (pulseFilter !== 'ALL') {
+        const latestVital = p.vitals && p.vitals.length > 0 ? p.vitals[p.vitals.length - 1] : null;
+        if (pulseFilter === 'CRITICAL') {
+          if (p.severity !== 'CRITICAL') return false;
+        } else if (pulseFilter === 'MODERATE') {
+          if (p.severity !== 'MODERATE') return false;
+        } else if (pulseFilter === 'STABLE') {
+          if (p.severity !== 'STABLE') return false;
+        } else if (pulseFilter === 'UNCLASSIFIED') {
+          if (p.severity && p.severity !== 'UNCLASSIFIED') return false;
+        } else if (pulseFilter === 'NEW') {
+          if (!isNewAdmissionFromYesterday1630(p.admissionDate)) return false;
+        } else if (pulseFilter === 'FEVER') {
+          if (!latestVital?.temperature || latestVital.temperature < 38.0) return false;
+        } else if (pulseFilter === 'O2') {
+          const isO2Tag = p.tags?.includes('O2') || p.tags?.includes('RESPIRATORY');
+          const isLowSpO2 = latestVital?.spO2 !== undefined && latestVital.spO2 < 95;
+          if (!isO2Tag && !isLowSpO2) return false;
+        } else if (pulseFilter === 'LONG_STAY') {
+          const days = calculateTreatmentDays(p.admissionDate).days;
+          if (days < 7) return false;
+        } else if (pulseFilter === 'DISCHARGE_TODAY') {
+          if (p.admissionStatus !== 'DISCHARGE_TODAY') return false;
+        } else if (pulseFilter === 'MISSING_DIAG') {
+          const diag = getLatestDiagnosis(p);
+          if (diag.trim() && !/chưa ghi rõ/i.test(diag)) return false;
+        }
+      }
+
       if (statusFilter !== 'ALL') {
         if (statusFilter === 'DISCHARGE_TODAY') {
           if (p.admissionStatus !== 'DISCHARGE_TODAY') return false;
@@ -588,7 +789,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
       return true;
     });
-  }, [baseSearchPatients, statusFilter, doctorFilter, tagFilter, searchTerm, doctorMap]);
+  }, [baseSearchPatients, statusFilter, doctorFilter, tagFilter, pulseFilter, searchTerm, doctorMap]);
 
   // Group patients by Room (Vertical List of Rooms for Selected Group or Search Results)
   const roomGroups = useMemo(() => {
@@ -744,6 +945,27 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const dischargeTomorrowCount = activeGroupPatients.filter((p) => p.admissionStatus === 'DISCHARGE_TOMORROW').length;
   const newCount = activeGroupPatients.filter((p) => isNewAdmissionFromYesterday1630(p.admissionDate)).length;
   const allergyCount = activeGroupPatients.filter((p) => p.tags?.includes('ALLERGY') || isRealAllergy(p.allergies)).length;
+
+  const feverCount = activeGroupPatients.filter((p) => {
+    const v = p.vitals && p.vitals.length > 0 ? p.vitals[p.vitals.length - 1] : null;
+    return (v?.temperature !== undefined && v.temperature >= 38.0);
+  }).length;
+
+  const o2Count = activeGroupPatients.filter((p) => {
+    const v = p.vitals && p.vitals.length > 0 ? p.vitals[p.vitals.length - 1] : null;
+    return p.tags?.includes('O2') || p.tags?.includes('RESPIRATORY') || (v?.spO2 !== undefined && v.spO2 < 95);
+  }).length;
+
+  const longStayCount = activeGroupPatients.filter((p) => {
+    const t = calculateTreatmentDays(p.admissionDate);
+    return t.days >= 7;
+  }).length;
+
+  const missingDiagCount = activeGroupPatients.filter((p) => {
+    const diag = getLatestDiagnosis(p);
+    return !diag.trim() || /chưa ghi rõ/i.test(diag);
+  }).length;
+
 
   // Active doctors currently treating patients in the selected group (sorted alphabetically by Vietnamese given name)
   const activeDoctorsWithCounts = useMemo(() => {
@@ -973,6 +1195,211 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <UserPlus className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">+ Tiếp Nhận BN</span>
             </button>
+          </div>
+        </div>
+
+        
+        {/* THANH NHỊP ĐẬP KHOA LÂM SÀNG (LIVE DEPARTMENT CLINICAL PULSE BAR & 1-TAP FILTERS) */}
+        <div className="pt-2 sm:pt-2.5 border-t border-slate-100">
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#0b4d8c] rounded-xl p-2 sm:p-2.5 text-white shadow-xs">
+            <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <HeartPulse className="w-4 h-4 text-rose-400 animate-pulse shrink-0" />
+                <span className="font-black text-xs uppercase tracking-wider text-slate-100">
+                  Nhịp Đập Khoa Lâm Sàng
+                </span>
+                <span className="text-[10px] text-blue-200 font-medium hidden md:inline">
+                  (Bấm 1-chạm vào thẻ để lọc danh sách)
+                </span>
+              </div>
+              {pulseFilter !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setPulseFilter('ALL')}
+                  className="px-2 py-0.5 rounded-md bg-white/20 hover:bg-white/30 text-white font-bold text-[10.5px] transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                >
+                  <span>✕ Đang lọc: {
+                    pulseFilter === 'CRITICAL' ? '🚨 Ca Nặng' :
+                    pulseFilter === 'MODERATE' ? '⚠️ Ca Vừa' :
+                    pulseFilter === 'STABLE' ? '🟢 Ca Nhẹ' :
+                    pulseFilter === 'UNCLASSIFIED' ? '⚪ Chưa Phân Loại' :
+                    pulseFilter === 'NEW' ? '🆕 Nhập Viện < 24h' :
+                    pulseFilter === 'FEVER' ? '🔥 Sốt Cao' :
+                    pulseFilter === 'O2' ? '🫁 Thở Oxy / Giảm SpO2' :
+                    pulseFilter === 'LONG_STAY' ? '⏱️ Nằm Viện ≥ 7 Ngày' :
+                    pulseFilter === 'DISCHARGE_TODAY' ? '🏥 Ra Viện Hôm Nay' :
+                    '❓ Thiếu Chẩn Đoán'
+                  } (Hủy lọc)</span>
+                </button>
+              )}
+            </div>
+
+            {/* Scrollable / Flex Wrap Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
+              {/* Tổng BN */}
+              <button
+                type="button"
+                onClick={() => handleTogglePulseFilter('ALL')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  pulseFilter === 'ALL'
+                    ? 'bg-white text-slate-900 shadow-xs ring-2 ring-white/50'
+                    : 'bg-white/10 hover:bg-white/20 text-slate-200'
+                }`}
+                title="Tất cả bệnh nhân trong phân khu"
+              >
+                <Users className="w-3.5 h-3.5 text-blue-300" />
+                <span>Tổng: {activeGroupPatients.length}</span>
+              </button>
+
+              {/* Ca Nặng */}
+              <button
+                type="button"
+                onClick={() => handleTogglePulseFilter('CRITICAL')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  pulseFilter === 'CRITICAL'
+                    ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-400'
+                    : 'bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60'
+                }`}
+                title="Bệnh nhân phân loại Nặng"
+              >
+                <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping shrink-0" />
+                <span>🚨 Nặng: {criticalCount}</span>
+              </button>
+
+              {/* Ca Trung Bình */}
+              <button
+                type="button"
+                onClick={() => handleTogglePulseFilter('MODERATE')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  pulseFilter === 'MODERATE'
+                    ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300'
+                    : 'bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border border-amber-800/60'
+                }`}
+                title="Bệnh nhân phân loại Trung bình"
+              >
+                <span>⚠️ Vừa: {moderateCount}</span>
+              </button>
+
+              {/* Ca Nhẹ */}
+              <button
+                type="button"
+                onClick={() => handleTogglePulseFilter('STABLE')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  pulseFilter === 'STABLE'
+                    ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-400'
+                    : 'bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/60'
+                }`}
+                title="Bệnh nhân phân loại Nhẹ / Ổn định"
+              >
+                <span>🟢 Nhẹ: {stableCount}</span>
+              </button>
+
+              {/* Chưa Phân Loại */}
+              {unclassifiedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleTogglePulseFilter('UNCLASSIFIED')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    pulseFilter === 'UNCLASSIFIED'
+                      ? 'bg-slate-200 text-slate-900 font-black shadow-xs ring-2 ring-white/50'
+                      : 'bg-white/10 hover:bg-white/20 text-slate-300 border border-white/20'
+                  }`}
+                  title="Bệnh nhân chưa được phân loại mức độ"
+                >
+                  <span>⚪ Chưa PL: {unclassifiedCount}</span>
+                </button>
+              )}
+
+              {/* Nhập Viện Mới < 24h */}
+              <button
+                type="button"
+                onClick={() => handleTogglePulseFilter('NEW')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  pulseFilter === 'NEW'
+                    ? 'bg-rose-500 text-white font-black shadow-xs ring-2 ring-rose-300'
+                    : 'bg-white/10 hover:bg-white/20 text-rose-200 border border-rose-500/30'
+                }`}
+                title="Bệnh nhân mới nhập viện từ 16h30 hôm qua đến nay"
+              >
+                <span>🆕 Mới &lt;24h: {newCount}</span>
+              </button>
+
+              {/* Sốt cao >= 38°C */}
+              <button
+                type="button"
+                onClick={() => handleTogglePulseFilter('FEVER')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  pulseFilter === 'FEVER'
+                    ? 'bg-orange-500 text-white font-black shadow-xs ring-2 ring-orange-300'
+                    : 'bg-white/10 hover:bg-white/20 text-orange-200 border border-orange-500/30'
+                }`}
+                title="Bệnh nhân có sốt >= 38.0°C"
+              >
+                <span>🔥 Sốt: {feverCount}</span>
+              </button>
+
+              {/* Thở Oxy / SpO2 thấp */}
+              <button
+                type="button"
+                onClick={() => handleTogglePulseFilter('O2')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  pulseFilter === 'O2'
+                    ? 'bg-cyan-600 text-white font-black shadow-xs ring-2 ring-cyan-300'
+                    : 'bg-white/10 hover:bg-white/20 text-cyan-200 border border-cyan-500/30'
+                }`}
+                title="Bệnh nhân thở Oxy hoặc SpO2 < 95%"
+              >
+                <span>🫁 Hô hấp/O2: {o2Count}</span>
+              </button>
+
+              {/* Nằm viện >= 7 ngày */}
+              {longStayCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleTogglePulseFilter('LONG_STAY')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    pulseFilter === 'LONG_STAY'
+                      ? 'bg-violet-600 text-white font-black shadow-xs ring-2 ring-violet-300'
+                      : 'bg-white/10 hover:bg-white/20 text-violet-200 border border-violet-500/30'
+                  }`}
+                  title="Bệnh nhân nằm viện kéo dài >= 7 ngày cần rà soát phác đồ"
+                >
+                  <span>⏱️ ≥7 ngày: {longStayCount}</span>
+                </button>
+              )}
+
+              {/* Dự Ra Viện Hôm Nay */}
+              {dischargeTodayCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleTogglePulseFilter('DISCHARGE_TODAY')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    pulseFilter === 'DISCHARGE_TODAY'
+                      ? 'bg-purple-600 text-white font-black shadow-xs ring-2 ring-purple-300'
+                      : 'bg-white/10 hover:bg-white/20 text-purple-200 border border-purple-500/30'
+                  }`}
+                  title="Bệnh nhân dự kiến ra viện hôm nay"
+                >
+                  <span>🏥 Ra viện: {dischargeTodayCount}</span>
+                </button>
+              )}
+
+              {/* Chưa có chẩn đoán */}
+              {missingDiagCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleTogglePulseFilter('MISSING_DIAG')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    pulseFilter === 'MISSING_DIAG'
+                      ? 'bg-amber-600 text-white font-black shadow-xs ring-2 ring-amber-300'
+                      : 'bg-white/10 hover:bg-white/20 text-amber-200 border border-amber-500/30'
+                  }`}
+                  title="Bệnh nhân chưa có chẩn đoán hoặc chưa ghi rõ"
+                >
+                  <span>❓ Thiếu CĐ: {missingDiagCount}</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1792,6 +2219,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           // Ghi chú của BS & Bàn giao bệnh
                           const doctorNotes = patient.importantNotes?.trim() || '';
                           const handoverNotes = patient.handoverNotes?.trim() || '';
+                          const earlyWarning = getPatientEarlyWarning(patient);
 
                           return (
                             <tr
@@ -2022,6 +2450,19 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               {/* CỘT 3: THAY ĐỔI LÂM SÀNG & SINH HIỆU */}
                               <td className={`${cellPadClass} align-top`}>
                                 <div className="space-y-1">
+                                  
+                                  {/* Cảnh báo sớm y khoa tự động NEWS2 */}
+                                  {earlyWarning.level !== 'NORMAL' && (
+                                    <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-black shadow-2xs ${
+                                      earlyWarning.level === 'PANIC'
+                                        ? 'bg-rose-600 text-white animate-pulse'
+                                        : 'bg-amber-500 text-white'
+                                    }`} title={earlyWarning.reasons.join(' • ')}>
+                                      {earlyWarning.level === 'PANIC' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
+                                      <span>{earlyWarning.badgeText}</span>
+                                    </div>
+                                  )}
+
                                   {/* Diễn tiến lâm sàng & thay đổi mới nhất */}
                                   <div className="p-1.5 px-2 rounded-lg bg-slate-50 border border-slate-200">
                                     <p className="text-[11.5px] text-slate-800 font-medium leading-snug line-clamp-3" title={clinicalNote}>
@@ -2127,6 +2568,63 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     <div className="p-0.5 px-1.5 rounded-md bg-rose-50 border border-rose-300 text-rose-800 text-[10px] font-black flex items-center gap-1">
                                       <span>⚠️ Dị ứng:</span>
                                       <span className="truncate">{patient.allergies}</span>
+                                    </div>
+                                  )}
+                                  {/* Inline Quick Note Editor */}
+                                  {inlineNotePatientId === patient.id ? (
+                                    <div className="p-2 rounded-xl bg-white border-2 border-indigo-500 shadow-md space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                                      <div className="flex items-center justify-between text-[10.5px] font-black text-indigo-900">
+                                        <span className="flex items-center gap-1">
+                                          <Edit3 className="w-3 h-3 text-indigo-600" />
+                                          <span>Ghi Chú Nhanh Ca Trực</span>
+                                        </span>
+                                        <span className="text-[9px] text-slate-400 font-normal">Ctrl+Enter để lưu</span>
+                                      </div>
+                                      <textarea
+                                        rows={2}
+                                        value={inlineNoteText}
+                                        onChange={(e) => setInlineNoteText(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                            handleSaveInlineNote(patient);
+                                          } else if (e.key === 'Escape') {
+                                            handleCancelInlineNote();
+                                          }
+                                        }}
+                                        placeholder="Nhập dặn dò trực đêm, xét nghiệm..."
+                                        className="w-full p-1.5 text-[11px] bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-indigo-500 font-medium text-slate-900"
+                                        autoFocus
+                                      />
+                                      <div className="flex items-center justify-end gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={handleCancelInlineNote}
+                                          className="px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                                        >
+                                          Hủy
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleSaveInlineNote(patient, e)}
+                                          disabled={isSavingInlineNote}
+                                          className="px-2.5 py-0.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black cursor-pointer shadow-2xs flex items-center gap-1"
+                                        >
+                                          <Check className="w-3 h-3" />
+                                          <span>{isSavingInlineNote ? 'Lưu...' : 'Lưu'}</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="pt-0.5 flex items-center justify-start">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleOpenInlineNote(patient, e)}
+                                        className="text-[9.5px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 px-1.5 py-0.5 rounded flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                                        title="Nhập hoặc chỉnh sửa nhanh dặn dò ca trực tại chỗ"
+                                      >
+                                        <Edit3 className="w-2.5 h-2.5 text-indigo-600" />
+                                        <span>{handoverNotes || doctorNotes ? 'Sửa dặn dò' : '+ Dặn dò trực'}</span>
+                                      </button>
                                     </div>
                                   )}
 
@@ -2360,6 +2858,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                       // Bàn giao bệnh (nếu có)
                       const handoverNotes = patient.handoverNotes?.trim() || '';
+                      const earlyWarningCard = getPatientEarlyWarning(patient);
 
                       return (
                         <div
@@ -2397,6 +2896,20 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   )}
                                 </div>
                               </div>
+
+                                {/* Cảnh báo sớm y khoa tự động trong Card View */}
+                                {earlyWarningCard.level !== 'NORMAL' && (
+                                  <div className="mt-1">
+                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black shadow-2xs ${
+                                      earlyWarningCard.level === 'PANIC'
+                                        ? 'bg-rose-600 text-white animate-pulse'
+                                        : 'bg-amber-500 text-white'
+                                    }`} title={earlyWarningCard.reasons.join(' • ')}>
+                                      {earlyWarningCard.level === 'PANIC' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
+                                      <span>{earlyWarningCard.badgeText}</span>
+                                    </span>
+                                  </div>
+                                )}
 
                               {/* Tình trạng bệnh: Bấm để sửa phân loại Nặng, Trung bình, Nhẹ */}
                               <div className="relative flex flex-col items-end gap-1 shrink-0">
