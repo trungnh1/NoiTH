@@ -1547,11 +1547,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
             </span>
             <p className="text-xs text-white font-semibold leading-snug mt-0.5">
               {hoveredPatientData.patient.primaryDiagnosis}
-              {hoveredPatientData.patient.icd10Primary && (
-                <span className="ml-1 text-[10px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-300">
-                  [{hoveredPatientData.patient.icd10Primary}]
-                </span>
-              )}
+              
             </p>
           </div>
 

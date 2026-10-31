@@ -1614,7 +1614,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
         const showEvolution = appSettings?.showClinicalEvolution !== false;
         const showPlan = appSettings?.showTreatmentPlan !== false;
         const showNotes = appSettings?.showHandoverNotes !== false;
-        const showIcd10 = appSettings?.showIcd10Code !== false;
         const showNewBadge = appSettings?.showNewPatientBadge !== false;
 
         return (
@@ -1886,11 +1885,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     <p className="font-bold text-[11.5px] text-slate-900 leading-snug" title={latestDiagnosis}>
                                       {latestDiagnosis}
                                     </p>
-                                    {showIcd10 && patient.icd10Primary && (
-                                      <span className="text-[9.5px] font-mono font-bold text-slate-500 mt-0.5 block">
-                                        ICD-10: {patient.icd10Primary}
-                                      </span>
-                                    )}
+                                    
                                   </div>
 
                                   {/* Sửa phân loại Nặng / TB / Nhẹ 1-chạm & Dự ra viện */}

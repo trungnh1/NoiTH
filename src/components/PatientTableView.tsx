@@ -437,11 +437,7 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                       <p className="font-bold text-slate-900 text-xs line-clamp-2" title={patient.primaryDiagnosis}>
                         {patient.primaryDiagnosis}
                       </p>
-                      {patient.icd10Primary && (
-                        <span className="text-[10px] font-mono font-bold text-slate-500">
-                          ICD-10: {patient.icd10Primary}
-                        </span>
-                      )}
+                      
                       {patient.secondaryDiagnosis && (
                         <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5" title={patient.secondaryDiagnosis}>
                           Kèm: {patient.secondaryDiagnosis}

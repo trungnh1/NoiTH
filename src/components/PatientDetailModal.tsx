@@ -871,11 +871,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                       </span>
                     )}
                   </div>
-                  {patient.icd10Primary && (
-                    <div className="text-[11px] font-mono text-slate-500 mt-1">
-                      Mã ICD: {patient.icd10Primary} {patient.icd10Secondary ? `• ${patient.icd10Secondary}` : ''}
-                    </div>
-                  )}
+                  
 
                   {patient.treatmentPlan && (
                     <div className="mt-2 pt-2 border-t border-slate-200 text-xs text-indigo-900">

@@ -496,9 +496,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                           </td>
                           <td className="p-1.5 border border-slate-300 leading-snug">
                             <div className="font-semibold text-slate-900">{latestDiag}</div>
-                            {patient.icd10Primary && (
-                              <div className="text-[9.5px] font-mono text-slate-500 font-bold">ICD: {patient.icd10Primary}</div>
-                            )}
+                            
                           </td>
                           {includeNotes && (
                             <td className="p-1.5 border border-slate-300 leading-snug">

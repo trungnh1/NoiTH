@@ -402,7 +402,6 @@ export const AppSettingsModal: React.FC<AppSettingsModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
                     { key: 'showVitalSigns', label: 'Sinh hiệu nhanh (HA, Mạch, SpO2, T°)', desc: 'Hiển thị các chỉ số sinh hiệu gần nhất' },
-                    { key: 'showIcd10Code', label: 'Mã chẩn đoán ICD-10', desc: 'Hiển thị mã ICD-10 dưới tên chẩn đoán' },
                     { key: 'showClinicalEvolution', label: 'Diễn tiến lâm sàng mới nhất', desc: 'Hiển thị ghi nhận diễn biến ca trực' },
                     { key: 'showTreatmentPlan', label: 'Hướng xử trí / Y lệnh điều trị', desc: 'Kế hoạch điều trị và thuốc phụ trách' },
                     { key: 'showHandoverNotes', label: 'Ghi chú BS & Bàn giao ca trực', desc: 'Các lưu ý đặc biệt giữa các ca' },
@@ -658,8 +657,7 @@ export const AppSettingsModal: React.FC<AppSettingsModalProps> = ({
             </div>
 
             <p className="text-[11px] leading-snug text-slate-600 dark:text-slate-400">
-              Chẩn đoán: <strong>Viêm phổi kẽ / Tăng huyết áp</strong>
-              {settings.showIcd10Code !== false && <span className="font-mono text-slate-400 ml-1">(ICD: J18.9)</span>}
+              Chẩn đoán BS ghi: <strong>Viêm phổi kẽ / Tăng huyết áp</strong>
               {' • '}
               {settings.showTreatmentPlan !== false && <span>Y lệnh: Kháng sinh IV, thở Oxy 2L/p.</span>}
             </p>
