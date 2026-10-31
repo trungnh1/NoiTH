@@ -35,7 +35,8 @@ import {
   savePendingSatelliteRecords,
   dismissPendingSatelliteRecord,
   deletePendingSatelliteRecord,
-  deleteSatelliteRecord
+  deleteSatelliteRecord,
+  parseAgeNumber
 } from './services/clinicalFirebase';
 
 import { ChangePasswordModal } from './components/ChangePasswordModal';
@@ -56,7 +57,9 @@ import {
   deleteAllPatientsFromCloud,
   testCloudWrite, 
   syncAllPatientsToCloud, 
-  SyncStatus 
+  SyncStatus,
+  syncDismissedSatelliteRecordToCloud,
+  subscribeToDismissedSatelliteRecords
 } from './services/firebaseSync';
 
 export default function App() {
