@@ -28,13 +28,25 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReload = () => {
-    window.location.reload();
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('v', Date.now().toString());
+      window.location.href = url.toString();
+    } catch {
+      window.location.reload();
+    }
   };
 
   private handleResetSession = () => {
     localStorage.removeItem('hvg_authenticated_doctor_v1');
     localStorage.removeItem('hvg_active_doctor_session');
-    window.location.reload();
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('v', Date.now().toString());
+      window.location.href = url.toString();
+    } catch {
+      window.location.reload();
+    }
   };
 
   public render() {

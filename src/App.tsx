@@ -175,7 +175,10 @@ export default function App() {
     );
 
         // 2. Lắng nghe thời gian thực danh sách ca vệ tinh đã bấm Bỏ Qua / Đã Xóa từ Cloud Firestore của Khoa
-    const unsubDismissed = subscribeToDismissedSatelliteRecords((cloudDismissedIds) => {
+    let unsubDismissed: (() => void) | undefined;
+    try {
+      if (typeof subscribeToDismissedSatelliteRecords === 'function') {
+        unsubDismissed = subscribeToDismissedSatelliteRecords((cloudDismissedIds) => {
       if (!cloudDismissedIds || cloudDismissedIds.length === 0) return;
       try {
         const localDeleted: string[] = JSON.parse(localStorage.getItem('DELETED_SATELLITE_IDS') || '[]');
@@ -206,6 +209,10 @@ export default function App() {
         console.warn('Lỗi đồng bộ dismissed satellite từ Cloud:', e);
       }
     });
+      }
+    } catch (e) {
+      console.warn('Lỗi khởi tạo subscribeToDismissedSatelliteRecords:', e);
+    }
 
     // 3. Real-time background subscriber to Satellite Cloud Firestore (iron-foundation-kbcxw)
     const unsubSatellite = subscribeToClinicalRecords((satelliteRecords) => {
@@ -513,7 +520,13 @@ export default function App() {
     setPendingSatelliteRecords(remaining);
 
     // 2. Đồng bộ trạng thái bỏ qua lên Cloud Firestore của Khoa (để máy tính khác cập nhật tức thì)
-    syncDismissedSatelliteRecordToCloud(recordId, targetName).catch(console.warn);
+    try {
+      if (typeof syncDismissedSatelliteRecordToCloud === 'function') {
+        syncDismissedSatelliteRecordToCloud(recordId, targetName).catch(console.warn);
+      }
+    } catch (err) {
+      console.warn('Lỗi syncDismissedSatelliteRecordToCloud:', err);
+    }
 
     // 3. Xóa trực tiếp khỏi Firestore vệ tinh (iron-foundation-kbcxw)
     deleteSatelliteRecord(recordId).catch(console.warn);

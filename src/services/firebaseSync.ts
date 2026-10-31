@@ -697,11 +697,11 @@ export async function syncDismissedSatelliteRecordToCloud(recordId: string, pati
 export function subscribeToDismissedSatelliteRecords(
   onUpdate: (dismissedIds: string[]) => void
 ): () => void {
-  const dbInstance = getFirestoreInstance();
-  if (!dbInstance) return () => {};
-
   try {
-    const colRef = collection(dbInstance, 'department_satellite_dismissed');
+    const db = initializeFirebaseFirestore();
+    if (!db) return () => {};
+
+    const colRef = collection(db, 'department_satellite_dismissed');
     return onSnapshot(colRef, (snapshot) => {
       const ids: string[] = [];
       snapshot.forEach((docSnap) => {
