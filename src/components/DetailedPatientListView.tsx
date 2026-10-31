@@ -459,6 +459,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const [selectedGroup, setSelectedGroup] = useState<'ALL' | 'GROUP_1' | 'GROUP_2' | 'CARDIO'>('ALL');
   const [isPendingSectionExpanded, setIsPendingSectionExpanded] = useState<boolean>(true);
   const [isPendingOnlyView, setIsPendingOnlyView] = useState<boolean>(false);
+  const [confirmDismissRecord, setConfirmDismissRecord] = useState<ClinicalRecord | null>(null);
   const [openSeverityMenuPatientId, setOpenSeverityMenuPatientId] = useState<string | null>(null);
   const [showEmptyRooms, setShowEmptyRooms] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -1566,7 +1567,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onDismissPendingSatelliteRecord(record.id);
+                              setConfirmDismissRecord(record);
                             }}
                             className="px-2 py-1 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
                             title="Bỏ qua / Xóa ca này khỏi danh sách chờ"
@@ -1895,10 +1896,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 <div className="space-y-1.5">
                                   {/* Khối chẩn đoán */}
                                   <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200/80 shadow-2xs">
-                                    <div className="flex items-center gap-1 text-[#0b4d8c] mb-0.5">
-                                      <Activity className="w-3.5 h-3.5 text-[#0b4d8c] shrink-0" />
-                                      <span className="text-[10px] uppercase font-black tracking-wide">Chẩn đoán mới nhất:</span>
-                                    </div>
+                                    
                                     <p className="font-bold text-xs text-slate-900 leading-snug" title={latestDiagnosis}>
                                       {latestDiagnosis}
                                     </p>
@@ -2046,10 +2044,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   {/* Diễn tiến lâm sàng & thay đổi mới nhất */}
                                   <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                                     <div className="flex items-center justify-between gap-1 text-slate-600 mb-1">
-                                      <span className="text-[10px] uppercase font-black tracking-wide flex items-center gap-1 text-[#0b4d8c]">
-                                        <Activity className="w-3 h-3 text-[#0b4d8c] shrink-0" />
-                                        <span>Thay đổi / Diễn tiến mới nhất:</span>
-                                      </span>
+                                      
                                       {latestEvolution && (
                                         <span className="text-[10px] text-slate-400 font-mono">
                                           {latestEvolution.shift ? `${latestEvolution.shift} • ` : ''}{latestEvolution.timestamp ? latestEvolution.timestamp.slice(11, 16) : ''}
@@ -2121,20 +2116,13 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 <div className="space-y-1.5">
                                   {currentPlan ? (
                                     <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/90 shadow-2xs">
-                                      <div className="flex items-center gap-1 text-emerald-800 mb-1">
-                                        <Stethoscope className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                                        <span className="text-[10px] font-black uppercase text-emerald-950">
-                                          Hướng xử trí:
-                                        </span>
-                                      </div>
+                                      
                                       <p className="text-xs text-emerald-950 font-medium leading-relaxed whitespace-pre-line line-clamp-4" title={currentPlan}>
                                         {currentPlan}
                                       </p>
                                     </div>
                                   ) : (
-                                    <div className="p-2.5 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-slate-400 italic text-[11px]">
-                                      Theo dõi & điều trị theo phác đồ
-                                    </div>
+                                    <span className="text-slate-300 font-bold block text-center py-2">-</span>
                                   )}
                                 </div>
                               </td>
@@ -2177,9 +2165,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   )}
 
                                   {!handoverNotes && !doctorNotes && (!patient.allergies || !isRealAllergy(patient.allergies)) && (
-                                    <span className="text-[11px] text-slate-400 italic block py-2">
-                                      Chưa có ghi chú / bàn giao
-                                    </span>
+                                    <span className="text-slate-300 font-bold block text-center py-2">-</span>
                                   )}
                                 </div>
                               </td>
@@ -2759,6 +2745,71 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               </div>
             );
           })}
+        </div>
+      )}
+
+      
+      {/* Modal xác nhận loại bỏ bệnh nhân vệ tinh chờ bổ sung */}
+      {confirmDismissRecord && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200 overflow-hidden p-5 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-2.5 rounded-full bg-rose-100 shrink-0">
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">Xác Nhận Loại Bỏ</h3>
+                <p className="text-xs text-slate-500 font-medium">Bệnh nhân vệ tinh chưa có buồng phòng</p>
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+              <p className="font-semibold text-slate-600">Bạn có chắc chắn muốn bỏ qua bệnh nhân này?</p>
+              <div className="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
+                <p className="font-black text-rose-700 text-sm uppercase">
+                  {confirmDismissRecord.patientName || confirmDismissRecord.fullName}
+                </p>
+                <div className="flex items-center gap-2 text-slate-600 font-bold text-[11px]">
+                  <span>{confirmDismissRecord.patientAge || confirmDismissRecord.age || '?'} tuổi</span>
+                  <span>•</span>
+                  <span>{confirmDismissRecord.patientGender || confirmDismissRecord.gender || 'Chưa rõ'}</span>
+                  <span>•</span>
+                  <span className="text-amber-700">Chưa xếp phòng</span>
+                </div>
+                {confirmDismissRecord.diagnosis && (
+                  <p className="text-slate-600 text-[11px] line-clamp-2">
+                    <strong>CĐ:</strong> {confirmDismissRecord.diagnosis}
+                  </p>
+                )}
+              </div>
+              <p className="text-[11px] text-rose-600 font-bold">
+                ⚠️ Hồ sơ này sẽ bị loại bỏ và không còn hiển thị trong danh sách Chờ Bổ Sung nữa.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setConfirmDismissRecord(null)}
+                className="px-4 py-2 font-bold text-slate-600 hover:bg-slate-100 rounded-xl text-xs cursor-pointer transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const id = confirmDismissRecord.id;
+                  setConfirmDismissRecord(null);
+                  if (onDismissPendingSatelliteRecord) {
+                    onDismissPendingSatelliteRecord(id);
+                  }
+                }}
+                className="px-4 py-2 font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md text-xs cursor-pointer transition-colors"
+              >
+                Xác Nhận Loại Bỏ
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

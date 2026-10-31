@@ -429,14 +429,25 @@ export function savePendingSatelliteRecords(records: ClinicalRecord[]): void {
 export function dismissPendingSatelliteRecord(recordId: string): ClinicalRecord[] {
   try {
     const current = loadPendingSatelliteRecords();
-    const updated = current.filter(r => r.id !== recordId);
+    const target = current.find(r => r.id === recordId);
+    const targetName = (target?.patientName || target?.fullName || '').trim().toLowerCase();
+
+    const updated = current.filter(r => {
+      if (r.id === recordId) return false;
+      const rName = (r.patientName || r.fullName || '').trim().toLowerCase();
+      if (targetName && rName === targetName) return false;
+      return true;
+    });
     savePendingSatelliteRecords(updated);
 
     const processedIds: string[] = JSON.parse(localStorage.getItem('PROCESSED_SATELLITE_IDS') || '[]');
     if (!processedIds.includes(recordId)) {
       processedIds.push(recordId);
-      localStorage.setItem('PROCESSED_SATELLITE_IDS', JSON.stringify(processedIds));
     }
+    if (targetName && !processedIds.includes(targetName)) {
+      processedIds.push(targetName);
+    }
+    localStorage.setItem('PROCESSED_SATELLITE_IDS', JSON.stringify(processedIds));
     return updated;
   } catch (e) {
     console.warn(e);
@@ -449,11 +460,38 @@ export function dismissPendingSatelliteRecord(recordId: string): ClinicalRecord[
  */
 export function deletePendingSatelliteRecord(recordId: string): ClinicalRecord[] {
   try {
+    const current = loadPendingSatelliteRecords();
+    const target = current.find(r => r.id === recordId);
+    const targetName = (target?.patientName || target?.fullName || '').trim().toLowerCase();
+
     const deletedIds: string[] = JSON.parse(localStorage.getItem('DELETED_SATELLITE_IDS') || '[]');
     if (!deletedIds.includes(recordId)) {
       deletedIds.push(recordId);
-      localStorage.setItem('DELETED_SATELLITE_IDS', JSON.stringify(deletedIds));
     }
+    if (targetName && !deletedIds.includes(targetName)) {
+      deletedIds.push(targetName);
+    }
+    localStorage.setItem('DELETED_SATELLITE_IDS', JSON.stringify(deletedIds));
+
+    // Xóa khỏi CACHED_SATELLITE_RECORDS nếu có
+    try {
+      const cached = localStorage.getItem('CACHED_SATELLITE_RECORDS');
+      if (cached) {
+        const parsed: ClinicalRecord[] = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(r => {
+            if (r.id === recordId) return false;
+            const rName = (r.patientName || r.fullName || '').trim().toLowerCase();
+            if (targetName && rName === targetName) return false;
+            return true;
+          });
+          localStorage.setItem('CACHED_SATELLITE_RECORDS', JSON.stringify(filtered));
+        }
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+
     return dismissPendingSatelliteRecord(recordId);
   } catch (e) {
     console.warn(e);

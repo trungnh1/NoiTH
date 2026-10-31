@@ -33,7 +33,8 @@ import {
   loadPendingSatelliteRecords,
   savePendingSatelliteRecords,
   dismissPendingSatelliteRecord,
-  deletePendingSatelliteRecord
+  deletePendingSatelliteRecord,
+  deleteSatelliteRecord
 } from './services/clinicalFirebase';
 
 import { ChangePasswordModal } from './components/ChangePasswordModal';
@@ -200,7 +201,12 @@ export default function App() {
 
       satelliteRecords.forEach((rec) => {
         const recordId = rec.id;
-        if (deletedIds.includes(recordId) || processedIds.includes(recordId)) {
+        const nameKey = (rec.patientName || rec.fullName || '').trim().toLowerCase();
+        if (
+          deletedIds.includes(recordId) ||
+          processedIds.includes(recordId) ||
+          (nameKey && (deletedIds.includes(nameKey) || processedIds.includes(nameKey)))
+        ) {
           return;
         }
 
@@ -249,10 +255,8 @@ export default function App() {
         }
       });
 
-      if (pendingQueue.length > 0) {
-        setPendingSatelliteRecords(pendingQueue);
-        savePendingSatelliteRecords(pendingQueue);
-      }
+      setPendingSatelliteRecords(pendingQueue);
+      savePendingSatelliteRecords(pendingQueue);
     });
 
     return () => {
@@ -415,6 +419,7 @@ export default function App() {
 
   // Xóa vĩnh viễn ca vệ tinh khỏi danh sách chờ bổ sung
   const handleDeletePendingSatellite = (recordId: string) => {
+    deleteSatelliteRecord(recordId).catch(console.warn);
     const remaining = deletePendingSatelliteRecord(recordId);
     setPendingSatelliteRecords(remaining);
   };
