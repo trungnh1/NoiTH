@@ -21,7 +21,7 @@ import { PatientPrintModal } from './components/PatientPrintModal';
 import { DoctorLoginScreen } from './components/DoctorLoginScreen';
 import { SatelliteClinicalSyncModal } from './components/SatelliteClinicalSyncModal';
 import { getSavedDoctorSession, saveDoctorSession, clearDoctorSession } from './utils/auth';
-import { loadAppSettings, saveAppSettings, getFontSizeScale, AppSettings } from './utils/settings';
+import { loadAppSettings, saveAppSettings, getFontSizeScale, AppSettings, FONT_FAMILY_MAP } from './utils/settings';
 import { AppSettingsModal } from './components/AppSettingsModal';
 import { ExcelDataSyncModal } from './components/ExcelDataSyncModal';
 import { isRealAllergy } from './utils/clinicalTextParser';
@@ -277,6 +277,15 @@ export default function App() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isAutoSyncing, syncStatus.errorMessage]);
+  // Periodic Auto-Refresh for Satellite Records if configured in Settings
+  useEffect(() => {
+    if (!appSettings.autoRefreshInterval || appSettings.autoRefreshInterval <= 0) return;
+    const timer = setInterval(() => {
+      setPendingSatelliteRecords(loadPendingSatelliteRecords());
+    }, appSettings.autoRefreshInterval * 1000);
+    return () => clearInterval(timer);
+  }, [appSettings.autoRefreshInterval]);
+
 
   // Sync patients changes to storage and cloud automatically in real-time
   const updatePatientsList = async (newPatients: Patient[]) => {
@@ -694,11 +703,15 @@ export default function App() {
 
   const fontSizeScaleClass = getFontSizeScale(appSettings.fontSize);
   const isDark = appSettings.themeMode === 'dark';
+  const isEyeCare = appSettings.themeMode === 'eye-care';
 
   return (
-    <div className={`min-h-screen ${fontSizeScaleClass} ${
-      isDark ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-100/70 text-slate-900'
-    } flex flex-col font-sans selection:bg-rose-500 selection:text-white transition-colors duration-200`}>
+    <div 
+      className={`min-h-screen ${fontSizeScaleClass} ${
+        isDark ? 'bg-slate-950 text-slate-100 dark' : isEyeCare ? 'bg-[#fbf8f1] text-[#2c2825]' : 'bg-slate-100/70 text-slate-900'
+      } flex flex-col selection:bg-rose-500 selection:text-white transition-colors duration-200`}
+      style={{ fontFamily: FONT_FAMILY_MAP[appSettings.fontFamily || 'plus-jakarta'] }}
+    >
       {/* Streamlined Header */}
       <Header
         patients={patients}
@@ -796,6 +809,7 @@ export default function App() {
             onDischargePatient={handleDischargePatient}
             onDeletePatient={handleDeletePatient}
             currentUser={authenticatedDoctor}
+            appSettings={appSettings}
             onDeleteAllPatients={handleDeleteAllPatients}
             onOpenPrintModal={() => setIsPrintModalOpen(true)}
             onAddPatient={handleAddPatient}
@@ -1015,6 +1029,7 @@ export default function App() {
           patients={patients}
           doctors={doctors}
           rooms={rooms}
+          settings={appSettings}
           onClose={() => setIsPrintModalOpen(false)}
         />
       )}

@@ -1,13 +1,54 @@
 export interface AppSettings {
-  fontSize: 'small' | 'normal' | 'large' | 'xlarge';
-  themeMode: 'light' | 'dark';
-  colorTheme: 'rose' | 'indigo' | 'emerald' | 'slate';
+  // Typography
+  fontSize: 'compact' | 'small' | 'normal' | 'large' | 'xlarge';
+  fontFamily: 'plus-jakarta' | 'inter' | 'roboto' | 'mono' | 'serif';
+  
+  // Theme & Appearance
+  themeMode: 'light' | 'dark' | 'eye-care';
+  colorTheme: 'blue' | 'rose' | 'emerald' | 'indigo' | 'slate';
+  
+  // Density & Clinical Layout
+  tableDensity: 'compact' | 'normal' | 'spacious';
+  showVitalSigns: boolean;
+  showClinicalEvolution: boolean;
+  showTreatmentPlan: boolean;
+  showHandoverNotes: boolean;
+  showIcd10Code: boolean;
+  showNewPatientBadge: boolean;
+  showAllergyHighlight: boolean;
+  
+  // System & Printing
+  enableAlertSound: boolean;
+  autoRefreshInterval: number; // in seconds (0 = off, 60, 120, 300)
+  defaultPrintOrientation: 'portrait' | 'landscape';
+  defaultPrintLayout: 'table' | 'cards';
 }
+
+export const FONT_FAMILY_MAP: Record<AppSettings['fontFamily'], string> = {
+  'plus-jakarta': "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+  'inter': "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif",
+  'roboto': "'Roboto', 'Segoe UI', Arial, sans-serif",
+  'mono': "'JetBrains Mono', 'Courier New', monospace",
+  'serif': "Georgia, Cambria, 'Times New Roman', serif",
+};
 
 export const DEFAULT_SETTINGS: AppSettings = {
   fontSize: 'normal',
+  fontFamily: 'plus-jakarta',
   themeMode: 'light',
-  colorTheme: 'rose',
+  colorTheme: 'blue',
+  tableDensity: 'compact',
+  showVitalSigns: true,
+  showClinicalEvolution: true,
+  showTreatmentPlan: true,
+  showHandoverNotes: true,
+  showIcd10Code: true,
+  showNewPatientBadge: true,
+  showAllergyHighlight: true,
+  enableAlertSound: true,
+  autoRefreshInterval: 0,
+  defaultPrintOrientation: 'landscape',
+  defaultPrintLayout: 'table',
 };
 
 const SETTINGS_KEY = 'BV_HUNG_VUONG_APP_SETTINGS';
@@ -33,18 +74,20 @@ export function saveAppSettings(settings: AppSettings): void {
 }
 
 /**
- * Get CSS root font size or scale class
+ * Get CSS root font size scale class
  */
 export function getFontSizeScale(fontSize: AppSettings['fontSize']): string {
   switch (fontSize) {
+    case 'compact':
+      return 'text-[92%]';
     case 'small':
-      return 'text-[100%]';
+      return 'text-[96%]';
     case 'large':
-      return 'text-[125%]';
+      return 'text-[116%]';
     case 'xlarge':
-      return 'text-[138%]';
+      return 'text-[128%]';
     case 'normal':
     default:
-      return 'text-[112%]';
+      return 'text-[104%]';
   }
 }

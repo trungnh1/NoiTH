@@ -43,6 +43,7 @@ import {
 } from '../services/clinicalFirebase';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { parseExcelAdmissionDate } from '../utils/excelParser';
+import { AppSettings } from '../utils/settings';
 import { isRealAllergy } from '../utils/clinicalTextParser';
 import { 
   normalizeSearchText, 
@@ -121,6 +122,7 @@ interface DetailedPatientListViewProps {
   rooms?: DepartmentRoom[];
   roomDoctorAssignments?: Record<string, string>;
   currentUser?: Doctor | null;
+  appSettings?: AppSettings;
   onAssignRoomDoctor?: (roomNumber: string, doctorId: string) => void;
   onUpdatePatient?: (patient: Patient) => void;
   onOpenNewPatient: () => void;
@@ -409,6 +411,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   rooms = [],
   roomDoctorAssignments = {},
   currentUser,
+  appSettings,
   onAssignRoomDoctor,
   onUpdatePatient,
   onOpenNewPatient,
@@ -962,37 +965,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               )}
             </div>
 
-              {/* View Mode Switcher: Thẻ vs Hàng Ngang */}
-              <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs shrink-0 mr-1">
-                <button
-                  type="button"
-                  onClick={() => handleSetLayoutMode('cards')}
-                  className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                    layoutMode === 'cards'
-                      ? 'bg-[#0b4d8c] text-white font-black shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                  title="Hiển thị theo dạng thẻ buồng phòng"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Dạng Thẻ</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetLayoutMode('rows')}
-                  className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                    layoutMode === 'rows'
-                      ? 'bg-[#0b4d8c] text-white font-black shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                  title="Hiển thị theo dạng hàng ngang (Bảng danh sách theo buồng phòng)"
-                >
-                  <TableProperties className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Dạng Hàng Ngang</span>
-                </button>
-              </div>
-
-              <button
+<button
                 type="button"
                 onClick={onOpenNewPatient}
               className="flex-1 sm:flex-initial px-2.5 sm:px-3.5 py-1.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white font-black text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-98"
@@ -1632,7 +1605,19 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
             )}
           </div>
         </div>
-      ) : layoutMode === 'rows' ? (
+      ) : layoutMode === 'rows' ? (() => {
+        const isCompactDensity = (appSettings?.tableDensity || 'compact') === 'compact';
+        const isSpaciousDensity = appSettings?.tableDensity === 'spacious';
+        const cellPadClass = isCompactDensity ? 'py-1 px-1.5' : isSpaciousDensity ? 'py-2.5 px-3' : 'py-1.5 px-2';
+        const boxPadClass = isCompactDensity ? 'p-1.5 px-2 rounded-lg' : isSpaciousDensity ? 'p-2.5 rounded-xl' : 'p-2 rounded-lg';
+        const showVitals = appSettings?.showVitalSigns !== false;
+        const showEvolution = appSettings?.showClinicalEvolution !== false;
+        const showPlan = appSettings?.showTreatmentPlan !== false;
+        const showNotes = appSettings?.showHandoverNotes !== false;
+        const showIcd10 = appSettings?.showIcd10Code !== false;
+        const showNewBadge = appSettings?.showNewPatientBadge !== false;
+
+        return (
         /* ==================================================================== */
         /* CHẾ ĐỘ VIEW HÀNG NGANG TỔNG THỂ:                                     */
         /* 1 Header ở trên cùng là đủ, không lặp lại:                           */
@@ -1822,7 +1807,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               }`}
                             >
                               {/* CỘT 1: BỆNH NHÂN (Tên, Tuổi, Ngày NV, Số Ngày ĐT) */}
-                              <td className="py-1.5 px-2 align-top">
+                              <td className={`${cellPadClass} align-top`}>
                                 <div className="space-y-1">
                                   {/* Họ và tên BN */}
                                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -1836,7 +1821,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     >
                                       {formatPatientDisplayName(patient.fullName)}
                                     </h4>
-                                    {isNewPatient && (
+                                    {showNewBadge && isNewPatient && (
                                       <span className="px-1 py-0.2 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-rose-600 text-white animate-pulse shrink-0">
                                         NEW
                                       </span>
@@ -1892,7 +1877,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </td>
 
                               {/* CỘT 2: CHẨN ĐOÁN MỚI NHẤT */}
-                              <td className="py-1.5 px-2 align-top">
+                              <td className={`${cellPadClass} align-top`}>
                                 <div className="space-y-1">
                                   {/* Khối chẩn đoán */}
                                   <div className="p-1.5 px-2 rounded-lg bg-blue-50/70 border border-blue-200/80 shadow-2xs">
@@ -1900,7 +1885,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     <p className="font-bold text-[11.5px] text-slate-900 leading-snug" title={latestDiagnosis}>
                                       {latestDiagnosis}
                                     </p>
-                                    {patient.icd10Primary && (
+                                    {showIcd10 && patient.icd10Primary && (
                                       <span className="text-[9.5px] font-mono font-bold text-slate-500 mt-0.5 block">
                                         ICD-10: {patient.icd10Primary}
                                       </span>
@@ -2039,7 +2024,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </td>
 
                               {/* CỘT 3: THAY ĐỔI LÂM SÀNG & SINH HIỆU */}
-                              <td className="py-1.5 px-2 align-top">
+                              <td className={`${cellPadClass} align-top`}>
                                 <div className="space-y-1">
                                   {/* Diễn tiến lâm sàng & thay đổi mới nhất */}
                                   <div className="p-1.5 px-2 rounded-lg bg-slate-50 border border-slate-200">
@@ -2057,7 +2042,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   </div>
 
                                   {/* Sinh hiệu gần nhất */}
-                                  {latestVital && (
+                                  {showVitals && latestVital && (
                                     <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
                                       {latestVital.bpSystolic && latestVital.bpDiastolic ? (
                                         <span className={`px-1 py-0.2 rounded border ${
@@ -2112,7 +2097,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </td>
 
                               {/* CỘT 4: HƯỚNG XỬ TRÍ */}
-                              <td className="py-1.5 px-2 align-top">
+                              <td className={`${cellPadClass} align-top`}>
                                 <div className="space-y-1">
                                   {currentPlan ? (
                                     <div className="p-1.5 px-2 rounded-lg bg-emerald-50/70 border border-emerald-200/90 shadow-2xs">
@@ -2128,7 +2113,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </td>
 
                               {/* CỘT 5: GHI CHÚ & BÀN GIAO BỆNH */}
-                              <td className="py-1.5 px-2 align-top">
+                              <td className={`${cellPadClass} align-top`}>
                                 <div className="space-y-1">
                                   {/* Bàn giao ca trực */}
                                   {handoverNotes ? (
@@ -2171,7 +2156,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </td>
 
                               {/* THAO TÁC */}
-                              <td className="py-1.5 px-2 align-top text-right">
+                              <td className={`${cellPadClass} align-top text-right`}>
                                 <div className="flex flex-col items-end gap-1 shrink-0">
                                   <button
                                     type="button"
@@ -2240,7 +2225,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
             </table>
           </div>
         </div>
-      ) : (
+      )})() : (
 
         <div className="space-y-6">
           {roomGroups.map((group) => {

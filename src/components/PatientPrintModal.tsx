@@ -13,11 +13,13 @@ import {
   formatAdmissionDateShort,
   calculateTreatmentDays
 } from './DetailedPatientListView';
+import { AppSettings } from '../utils/settings';
 
 interface PatientPrintModalProps {
   patients: Patient[];
   doctors: Doctor[];
   rooms?: DepartmentRoom[];
+  settings?: AppSettings;
   onClose: () => void;
 }
 
@@ -25,6 +27,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
   patients,
   doctors,
   rooms = [],
+  settings,
   onClose,
 }) => {
   const [filterMode, setFilterMode] = useState<'ALL' | 'BY_ROOM' | 'BY_DOCTOR'>('ALL');
@@ -33,9 +36,13 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
   const [includeNotes, setIncludeNotes] = useState<boolean>(true);
   
   // Tùy chọn hướng in: Chiều Dọc (Portrait) hoặc Chiều Ngang (Landscape)
-  const [printOrientation, setPrintOrientation] = useState<'portrait' | 'landscape'>('landscape');
+  const [printOrientation, setPrintOrientation] = useState<'portrait' | 'landscape'>(
+    settings?.defaultPrintOrientation || 'landscape'
+  );
   // Tùy chọn định dạng: Dạng Bảng hàng ngang hoặc Dạng Thẻ
-  const [printLayout, setPrintLayout] = useState<'table' | 'cards'>('table');
+  const [printLayout, setPrintLayout] = useState<'table' | 'cards'>(
+    settings?.defaultPrintLayout || 'table'
+  );
 
   // Group 1 doctors (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)
   const group1Doctors = useMemo(() => {
