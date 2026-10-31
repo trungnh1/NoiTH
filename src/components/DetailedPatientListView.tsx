@@ -643,6 +643,41 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     setInlineNoteText('');
   };
 
+  // Lọc bảo vệ kép: Không bao giờ hiển thị ca vệ tinh nếu bệnh nhân ĐÃ CÓ trong danh sách bệnh của khoa (như Siu Hoách, Trần Đà)
+  const activePendingSatelliteRecords = useMemo(() => {
+    if (!pendingSatelliteRecords || pendingSatelliteRecords.length === 0) return [];
+    const activeInpatients = patients.filter((p) => p.status === 'ACTIVE');
+
+    return pendingSatelliteRecords.filter((rec) => {
+      const recNameRaw = (rec.patientName || rec.fullName || '').trim();
+      const normRecName = normalizeSearchText(recNameRaw);
+      if (!normRecName) return false;
+
+      const recAge = parseAgeNumber(rec.patientAge || rec.age);
+
+      const isAlreadyInDept = activeInpatients.some((p) => {
+        const normPName = normalizeSearchText(p.fullName);
+        if (!normPName) return false;
+
+        // Khớp tuyệt đối theo họ tên (bỏ dấu)
+        if (normPName === normRecName) return true;
+
+        // Khớp ID / mã bệnh án
+        if (p.id === rec.id || (p.patientCode && p.patientCode === rec.id)) return true;
+
+        // Khớp họ tên gần đúng và tuổi tương đồng
+        if (normRecName.length >= 5 && (normPName.includes(normRecName) || normRecName.includes(normPName))) {
+          if (!recAge || !p.age || Math.abs(recAge - p.age) <= 3) return true;
+        }
+
+        return false;
+      });
+
+      return !isAlreadyInDept;
+    });
+  }, [pendingSatelliteRecords, patients]);
+
+
 
   // Group 1 doctors (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)
   const group1Doctors = useMemo(() => {
@@ -1427,7 +1462,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               </button>
 
               {/* Nút lọc Bệnh nhân vệ tinh Chờ bổ sung */}
-              {((pendingSatelliteCount !== undefined && pendingSatelliteCount > 0) || pendingSatelliteRecords.length > 0) && (
+              {activePendingSatelliteRecords.length > 0 && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1444,7 +1479,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                   title="Xem danh sách bệnh nhân chuyển từ vệ tinh đang chờ bổ sung thông tin"
                 >
                   <Clock className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Chờ bổ sung ({pendingSatelliteCount || pendingSatelliteRecords.length})</span>
+                  <span>Chờ bổ sung ({activePendingSatelliteRecords.length})</span>
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                 </button>
               )}
@@ -1647,8 +1682,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           { id: 'UNCLASSIFIED', type: 'status', label: '⚪ Chưa Phân Loại', count: unclassifiedCount, color: 'text-slate-600 font-semibold' },
                           { id: 'NEW', type: 'tag', label: '✨ Bệnh Nhân Mới (24h)', count: newCount, color: 'text-rose-600 font-bold' },
                           { id: 'ALLERGY', type: 'tag', label: '⚠️ Bệnh Nhân Dị Ứng', count: allergyCount, color: 'text-amber-800 font-bold' },
-                          ...(pendingSatelliteRecords.length > 0 ? [
-                            { id: 'PENDING_SATELLITE', type: 'pending_satellite', label: '📋 BN Chờ Bổ Sung (Vệ Tinh)', count: pendingSatelliteRecords.length, color: 'text-amber-900 font-black bg-amber-50' }
+                          ...(activePendingSatelliteRecords.length > 0 ? [
+                            { id: 'PENDING_SATELLITE', type: 'pending_satellite', label: '📋 BN Chờ Bổ Sung (Vệ Tinh)', count: activePendingSatelliteRecords.length, color: 'text-amber-900 font-black bg-amber-50' }
                           ] : []),
                         ].map((f) => {
                           const isSelected = f.type === 'status' ? statusFilter === f.id && tagFilter === 'ALL' : tagFilter === f.id;
@@ -1794,7 +1829,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
       )}
 
       {/* BỆNH NHÂN VỆ TINH CHỜ BỔ SUNG THÔNG TIN */}
-      {pendingSatelliteRecords && pendingSatelliteRecords.length > 0 && (
+      {activePendingSatelliteRecords.length > 0 && (
         <div className={`bg-gradient-to-r from-amber-50/90 via-amber-100/50 to-orange-50/80 rounded-2xl border ${
           isPendingOnlyView ? 'border-amber-400 ring-2 ring-amber-300 shadow-md' : 'border-amber-300 shadow-xs'
         } overflow-hidden transition-all mb-4`}>
@@ -1810,7 +1845,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     Bệnh Nhân Vệ Tinh Chờ Bổ Sung Thông Tin
                   </h3>
                   <span className="px-2 py-0.2 rounded-full bg-amber-500 text-white text-[11px] font-black shadow-2xs animate-pulse">
-                    {pendingSatelliteRecords.length} ca
+                    {activePendingSatelliteRecords.length} ca
                   </span>
                   {isPendingOnlyView && (
                     <span className="px-2 py-0.2 rounded-md bg-amber-200 text-amber-900 text-[10.5px] font-bold">
@@ -1877,7 +1912,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
           {isPendingSectionExpanded && (
             <div className="p-3 sm:p-4 space-y-2.5">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {pendingSatelliteRecords.map((record) => {
+                {activePendingSatelliteRecords.map((record) => {
                   const comp = checkSatelliteRecordCompleteness(record);
                   const name = record.patientName || record.fullName || 'Bệnh nhân vệ tinh (Chưa có tên)';
                   const parsedAgeNum = parseAgeNumber(record.patientAge || record.age);
@@ -2004,7 +2039,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
       {/* Main Vertical List of Rooms */}
       {isPendingOnlyView ? (
         <div className="bg-amber-50/70 rounded-2xl border border-dashed border-amber-300 p-8 text-center text-amber-900 space-y-2 mb-6">
-          <p className="text-sm font-bold">Đang hiển thị riêng danh sách Bệnh nhân Vệ tinh Chờ Bổ Sung ({pendingSatelliteRecords.length} ca).</p>
+          <p className="text-sm font-bold">Đang hiển thị riêng danh sách Bệnh nhân Vệ tinh Chờ Bổ Sung ({activePendingSatelliteRecords.length} ca).</p>
           <button type="button" onClick={() => setIsPendingOnlyView(false)} className="px-4 py-1.5 bg-[#0b4d8c] hover:bg-[#083a69] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer">
             Quay lại hiển thị toàn bộ buồng bệnh
           </button>

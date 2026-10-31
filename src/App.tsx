@@ -25,6 +25,7 @@ import { loadAppSettings, saveAppSettings, getFontSizeScale, AppSettings, FONT_F
 import { AppSettingsModal } from './components/AppSettingsModal';
 import { ExcelDataSyncModal } from './components/ExcelDataSyncModal';
 import { isRealAllergy } from './utils/clinicalTextParser';
+import { normalizeSearchText } from './utils/searchUtils';
 import { 
   subscribeToClinicalRecords, 
   checkSatelliteRecordCompleteness, 
@@ -170,7 +171,40 @@ export default function App() {
       }
     );
 
-    // 2. Real-time background subscriber to Satellite Cloud Firestore (iron-foundation-kbcxw)
+        // 2. Lắng nghe thời gian thực danh sách ca vệ tinh đã bấm Bỏ Qua / Đã Xóa từ Cloud Firestore của Khoa
+    const unsubDismissed = subscribeToDismissedSatelliteRecords((cloudDismissedIds) => {
+      if (!cloudDismissedIds || cloudDismissedIds.length === 0) return;
+      try {
+        const localDeleted: string[] = JSON.parse(localStorage.getItem('DELETED_SATELLITE_IDS') || '[]');
+        let changed = false;
+        cloudDismissedIds.forEach((id) => {
+          if (!localDeleted.includes(id)) {
+            localDeleted.push(id);
+            changed = true;
+          }
+        });
+        if (changed) {
+          localStorage.setItem('DELETED_SATELLITE_IDS', JSON.stringify(localDeleted));
+        }
+
+        // Lọc ngay khỏi pendingSatelliteRecords trong bộ nhớ
+        setPendingSatelliteRecords((prev) => {
+          return prev.filter((r) => {
+            const rId = r.id;
+            const rName = (r.patientName || r.fullName || '').trim().toLowerCase();
+            const normName = normalizeSearchText(rName);
+            if (cloudDismissedIds.includes(rId) || (rName && cloudDismissedIds.includes(rName)) || (normName && cloudDismissedIds.includes(normName))) {
+              return false;
+            }
+            return true;
+          });
+        });
+      } catch (e) {
+        console.warn('Lỗi đồng bộ dismissed satellite từ Cloud:', e);
+      }
+    });
+
+    // 3. Real-time background subscriber to Satellite Cloud Firestore (iron-foundation-kbcxw)
     const unsubSatellite = subscribeToClinicalRecords((satelliteRecords) => {
       if (!satelliteRecords || satelliteRecords.length === 0) {
         return;
@@ -197,16 +231,55 @@ export default function App() {
         console.warn(e);
       }
 
+      const currentPatientsList = loadPatients();
+      const activeInpatients = currentPatientsList.filter((p) => p.status === 'ACTIVE');
+
       const pendingQueue: ClinicalRecord[] = [];
 
       satelliteRecords.forEach((rec) => {
         const recordId = rec.id;
-        const nameKey = (rec.patientName || rec.fullName || '').trim().toLowerCase();
+        const nameRaw = (rec.patientName || rec.fullName || '').trim();
+        const nameKey = nameRaw.toLowerCase();
+        const normRecName = normalizeSearchText(nameRaw);
+
+        // A. Kiểm tra nếu đã bị bỏ qua hoặc đã xử lý trước đó
         if (
           deletedIds.includes(recordId) ||
           processedIds.includes(recordId) ||
-          (nameKey && (deletedIds.includes(nameKey) || processedIds.includes(nameKey)))
+          (nameKey && (deletedIds.includes(nameKey) || processedIds.includes(nameKey))) ||
+          (normRecName && (deletedIds.includes(normRecName) || processedIds.includes(normRecName)))
         ) {
+          return;
+        }
+
+        // B. KIỂM TRA ĐẶC BIỆT: Bệnh nhân ĐÃ CÓ MẶT trong danh sách bệnh của Khoa (như Siu Hoách, Trần Đà)
+        const recAge = parseAgeNumber(rec.patientAge || rec.age);
+        const alreadyInDeptPatient = activeInpatients.find((p) => {
+          const normPName = normalizeSearchText(p.fullName);
+          if (!normPName || !normRecName) return false;
+
+          // Khớp họ tên tuyệt đối (đã bỏ dấu tiếng Việt)
+          if (normPName === normRecName) return true;
+
+          // Khớp mã bệnh án hoặc ID
+          if (p.id === recordId || (p.patientCode && p.patientCode === recordId)) return true;
+
+          // Khớp họ tên gần đúng (độ dài >= 5 ký tự) và tuổi tương đồng
+          if (normRecName.length >= 5 && (normPName.includes(normRecName) || normRecName.includes(normPName))) {
+            if (!recAge || !p.age || Math.abs(recAge - p.age) <= 3) {
+              return true;
+            }
+          }
+
+          return false;
+        });
+
+        if (alreadyInDeptPatient) {
+          // Bệnh nhân đã được tiếp nhận / nhập viện vào khoa rồi!
+          // Tự động đánh dấu đã xử lý, KHÔNG BAO GIỜ hiển thị trong Chờ bổ sung!
+          if (!processedIds.includes(recordId)) processedIds.push(recordId);
+          if (nameKey && !processedIds.includes(nameKey)) processedIds.push(nameKey);
+          if (normRecName && !processedIds.includes(normRecName)) processedIds.push(normRecName);
           return;
         }
 
@@ -214,10 +287,9 @@ export default function App() {
 
         if (completeness.isComplete) {
           // Tự động nhập viện nếu đầy đủ thông tin (Họ tên, tuổi, số phòng)
-          const name = (rec.patientName || rec.fullName || '').toLowerCase().trim();
+          const name = nameKey;
           const rawRoom = String(rec.patientRoom || rec.roomNumber || '').replace(/\D/g, '');
 
-          const currentPatientsList = loadPatients();
           const alreadyInDept = currentPatientsList.some((p) => {
             const pName = p.fullName.toLowerCase().trim();
             const pRoom = p.roomNumber.replace(/\D/g, '');
@@ -250,10 +322,17 @@ export default function App() {
             });
           }
         } else {
-          // Hồ sơ thiếu thông tin -> Đưa vào hàng đợi 'Chờ bổ sung'
+          // Hồ sơ thiếu thông tin và CHƯA có trong khoa -> Đưa vào hàng đợi 'Chờ bổ sung'
           pendingQueue.push(rec);
         }
       });
+
+      // Lưu lại danh sách đã xử lý
+      try {
+        localStorage.setItem('PROCESSED_SATELLITE_IDS', JSON.stringify(processedIds));
+      } catch (e) {
+        console.warn(e);
+      }
 
       setPendingSatelliteRecords(pendingQueue);
       savePendingSatelliteRecords(pendingQueue);
@@ -262,6 +341,7 @@ export default function App() {
     return () => {
       unsubDept();
       if (typeof unsubSatellite === 'function') unsubSatellite();
+      if (typeof unsubDismissed === 'function') unsubDismissed();
     };
   }, []);
 
@@ -420,17 +500,36 @@ export default function App() {
     setSatelliteImportDraft(mapped);
   };
 
-  // Bỏ qua hoặc đánh dấu đã xử lý ca vệ tinh chờ bổ sung
+    // Bỏ qua hoặc đánh dấu đã xử lý ca vệ tinh chờ bổ sung
   const handleDismissPendingSatellite = (recordId: string) => {
+    const target = pendingSatelliteRecords.find((r) => r.id === recordId);
+    const targetName = (target?.patientName || target?.fullName || '').trim();
+
+    // 1. Cập nhật local state & localStorage ngay lập tức
     const remaining = dismissPendingSatelliteRecord(recordId);
     setPendingSatelliteRecords(remaining);
+
+    // 2. Đồng bộ trạng thái bỏ qua lên Cloud Firestore của Khoa (để máy tính khác cập nhật tức thì)
+    syncDismissedSatelliteRecordToCloud(recordId, targetName).catch(console.warn);
+
+    // 3. Xóa trực tiếp khỏi Firestore vệ tinh (iron-foundation-kbcxw)
+    deleteSatelliteRecord(recordId).catch(console.warn);
   };
 
   // Xóa vĩnh viễn ca vệ tinh khỏi danh sách chờ bổ sung
   const handleDeletePendingSatellite = (recordId: string) => {
-    deleteSatelliteRecord(recordId).catch(console.warn);
+    const target = pendingSatelliteRecords.find((r) => r.id === recordId);
+    const targetName = (target?.patientName || target?.fullName || '').trim();
+
+    // 1. Cập nhật local state & localStorage ngay lập tức
     const remaining = deletePendingSatelliteRecord(recordId);
     setPendingSatelliteRecords(remaining);
+
+    // 2. Đồng bộ trạng thái bỏ qua lên Cloud Firestore của Khoa (để máy tính khác cập nhật tức thì)
+    syncDismissedSatelliteRecordToCloud(recordId, targetName).catch(console.warn);
+
+    // 3. Xóa trực tiếp khỏi Firestore vệ tinh
+    deleteSatelliteRecord(recordId).catch(console.warn);
   };
 
   // Manual push on demand button handler

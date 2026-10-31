@@ -670,3 +670,52 @@ export async function testCloudWrite(): Promise<{ success: boolean; id?: string;
     };
   }
 }
+
+
+/**
+ * Đồng bộ bản ghi vệ tinh đã bỏ qua (Dismissed Satellite Record) lên Cloud Firestore của Khoa
+ * Giúp các máy tính khác trong khoa tự động đồng bộ và không hiển thị lại các ca đã bỏ qua
+ */
+export async function syncDismissedSatelliteRecordToCloud(recordId: string, patientName?: string): Promise<void> {
+  try {
+    await executeFirestoreOp(async (db) => {
+      const docRef = doc(db, 'department_satellite_dismissed', recordId);
+      await setDoc(docRef, {
+        recordId,
+        patientName: patientName || '',
+        dismissedAt: serverTimestamp(),
+      }, { merge: true });
+    });
+  } catch (err) {
+    console.warn('Lỗi đồng bộ bản ghi vệ tinh đã bỏ qua lên Cloud:', err);
+  }
+}
+
+/**
+ * Lắng nghe thời gian thực danh sách các bản ghi vệ tinh đã bị bỏ qua từ Cloud Firestore của Khoa
+ */
+export function subscribeToDismissedSatelliteRecords(
+  onUpdate: (dismissedIds: string[]) => void
+): () => void {
+  const dbInstance = getFirestoreInstance();
+  if (!dbInstance) return () => {};
+
+  try {
+    const colRef = collection(dbInstance, 'department_satellite_dismissed');
+    return onSnapshot(colRef, (snapshot) => {
+      const ids: string[] = [];
+      snapshot.forEach((docSnap) => {
+        ids.push(docSnap.id);
+        const data = docSnap.data();
+        if (data.recordId && !ids.includes(data.recordId)) ids.push(data.recordId);
+        if (data.patientName) ids.push(data.patientName.trim().toLowerCase());
+      });
+      onUpdate(ids);
+    }, (error) => {
+      console.warn('Lỗi lắng nghe department_satellite_dismissed:', error);
+    });
+  } catch (err) {
+    console.warn('Lỗi khởi tạo lắng nghe department_satellite_dismissed:', err);
+    return () => {};
+  }
+}
