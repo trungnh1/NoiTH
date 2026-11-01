@@ -195,10 +195,10 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-extrabold tracking-tight">
-                In Danh Sách Bệnh Nhân Nội Trú
+                In Danh Sách Bệnh Nhân Đi Buồng Phòng
               </h3>
               <p className="text-xs text-slate-400">
-                Tùy chọn in theo Chiều Dọc (Portrait) hoặc Chiều Ngang (Landscape) • Dạng Bảng hoặc Thẻ
+                Bản in phục vụ Bác sĩ cầm đi buồng phòng • Có khoảng trống rộng rãi để viết tay ghi chú trực tiếp
               </p>
             </div>
           </div>
@@ -352,7 +352,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                 </button>
               </div>
 
-              {/* Layout style: Báo cáo giao ban vs Bảng vs Thẻ */}
+              {/* Layout style: Bảng Đi Buồng vs Bảng Tinh Gọn vs Thẻ */}
               <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-300 shadow-2xs">
                 <button
                   type="button"
@@ -362,9 +362,9 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                       ? 'bg-[#0b4d8c] text-white shadow-xs'
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
-                  title="Biên bản giao ban lâm sàng buổi sáng 07h15"
+                  title="Bảng theo dõi đi buồng bệnh phòng có dòng kẻ viết tay rộng rãi"
                 >
-                  <span>📋 Bảng Giao Ban Sáng</span>
+                  <span>📋 Bảng Đi Buồng (Đầy đủ)</span>
                 </button>
 
                 <button
@@ -375,7 +375,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                       ? 'bg-[#0b4d8c] text-white shadow-xs'
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
-                  title="Định dạng Bảng danh sách hàng ngang"
+                  title="Định dạng Bảng danh sách hàng ngang tinh gọn"
                 >
                   <span>📊 Dạng Bảng</span>
                 </button>
@@ -388,7 +388,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                       ? 'bg-[#0b4d8c] text-white shadow-xs'
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
-                  title="Định dạng Thẻ ghi chú"
+                  title="Định dạng Thẻ ghi chú đi buồng"
                 >
                   <span>📇 Dạng Thẻ</span>
                 </button>
@@ -446,7 +446,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
               </div>
               <div className="text-center pt-1">
                 <h2 className="text-base sm:text-lg font-black uppercase tracking-tight text-slate-900 font-sans">
-                  {printLayout === 'briefing' ? 'BIÊN BẢN GIAO BAN LÂM SÀNG & BÀN GIAO CA TRỰC SÁNG' : 'DANH SÁCH BỆNH NHÂN NỘI TRÚ ĐANG ĐIỀU TRỊ'}
+                  {printLayout === 'briefing' ? 'BẢNG THEO DÕI & ĐI BUỒNG BỆNH PHÒNG' : printLayout === 'table' ? 'DANH SÁCH BỆNH NHÂN NỘI TRÚ ĐIỀU TRỊ' : 'THẺ BỆNH NHÂN ĐI BUỒNG PHÒNG'}
                 </h2>
                 <p className="text-xs font-sans text-slate-600 font-medium mt-0.5">
                   {filterMode === 'BY_ROOM' && selectedRoom !== 'ALL'
@@ -477,14 +477,14 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                 <table className="w-full text-left border-collapse border border-slate-700 text-[10.5px] font-sans">
                   <thead>
                     <tr className="bg-slate-800 text-white font-black uppercase tracking-wider text-[10px]">
-                      <th className="p-1.5 border border-slate-600 text-center w-[32px]">STT</th>
-                      <th className="p-1.5 border border-slate-600 text-center w-[52px]">Phòng</th>
-                      <th className="p-1.5 border border-slate-600 min-w-[140px] w-[20%]">Bệnh Nhân (Tuổi/Giới)</th>
-                      <th className="p-1.5 border border-slate-600 text-center min-w-[70px] w-[8%]">Ngày NV/ĐT</th>
-                      <th className="p-1.5 border border-slate-600 min-w-[150px] w-[21%]">Chẩn Đoán & Mức Độ</th>
-                      <th className="p-1.5 border border-slate-600 min-w-[160px] w-[23%]">Diễn Tiến Ca Trực & Sinh Hiệu</th>
-                      <th className="p-1.5 border border-slate-600 min-w-[150px] w-[20%]">Y Lệnh & Bàn Giao Ca Sáng</th>
-                      <th className="p-1.5 border border-slate-600 text-center min-w-[75px] w-[8%]">BS Buồng/Ký</th>
+                      <th className="p-1.5 border border-slate-600 text-center w-[28px]">STT</th>
+                      <th className="p-1.5 border border-slate-600 text-center w-[48px]">Phòng</th>
+                      <th className="p-1.5 border border-slate-600 min-w-[130px] w-[17%]">Bệnh Nhân (Tuổi/Giới)</th>
+                      <th className="p-1.5 border border-slate-600 text-center min-w-[65px] w-[7%]">Ngày NV/ĐT</th>
+                      <th className="p-1.5 border border-slate-600 min-w-[140px] w-[18%]">Chẩn Đoán & Mức Độ</th>
+                      <th className="p-1.5 border border-slate-600 min-w-[140px] w-[18%]">Diễn Tiến Ca Trực & Sinh Hiệu</th>
+                      <th className="p-1.5 border border-slate-600 min-w-[130px] w-[16%]">Y Lệnh & Hướng Xử Trí</th>
+                      <th className="p-1.5 border border-slate-600 min-w-[170px] w-[24%] text-center bg-slate-700">Ghi Chú Đi Buồng (Viết tay)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -564,11 +564,16 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                               {handover || plan || 'Duy trì phác đồ điều trị, theo dõi sinh hiệu theo cữ.'}
                             </div>
                           </td>
-                          <td className="p-1 border border-slate-400 text-center text-[10px]">
-                            <div className="font-bold text-slate-800">
-                              {docName ? formatDoctorShortName(docName) : '-'}
+                          <td className="p-1.5 border border-slate-400 align-top bg-slate-50/40">
+                            <div className="flex items-center justify-between text-[9px] text-slate-600 font-bold mb-1 pb-0.5 border-b border-slate-200">
+                              <span>BS: {docName ? formatDoctorShortName(docName) : '-'}</span>
+                              <span className="text-[8.5px] italic text-slate-400 font-normal">Ghi chú tại giường:</span>
                             </div>
-                            <div className="h-5 border-b border-dotted border-slate-400 mt-1" />
+                            <div className="space-y-3.5 pt-1">
+                              <div className="border-b border-dotted border-slate-400 w-full" />
+                              <div className="border-b border-dotted border-slate-400 w-full" />
+                              <div className="border-b border-dotted border-slate-400 w-full" />
+                            </div>
                           </td>
                         </tr>
                       );
@@ -582,16 +587,16 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                 <table className="w-full text-left border-collapse border border-slate-400 text-[11px] font-sans">
                   <thead>
                     <tr className="bg-slate-100 text-slate-900 font-black uppercase tracking-wider border-b-2 border-slate-400">
-                      <th className="p-1.5 border border-slate-400 text-center w-[36px]">STT</th>
-                      <th className="p-1.5 border border-slate-400 text-center w-[54px]">Phòng</th>
-                      <th className="p-1.5 border border-slate-400 min-w-[150px] w-[20%]">Họ và Tên Bệnh Nhân</th>
-                      <th className="p-1.5 border border-slate-400 text-center min-w-[65px] w-[8%]">Tuổi/Giới</th>
-                      <th className="p-1.5 border border-slate-400 text-center min-w-[75px] w-[9%]">Ngày NV/ĐT</th>
-                      <th className="p-1.5 border border-slate-400 min-w-[170px] w-[23%]">Chẩn Đoán Mới Nhất</th>
+                      <th className="p-1.5 border border-slate-400 text-center w-[32px]">STT</th>
+                      <th className="p-1.5 border border-slate-400 text-center w-[50px]">Phòng</th>
+                      <th className="p-1.5 border border-slate-400 min-w-[130px] w-[17%]">Họ và Tên Bệnh Nhân</th>
+                      <th className="p-1.5 border border-slate-400 text-center min-w-[60px] w-[7%]">Tuổi/Giới</th>
+                      <th className="p-1.5 border border-slate-400 text-center min-w-[70px] w-[8%]">Ngày NV/ĐT</th>
+                      <th className="p-1.5 border border-slate-400 min-w-[150px] w-[20%]">Chẩn Đoán Mới Nhất</th>
                       {includeNotes && (
-                        <th className="p-1.5 border border-slate-400 min-w-[170px] w-[22%]">Diễn Tiến / Hướng Xử Trí</th>
+                        <th className="p-1.5 border border-slate-400 min-w-[150px] w-[20%]">Diễn Tiến / Hướng Xử Trí</th>
                       )}
-                      <th className="p-1.5 border border-slate-400 min-w-[120px] w-[18%]">Ghi Chú / Ký Nhận</th>
+                      <th className="p-1.5 border border-slate-400 min-w-[170px] w-[26%] text-center">Ghi Chú Đi Buồng (Viết tay)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -642,8 +647,15 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                               <div className="text-slate-800 text-[10.5px] line-clamp-3">{notes || '-'}</div>
                             </td>
                           )}
-                          <td className="p-1.5 border border-slate-300">
-                            <div className="min-h-[26px] border-b border-dotted border-slate-400 w-full" />
+                          <td className="p-1.5 border border-slate-300 align-top bg-slate-50/40">
+                            <div className="flex items-center justify-between text-[9px] text-slate-600 font-bold mb-1 pb-0.5 border-b border-slate-200">
+                              <span>BS: {doctorMap.get(patient.attendingDoctorId)?.name ? formatDoctorShortName(doctorMap.get(patient.attendingDoctorId)!.name) : '-'}</span>
+                              <span className="text-[8.5px] italic text-slate-400 font-normal">Ghi chú tại giường:</span>
+                            </div>
+                            <div className="space-y-3.5 pt-1">
+                              <div className="border-b border-dotted border-slate-400 w-full" />
+                              <div className="border-b border-dotted border-slate-400 w-full" />
+                            </div>
                           </td>
                         </tr>
                       );
@@ -706,12 +718,16 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                         </div>
                       )}
 
-                      {/* Line 3: LUÔN CÓ chỗ trống để ghi tay dành cho Bác sĩ / Điều dưỡng */}
-                      <div className="pt-1.5 mt-1 border-t border-dashed border-slate-300 flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">
-                          Ghi chú ghi tay:
-                        </span>
-                        <div className="flex-1 border-b border-dotted border-slate-400 h-4" />
+                      {/* Line 3: Khoảng trống rộng rãi để Bác sĩ ghi tay khi đi buồng */}
+                      <div className="pt-2 mt-1 border-t border-dashed border-slate-300 space-y-2">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase">
+                          <span>Ghi chú đi buồng (Viết tay):</span>
+                          <span className="font-normal italic lowercase text-[9px] text-slate-400">diễn tiến mới, y lệnh bổ sung...</span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="border-b border-dotted border-slate-400 w-full" />
+                          <div className="border-b border-dotted border-slate-400 w-full" />
+                        </div>
                       </div>
                     </div>
                   );
@@ -719,48 +735,11 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
               </div>
             )}
 
-            {/* Chữ ký 4 bên dành cho Bảng Giao Ban Sáng */}
-            {printLayout === 'briefing' && (
-              <div className="mt-6 pt-4 border-t-2 border-slate-700 break-inside-avoid">
-                <div className="text-[11px] font-bold text-slate-700 italic text-right mb-3">
-                  Gia Lai, ngày {new Date().getDate()} tháng {new Date().getMonth() + 1} năm {new Date().getFullYear()}
-                </div>
-                <div className="grid grid-cols-4 gap-4 text-center text-xs font-sans">
-                  <div>
-                    <div className="font-black text-slate-900 uppercase">BS TRỰC CA ĐÊM</div>
-                    <div className="text-[10px] text-slate-500 italic">(Bàn giao tình hình bệnh nhân)</div>
-                    <div className="h-14" />
-                    <div className="text-[11px] font-bold text-slate-700 border-t border-dotted border-slate-400 pt-1">
-                      Ký & ghi rõ họ tên
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-black text-slate-900 uppercase">BS TIẾP NHẬN SÁNG</div>
-                    <div className="text-[10px] text-slate-500 italic">(Tiếp nhận theo dõi buồng)</div>
-                    <div className="h-14" />
-                    <div className="text-[11px] font-bold text-slate-700 border-t border-dotted border-slate-400 pt-1">
-                      Ký & ghi rõ họ tên
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-black text-slate-900 uppercase">ĐIỀU DƯỠNG TRỰC</div>
-                    <div className="text-[10px] text-slate-500 italic">(Bàn giao thuốc & sinh hiệu)</div>
-                    <div className="h-14" />
-                    <div className="text-[11px] font-bold text-slate-700 border-t border-dotted border-slate-400 pt-1">
-                      Ký & ghi rõ họ tên
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-black text-[#0b4d8c] uppercase">TRƯỞNG KHOA / LÃNH ĐẠO</div>
-                    <div className="text-[10px] text-slate-500 italic">(Chỉ đạo giao ban & ký duyệt)</div>
-                    <div className="h-14" />
-                    <div className="text-[11px] font-bold text-slate-700 border-t border-dotted border-slate-400 pt-1">
-                      Ký & ghi rõ họ tên
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Ghi chú chân trang phục vụ đi buồng bệnh phòng */}
+            <div className="mt-4 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[10.5px] text-slate-500 font-medium italic break-inside-avoid">
+              <span>* Bảng in phục vụ Bác sĩ đi buồng &amp; ghi chú lâm sàng trực tiếp tại giường bệnh</span>
+              <span>Bệnh Viện Hùng Vương Gia Lai • Khoa Nội Tổng Hợp</span>
+            </div>
 
           </div>
 
@@ -774,7 +753,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
             </span>
             <span>•</span>
             <span>
-              Định dạng: <b>{printLayout === 'briefing' ? '📋 Bảng Giao Ban Sáng' : printLayout === 'table' ? '📊 Bảng Hàng Ngang' : '📇 Thẻ Ghi Chú'}</b>
+              Định dạng: <b>{printLayout === 'briefing' ? '📋 Bảng Đi Buồng (Đầy đủ)' : printLayout === 'table' ? '📊 Dạng Bảng' : '📇 Thẻ Ghi Chú'}</b>
             </span>
           </div>
           <div className="flex items-center gap-2">

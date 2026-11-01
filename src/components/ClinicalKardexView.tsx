@@ -856,8 +856,14 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                                 📌 {handoverText}
                               </p>
                             ) : (
-                              <span className="text-slate-400 italic text-[10.5px]">Chưa có dặn dò trực</span>
+                              <span className="text-slate-400 italic text-[10.5px] print:hidden">Chưa có dặn dò trực</span>
                             )}
+                            
+                            {/* Khoảng trống có dòng kẻ để Bác sĩ viết tay khi in bản giấy đi buồng */}
+                            <div className="hidden print:block pt-1 space-y-2.5">
+                              <div className="border-b border-dotted border-slate-400 w-full" />
+                              <div className="border-b border-dotted border-slate-400 w-full" />
+                            </div>
                             
                             {/* Nút sửa nhanh dặn dò trực */}
                             {onUpdatePatient && (
