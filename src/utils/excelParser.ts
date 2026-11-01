@@ -1,5 +1,14 @@
 import * as XLSX from 'xlsx';
-import { ClinicalRecord, parseAgeNumber } from '../services/clinicalFirebase';
+import { 
+  ClinicalRecord, 
+  parseAgeNumber,
+  mapClinicalRecordToPatient,
+  cleanSatelliteTreatmentPlan,
+  parseVitalSignsText,
+  extractFullClinicalCourse,
+  stripHtmlTags
+} from '../services/clinicalFirebase';
+import { Patient, Doctor, DepartmentRoom, VitalSign, ClinicalEvolution } from '../types/patient';
 
 export interface ExcelPatientRow {
   id?: string;
@@ -33,6 +42,8 @@ export interface MatchedSatelliteRecord {
   missingFields: string[];
   proposedRoom: string;
   proposedAge: number;
+  confidenceScore?: number; // 0 - 100%
+  matchReason?: string; // e.g., 'Khớp 100% họ tên & tuổi'
 }
 
 /**
@@ -598,60 +609,325 @@ export function parseExcelFile(fileBuffer: ArrayBuffer | Uint8Array): {
 }
 
 /**
- * Match Excel rows with incomplete satellite records
+ * Tính điểm độ tin cậy khi so khớp bệnh nhân từ 2 nguồn dữ liệu khác nhau (0 - 100 điểm)
+ * Đảm bảo: Khớp chính xác hành chính, tránh ghép nhầm người trùng tên khác tuổi
+ */
+export function calculatePatientMatchScore(
+  satRec: { patientName?: string; fullName?: string; patientAge?: any; age?: any; patientGender?: string; gender?: string; patientCode?: string; id?: string; patientRoom?: string; roomNumber?: string },
+  excelRow: { patientName?: string; fullName?: string; patientAge?: any; age?: any; patientGender?: string; gender?: string; patientCode?: string; id?: string; patientRoom?: string; roomNumber?: string }
+): { score: number; reason: string } {
+  const satCode = (satRec.patientCode || satRec.id || '').trim().toLowerCase();
+  const excelCode = (excelRow.patientCode || excelRow.id || '').trim().toLowerCase();
+
+  // 1. Trùng mã bệnh nhân (patientCode / ID) -> Tuyệt đối 100%
+  if (satCode && excelCode && (satCode === excelCode || satCode.endsWith(excelCode) || excelCode.endsWith(satCode))) {
+    return { score: 100, reason: 'Trùng khớp mã bệnh nhân' };
+  }
+
+  const satNameNorm = normalizeVietnameseString(satRec.patientName || satRec.fullName || '');
+  const excelNameNorm = normalizeVietnameseString(excelRow.patientName || excelRow.fullName || '');
+  if (!satNameNorm || !excelNameNorm) return { score: 0, reason: '' };
+
+  const satAge = parseAgeNumber(satRec.patientAge ?? satRec.age);
+  const excelAge = parseAgeNumber(excelRow.patientAge ?? excelRow.age);
+  const satGender = String(satRec.patientGender || satRec.gender || '').toLowerCase();
+  const excelGender = String(excelRow.patientGender || excelRow.gender || '').toLowerCase();
+
+  const isFemaleSat = /nữ|nu|female|f/.test(satGender);
+  const isFemaleExcel = /nữ|nu|female|f/.test(excelGender);
+  const hasGenderSat = satGender.trim().length > 0;
+  const hasGenderExcel = excelGender.trim().length > 0;
+  const genderConflict = hasGenderSat && hasGenderExcel && isFemaleSat !== isFemaleExcel;
+
+  // Nếu sai khác giới tính và độ tuổi lệch nhau -> Không khớp
+  if (genderConflict && satAge && excelAge && Math.abs(satAge - excelAge) > 0) {
+    return { score: 0, reason: 'Khác giới tính' };
+  }
+
+  const ageDiff = (satAge && excelAge) ? Math.abs(satAge - excelAge) : null;
+  // Nếu chênh lệch quá 5 tuổi -> Không khớp (tránh trùng tên khác người)
+  if (ageDiff !== null && ageDiff > 5) {
+    return { score: 0, reason: 'Chênh lệch tuổi quá lớn (> 5 tuổi)' };
+  }
+
+  // A. Khớp chính xác 100% Họ và Tên (đã chuẩn hóa bỏ dấu)
+  if (satNameNorm === excelNameNorm) {
+    if (ageDiff === 0) return { score: 100, reason: 'Khớp 100% họ tên & tuổi' };
+    if (ageDiff !== null && ageDiff <= 2) return { score: 98, reason: `Khớp họ tên (lệch ${ageDiff} tuổi - tuổi mụ)` };
+    return { score: 95, reason: 'Khớp hoàn toàn họ tên' };
+  }
+
+  // B. Khớp tên theo tập hợp từ (Token subset): e.g. "Ksor H' Luek" vs "H' Luek", "Rcom A Nhất" vs "A Nhất"
+  const tokensSat = satNameNorm.split(' ').filter(Boolean);
+  const tokensExcel = excelNameNorm.split(' ').filter(Boolean);
+
+  const shorter = tokensSat.length <= tokensExcel.length ? tokensSat : tokensExcel;
+  const longer = tokensSat.length > tokensExcel.length ? tokensSat : tokensExcel;
+
+  const allShorterInLonger = shorter.length >= 2 && shorter.every(t => longer.includes(t));
+  const lastTokenSame = tokensSat[tokensSat.length - 1] === tokensExcel[tokensExcel.length - 1];
+
+  if (allShorterInLonger && lastTokenSame) {
+    if (ageDiff === 0 || (ageDiff !== null && ageDiff <= 2)) {
+      return { score: 95, reason: 'Khớp tên rút gọn & cùng độ tuổi' };
+    }
+    return { score: 85, reason: 'Khớp tên rút gọn' };
+  }
+
+  // C. Tên bao hàm nhau với độ dài >= 5 ký tự
+  if (satNameNorm.length >= 5 && excelNameNorm.length >= 5) {
+    if (satNameNorm.includes(excelNameNorm) || excelNameNorm.includes(satNameNorm)) {
+      if (ageDiff === 0 || (ageDiff !== null && ageDiff <= 2)) {
+        return { score: 90, reason: 'Họ tên tương đồng & cùng độ tuổi' };
+      }
+    }
+  }
+
+  // D. Khớp theo Số phòng + Tuổi + Giới tính (nếu vệ tinh đã có phòng)
+  const satRoomClean = extractCleanRoomNumber(satRec.patientRoom || satRec.roomNumber);
+  const excelRoomClean = extractCleanRoomNumber(excelRow.patientRoom || excelRow.roomNumber);
+  if (satRoomClean && excelRoomClean && satRoomClean === excelRoomClean && satRoomClean !== '703') {
+    if (ageDiff === 0 && !genderConflict) {
+      return { score: 80, reason: 'Cùng phòng, cùng tuổi & giới tính' };
+    }
+  }
+
+  return { score: 0, reason: '' };
+}
+
+/**
+ * So khớp thông minh danh sách bệnh nhân Excel với danh sách Bệnh án Vệ tinh
  */
 export function matchExcelWithSatelliteRecords(
   excelRows: ExcelPatientRow[],
   satelliteRecords: ClinicalRecord[]
 ): MatchedSatelliteRecord[] {
   const matches: MatchedSatelliteRecord[] = [];
+  const matchedExcelIndices = new Set<number>();
 
   satelliteRecords.forEach((satRec) => {
-    const satNameNorm = normalizeVietnameseString(satRec.patientName || satRec.fullName || '');
-    const satRoomNorm = normalizeVietnameseString(satRec.patientRoom || satRec.roomNumber || '');
-    const satAge = parseAgeNumber(satRec.patientAge || satRec.age);
-
     let bestMatch: ExcelPatientRow | null = null;
-    let matchedField = '';
+    let bestScore = 0;
+    let bestReason = '';
+    let bestIndex = -1;
 
-    for (const excelRow of excelRows) {
-      const excelNameNorm = normalizeVietnameseString(excelRow.patientName);
-      const excelRoomNorm = normalizeVietnameseString(excelRow.patientRoom);
-
-      // 1. Exact or fuzzy name match
-      if (satNameNorm && excelNameNorm && (satNameNorm === excelNameNorm || satNameNorm.includes(excelNameNorm) || excelNameNorm.includes(satNameNorm))) {
+    excelRows.forEach((excelRow, idx) => {
+      const { score, reason } = calculatePatientMatchScore(satRec, excelRow);
+      if (score >= 75 && score > bestScore) {
+        bestScore = score;
+        bestReason = reason;
         bestMatch = excelRow;
-        matchedField = 'Tên bệnh nhân';
-        break;
+        bestIndex = idx;
       }
+    });
 
-      // 2. Room match if name is missing or satellite name matches
-      if (satRoomNorm && excelRoomNorm && satRoomNorm === excelRoomNorm) {
-        bestMatch = excelRow;
-        matchedField = 'Số buồng/phòng';
-        break;
-      }
-    }
-
-    if (bestMatch) {
-      const missingFields: string[] = [];
-      if (!satNameNorm) missingFields.push('Họ tên');
-      if (!satAge) missingFields.push('Tuổi');
-      if (!satRoomNorm || satRoomNorm === 'chua xep phong') missingFields.push('Số buồng/phòng');
-
+    if (bestMatch && bestIndex !== -1) {
+      matchedExcelIndices.add(bestIndex);
+      const satAge = parseAgeNumber(satRec.patientAge || satRec.age);
       const proposedRoom = extractCleanRoomNumber(bestMatch.patientRoom || satRec.patientRoom || satRec.roomNumber);
       const proposedAge = parseAgeNumber(bestMatch.patientAge) || satAge || 60;
+
+      const missingFields: string[] = [];
+      const satName = (satRec.patientName || satRec.fullName || '').trim();
+      if (!satName) missingFields.push('Họ tên');
+      if (!satAge) missingFields.push('Tuổi');
+      const satRoom = (satRec.patientRoom || satRec.roomNumber || '').trim();
+      if (!satRoom || satRoom.toLowerCase().includes('chưa xếp') || !/\d/.test(satRoom)) {
+        missingFields.push('Số buồng/phòng');
+      }
 
       matches.push({
         satelliteRecord: satRec,
         matchedExcelRow: bestMatch,
-        matchedField,
+        matchedField: bestReason,
         missingFields,
         proposedRoom,
         proposedAge,
+        confidenceScore: bestScore,
+        matchReason: bestReason,
       });
     }
   });
 
+  // Sắp xếp các ca có độ tin cậy cao nhất lên đầu
+  matches.sort((a, b) => (b.confidenceScore || 0) - (a.confidenceScore || 0));
   return matches;
+}
+
+/**
+ * Tìm bệnh nhân trong khoa khớp nhất với bản ghi vệ tinh
+ */
+export function findBestPatientMatchForSatelliteRecord(
+  satelliteRecord: ClinicalRecord,
+  patients: Patient[]
+): { patient: Patient; score: number; reason: string } | null {
+  let bestPatient: Patient | null = null;
+  let highestScore = 0;
+  let bestReason = '';
+
+  for (const p of patients) {
+    if (p.status !== 'ACTIVE') continue;
+    const { score, reason } = calculatePatientMatchScore(satelliteRecord, {
+      patientName: p.fullName,
+      patientAge: p.age,
+      patientGender: p.gender,
+      patientCode: p.patientCode || p.id,
+      patientRoom: p.roomNumber,
+      bedNumber: p.bedNumber,
+    });
+
+    if (score >= 80 && score > highestScore) {
+      highestScore = score;
+      bestReason = reason;
+      bestPatient = p;
+    }
+  }
+
+  if (bestPatient) {
+    return { patient: bestPatient, score: highestScore, reason: bestReason };
+  }
+  return null;
+}
+
+/**
+ * Hợp nhất thông tin bệnh nhân từ nhiều nguồn:
+ * - HÀNH CHÍNH (Admin): Lấy từ EXCEL (Chính xác nhất về Pháp lý & Khoa phân buồng)
+ *   -> Họ tên, Tuổi, Giới tính, Buồng phòng, Giường, Ngày NV, Mã BN, BHYT, SĐT, Địa chỉ, SNĐT
+ * - LÂM SÀNG (Clinical): Lấy từ BỆNH ÁN VỆ TINH / HIS (Chính xác & chi tiết chuyên môn bác sĩ)
+ *   -> Chẩn đoán lâm sàng của bác sĩ (Bỏ qua ICD hành chính sơ sài của Excel)
+ *   -> Dấu hiệu sinh tồn (HA, Mạch, SpO2, Nhiệt độ)
+ *   -> Diễn tiến lâm sàng & Khám bệnh
+ *   -> Cận lâm sàng ban đầu (xét nghiệm, X-quang)
+ *   -> Tiền sử bệnh, Dị ứng, Hướng xử trí / Y lệnh
+ *   -> Phân loại mức độ nặng nhẹ (Critical / Moderate / Stable)
+ */
+export function mergeExcelAndSatellitePatient(
+  excelRow: ExcelPatientRow,
+  satelliteRecord: ClinicalRecord,
+  doctors: Doctor[] = [],
+  rooms: DepartmentRoom[] = [],
+  defaultDoctorId?: string
+): Patient {
+  // 1. Chuyển đổi dữ liệu lâm sàng của Vệ tinh (sinh hiệu, diễn tiến, CLS, chẩn đoán bác sĩ)
+  const basePatient = mapClinicalRecordToPatient(satelliteRecord, doctors, rooms, defaultDoctorId);
+
+  // 2. Ghi đè tuyệt đối thông tin HÀNH CHÍNH từ Excel (nguồn chính xác nhất của Khoa)
+  const now = new Date();
+  const defaultDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  const finalName = (excelRow.patientName || basePatient.fullName || 'Bệnh Nhân').trim();
+  const finalAge = parseAgeNumber(excelRow.patientAge) || basePatient.age || 60;
+  const finalGender: 'Nam' | 'Nữ' = excelRow.patientGender?.toLowerCase().includes('nữ') ? 'Nữ' : 'Nam';
+  const finalRoom = extractCleanRoomNumber(excelRow.patientRoom || basePatient.roomNumber || '703');
+  const finalBed = excelRow.bedNumber || basePatient.bedNumber || 'Giường 01';
+  const finalAdmissionDate = excelRow.admissionDate && excelRow.admissionDate.trim() 
+    ? excelRow.admissionDate 
+    : (basePatient.admissionDate || defaultDateStr);
+
+  return {
+    ...basePatient,
+    id: `EXCEL-SAT-${excelRow.patientCode || satelliteRecord.id || Date.now()}`,
+    patientCode: excelRow.patientCode || satelliteRecord.patientCode || basePatient.patientCode,
+    fullName: finalName,
+    age: finalAge,
+    gender: finalGender,
+    dateOfBirth: `${now.getFullYear() - finalAge}-01-01`,
+    roomNumber: finalRoom,
+    bedNumber: finalBed,
+    admissionDate: finalAdmissionDate,
+    phoneNumber: excelRow.phoneNumber || basePatient.phoneNumber,
+    address: excelRow.address || basePatient.address,
+    insuranceNumber: excelRow.insuranceNumber || basePatient.insuranceNumber,
+    insuranceType: excelRow.insuranceType || basePatient.insuranceType,
+    treatmentDays: excelRow.treatmentDays !== undefined ? excelRow.treatmentDays : basePatient.treatmentDays,
+    
+    // LÂM SÀNG: Luôn ưu tiên chẩn đoán của bác sĩ từ Vệ tinh (bỏ qua mã ICD của Excel)
+    primaryDiagnosis: satelliteRecord.diagnosis || basePatient.primaryDiagnosis || '',
+    treatmentPlan: cleanSatelliteTreatmentPlan(satelliteRecord.treatmentPlan || basePatient.treatmentPlan || excelRow.treatmentPlan || ''),
+    medicalHistory: satelliteRecord.medicalHistory || basePatient.medicalHistory || excelRow.medicalHistory,
+    
+    // Bác sĩ điều trị: giữ buồng phòng hoặc gán
+    attendingDoctorId: excelRow.doctorName 
+      ? (doctors.find(d => excelRow.doctorName && d.name.toLowerCase().includes(excelRow.doctorName.toLowerCase()))?.id || basePatient.attendingDoctorId) 
+      : basePatient.attendingDoctorId,
+    
+    // Giữ mức độ phân loại từ sinh hiệu lâm sàng của vệ tinh
+    severity: basePatient.severity || 'UNCLASSIFIED',
+    admissionStatus: 'ADMITTED_TODAY',
+    allergies: undefined,
+    tags: (basePatient.tags || []).filter(t => t !== 'ALLERGY'),
+    importantNotes: basePatient.importantNotes || '',
+  };
+}
+
+/**
+ * Làm giàu hồ sơ bệnh nhân nội trú hiện có bằng dữ liệu lâm sàng từ Bệnh án Vệ tinh
+ */
+export function enrichPatientWithSatelliteData(
+  existingPatient: Patient,
+  satelliteRecord: ClinicalRecord
+): Patient {
+  const updated: Patient = { ...existingPatient };
+
+  // 1. Chẩn đoán lâm sàng: nếu bệnh nhân chưa có hoặc chẩn đoán sơ sài -> cập nhật từ vệ tinh
+  if (satelliteRecord.diagnosis && (!updated.primaryDiagnosis || /chưa ghi rõ|theo dõi bệnh nội khoa/i.test(updated.primaryDiagnosis))) {
+    updated.primaryDiagnosis = satelliteRecord.diagnosis.trim();
+  }
+
+  // 2. Sinh hiệu: nếu vệ tinh có sinh hiệu, thêm vào danh sách sinh hiệu của bệnh nhân
+  if (satelliteRecord.vitalSigns) {
+    const vitalsText = satelliteRecord.vitalSigns;
+    const parsed = parseVitalSignsText(vitalsText);
+    const newVital: VitalSign = {
+      id: `V-SAT-${Date.now()}`,
+      timestamp: satelliteRecord.admissionDate || satelliteRecord.createdAt || updated.admissionDate,
+      bpSystolic: parsed.bpSystolic,
+      bpDiastolic: parsed.bpDiastolic,
+      heartRate: parsed.heartRate,
+      temperature: parsed.temperature,
+      spO2: parsed.spO2,
+      respiratoryRate: parsed.respiratoryRate,
+      notes: vitalsText,
+    };
+    updated.vitals = [...(updated.vitals || []), newVital];
+
+    // Cập nhật mức độ nặng dựa trên sinh hiệu nếu hiện tại là UNCLASSIFIED
+    if (!updated.severity || updated.severity === 'UNCLASSIFIED') {
+      if (parsed.bpSystolic >= 160 || parsed.spO2 < 93) {
+        updated.severity = 'CRITICAL';
+      } else if (parsed.spO2 < 95 || parsed.bpSystolic >= 140) {
+        updated.severity = 'MODERATE';
+      } else {
+        updated.severity = 'STABLE';
+      }
+    }
+  }
+
+  // 3. Khám lâm sàng & Diễn tiến: thêm vào dòng thời gian diễn tiến
+  const clinicalCourse = extractFullClinicalCourse(satelliteRecord);
+  if (clinicalCourse || satelliteRecord.vitalSigns) {
+    const note = [clinicalCourse, satelliteRecord.vitalSigns ? `[Sinh hiệu: ${satelliteRecord.vitalSigns}]` : ''].filter(Boolean).join('\n\n');
+    const newEvo: ClinicalEvolution = {
+      id: `EV-SAT-${Date.now()}`,
+      timestamp: satelliteRecord.admissionDate || satelliteRecord.createdAt || updated.admissionDate,
+      doctorName: 'BS Vệ Tinh / Tiếp nhận',
+      shift: 'Sáng',
+      clinicalNote: note || 'Tiếp nhận thông tin lâm sàng từ Bệnh án Vệ tinh',
+      treatmentAction: cleanSatelliteTreatmentPlan(satelliteRecord.treatmentPlan || ''),
+    };
+    updated.evolutions = [newEvo, ...(updated.evolutions || [])];
+  }
+
+  // 4. Kế hoạch điều trị & Cận lâm sàng
+  if (satelliteRecord.treatmentPlan && !updated.treatmentPlan) {
+    updated.treatmentPlan = cleanSatelliteTreatmentPlan(satelliteRecord.treatmentPlan);
+  }
+  if (satelliteRecord.clsHtml || satelliteRecord.labsHtml) {
+    updated.initialLabsText = stripHtmlTags(satelliteRecord.clsHtml || satelliteRecord.labsHtml);
+  }
+  if (satelliteRecord.medicalHistory && !updated.medicalHistory) {
+    updated.medicalHistory = satelliteRecord.medicalHistory.trim();
+  }
+
+  return updated;
 }

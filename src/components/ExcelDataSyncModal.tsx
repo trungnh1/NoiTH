@@ -27,7 +27,8 @@ import { Patient, Doctor, DepartmentRoom } from '../types/patient';
 import { ClinicalRecord, mapClinicalRecordToPatient, parseAgeNumber } from '../services/clinicalFirebase';
 import { 
   parseExcelFile, 
-  matchExcelWithSatelliteRecords, 
+  matchExcelWithSatelliteRecords,
+  mergeExcelAndSatellitePatient, 
   ExcelPatientRow, 
   MatchedSatelliteRecord,
   normalizeVietnameseString,
@@ -230,46 +231,26 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     const sat = match.satelliteRecord;
     const excel = match.matchedExcelRow;
 
-    // Build enriched satellite record
-    const mergedRecord: ClinicalRecord = {
-      ...sat,
-      patientName: sat.patientName || excel.patientName,
-      patientAge: sat.patientAge || String(excel.patientAge || ''),
-      patientGender: sat.patientGender || excel.patientGender,
-      patientRoom: match.proposedRoom,
-      diagnosis: sat.diagnosis || '', // Giữ chẩn đoán lâm sàng của vệ tinh (nếu có), không dùng ICD
-      vitalSigns: sat.vitalSigns || excel.vitalSigns,
-      medicalHistory: sat.medicalHistory || excel.medicalHistory,
-      treatmentPlan: sat.treatmentPlan || excel.treatmentPlan,
-    };
-
-    const patientObj = mapClinicalRecordToPatient(mergedRecord, doctors, rooms, '');
-    // Bác sĩ điều trị: Để trống theo yêu cầu lâm sàng (sẽ có người phân sau), không tự động gán người nhập
-    patientObj.attendingDoctorId = '';
-    // Mức độ mặc định: CHƯA PHÂN LOẠI
-    patientObj.severity = 'UNCLASSIFIED';
-    if (excel.admissionDate) {
-      patientObj.admissionDate = excel.admissionDate;
-    }
-    if (excel.patientCode) patientObj.patientCode = excel.patientCode;
-    if (excel.phoneNumber) patientObj.phoneNumber = excel.phoneNumber;
-    if (excel.address) patientObj.address = excel.address;
-    if (excel.insuranceNumber) patientObj.insuranceNumber = excel.insuranceNumber;
-    if (excel.insuranceType) patientObj.insuranceType = excel.insuranceType;
-    if (excel.treatmentDays !== undefined) patientObj.treatmentDays = excel.treatmentDays;
-    patientObj.importantNotes = '';
-    // Theo yêu cầu: Khi nhập dữ liệu từ Excel / Ghép nối, không tự động tích có dị ứng
-    patientObj.allergies = undefined;
-    patientObj.tags = (patientObj.tags || []).filter(t => t !== 'ALLERGY');
+    // Sử dụng bộ engine hợp nhất đa nguồn: Excel (Hành chính) + Vệ tinh (Lâm sàng)
+    const patientObj = mergeExcelAndSatellitePatient(excel, sat, doctors, rooms, '');
+    patientObj.attendingDoctorId = ''; // Bác sĩ điều trị: Để trống theo yêu cầu lâm sàng
 
     onImportPatientDirect(patientObj);
     if (onDismissPendingSatelliteRecord) {
       onDismissPendingSatelliteRecord(sat.id);
     }
-    setImportedIds((prev) => new Set(prev).add(sat.id));
+    setImportedIds((prev) => {
+      const next = new Set(prev);
+      next.add(sat.id);
+      const excelIdx = excelRows.indexOf(excel);
+      if (excelIdx !== -1) {
+        next.add(`excel-${excelIdx}`);
+      }
+      return next;
+    });
 
     setNotification({
-      message: `Đã ghép nối bệnh nhân "${patientObj.fullName}" vào Phòng ${patientObj.roomNumber} (Chưa phân loại)!`,
+      message: `Đã ghép nối bệnh nhân "${patientObj.fullName}" vào Phòng ${patientObj.roomNumber} (Admin Excel + Lâm sàng Vệ tinh)!`,
       type: 'success',
     });
     setTimeout(() => setNotification(null), 4000);
@@ -380,6 +361,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       });
     }
 
+    let mergedCount = 0;
     excelRows.forEach((row, idx) => {
       const key = `excel-${idx}`;
       // Nếu đã có trong dữ liệu khoa -> BỎ QUA KHÔNG NHẬP THÊM
@@ -388,15 +370,23 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
         return;
       }
       if (!importedIds.has(key)) {
-        handleImportDirectFromExcel(row, idx);
+        // Tự động kiểm tra xem hàng Excel này có bản ghi Vệ Tinh chờ ghép nối không
+        const matchedSat = matchedRecords.find((m) => m.matchedExcelRow === row && !importedIds.has(m.satelliteRecord.id));
+        if (matchedSat) {
+          handleMergeAndAdmit(matchedSat);
+          mergedCount++;
+        } else {
+          handleImportDirectFromExcel(row, idx);
+        }
         count++;
       }
     });
 
     const dischargeMsg = toDischarge.length > 0 ? ` (Đã tự động cho ra viện ${toDischarge.length} BN không có trong file Excel)` : '';
+    const mergeMsg = mergedCount > 0 ? ` (Tự động ghép nối ${mergedCount} ca với Bệnh án Vệ tinh)` : '';
     if (count > 0) {
       setNotification({
-        message: `Đã nhập thành công ${count} bệnh nhân mới vào hệ thống! ${skippedExisting > 0 ? `(Đã tự động bỏ qua ${skippedExisting} bệnh nhân đã có sẵn trong khoa)` : ''}${dischargeMsg}`,
+        message: `Đã nhập thành công ${count} bệnh nhân mới vào hệ thống!${mergeMsg} ${skippedExisting > 0 ? `(Đã tự động bỏ qua ${skippedExisting} bệnh nhân đã có sẵn trong khoa)` : ''}${dischargeMsg}`,
         type: 'success',
       });
     } else {
@@ -616,7 +606,9 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-black text-slate-900">{formatPatientDisplayName(sat.patientName || sat.fullName)}</span>
-                          <span className="text-[11px] font-bold text-slate-500">• Khớp theo {match.matchedField}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ⭐ {match.confidenceScore || 100}% {match.matchReason || `Khớp theo ${match.matchedField}`}
+                          </span>
                           {isMerged && (
                             <span className="text-[10.5px] px-2 py-0.2 rounded-full bg-emerald-600 text-white font-bold">
                               ✓ Đã nhập
@@ -626,11 +618,11 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
 
                         <div className="flex items-center gap-2 text-[11.5px] text-slate-700 flex-wrap">
                           <span className="bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-bold">
-                            Vệ tinh: {sat.patientRoom || 'Thiếu phòng'}
+                            Vệ tinh lâm sàng: {sat.diagnosis ? `CĐ: ${sat.diagnosis}` : 'Chưa ghi CĐ'} {sat.vitalSigns ? `• ${sat.vitalSigns}` : ''}
                           </span>
                           <ArrowRight className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                           <span className="bg-emerald-100 text-emerald-900 px-1.5 py-0.2 rounded font-black">
-                            Excel ghép: Phòng {match.proposedRoom} (Tuổi: {match.proposedAge})
+                            Excel hành chính: Phòng {match.proposedRoom} • {match.proposedAge}T {excel.bedNumber ? `• ${excel.bedNumber}` : ''}
                           </span>
                         </div>
                       </div>
@@ -738,8 +730,13 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                             {row.patientCode || '---'}
                           </td>
                           <td className="p-2.5">
-                            <div className="font-black text-slate-900 uppercase">
-                              {row.patientName}
+                            <div className="font-black text-slate-900 uppercase flex items-center gap-1.5 flex-wrap">
+                              <span>{row.patientName}</span>
+                              {matchedRecords.some((m) => m.matchedExcelRow === row) && (
+                                <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  ✨ Khớp Vệ Tinh
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 text-[10.5px] text-slate-400 font-normal">
                               {row.phoneNumber && <span>SĐT: {row.phoneNumber}</span>}

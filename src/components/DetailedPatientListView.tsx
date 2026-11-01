@@ -46,7 +46,11 @@ import {
   parseAgeNumber 
 } from '../services/clinicalFirebase';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
-import { parseExcelAdmissionDate } from '../utils/excelParser';
+import { 
+  parseExcelAdmissionDate, 
+  findBestPatientMatchForSatelliteRecord, 
+  enrichPatientWithSatelliteData 
+} from '../utils/excelParser';
 import { AppSettings } from '../utils/settings';
 import { isRealAllergy } from '../utils/clinicalTextParser';
 import { 
@@ -693,7 +697,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     setInlineNoteText('');
   };
 
-  // Lọc bảo vệ kép: Không bao giờ hiển thị ca vệ tinh nếu bệnh nhân ĐÃ CÓ trong danh sách bệnh của khoa (như Siu Hoách, Trần Đà)
+  // Lọc thông minh hồ sơ vệ tinh chờ:
+  // - Nếu BN trong khoa ĐÃ ĐƯỢC HỢP NHẤT đầy đủ (đã có chẩn đoán cụ thể VÀ sinh hiệu, hoặc ID liên kết) -> ẩn
+  // - Nếu BN trong khoa chỉ mới có thông tin hành chính từ Excel (chưa có chẩn đoán cụ thể) -> giữ lại để hiện nút 1-click "Hợp Nhất Vào P.xxx"!
   const activePendingSatelliteRecords = useMemo(() => {
     if (!pendingSatelliteRecords || pendingSatelliteRecords.length === 0) return [];
     const activeInpatients = patients.filter((p) => p.status === 'ACTIVE');
@@ -703,29 +709,31 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
       const normRecName = normalizeSearchText(recNameRaw);
       if (!normRecName) return false;
 
-      const recAge = parseAgeNumber(rec.patientAge || rec.age);
+      const match = findBestPatientMatchForSatelliteRecord(rec, activeInpatients);
+      if (match) {
+        const p = match.patient;
+        const hasSpecificDiagnosis = p.primaryDiagnosis && p.primaryDiagnosis.trim().length > 3 && !/chưa ghi rõ|theo dõi bệnh nội khoa/i.test(p.primaryDiagnosis);
+        const hasVitals = p.vitals && p.vitals.length > 0;
+        const isAlreadyFullyMerged = p.id.includes(rec.id) || (hasSpecificDiagnosis && hasVitals);
 
-      const isAlreadyInDept = activeInpatients.some((p) => {
-        const normPName = normalizeSearchText(p.fullName);
-        if (!normPName) return false;
-
-        // Khớp tuyệt đối theo họ tên (bỏ dấu)
-        if (normPName === normRecName) return true;
-
-        // Khớp ID / mã bệnh án
-        if (p.id === rec.id || (p.patientCode && p.patientCode === rec.id)) return true;
-
-        // Khớp họ tên gần đúng và tuổi tương đồng
-        if (normRecName.length >= 5 && (normPName.includes(normRecName) || normRecName.includes(normPName))) {
-          if (!recAge || !p.age || Math.abs(recAge - p.age) <= 3) return true;
+        if (isAlreadyFullyMerged) {
+          return false;
         }
+      }
 
-        return false;
-      });
-
-      return !isAlreadyInDept;
+      return true;
     });
   }, [pendingSatelliteRecords, patients]);
+
+  // Hợp nhất nhanh thông tin lâm sàng từ Bệnh án Vệ tinh vào Bệnh nhân nội trú đã có
+  const handleQuickEnrich = (patient: Patient, record: ClinicalRecord) => {
+    if (!onUpdatePatient) return;
+    const enriched = enrichPatientWithSatelliteData(patient, record);
+    onUpdatePatient(enriched);
+    if (onDismissPendingSatelliteRecord) {
+      onDismissPendingSatelliteRecord(record.id);
+    }
+  };
 
 
 
@@ -1972,11 +1980,14 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                   const rawRoom = String(record.patientRoom || record.roomNumber || '').trim();
                   const diag = record.diagnosis || 'Theo dõi bệnh nội khoa';
                   const vitals = record.vitalSigns || '';
+                  const matchedInpatient = findBestPatientMatchForSatelliteRecord(record, patients);
 
                   return (
                     <div
                       key={record.id}
-                      className="bg-white rounded-xl border border-amber-200 p-3.5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between gap-2.5 group"
+                      className={`bg-white rounded-xl border p-3.5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between gap-2.5 group ${
+                        matchedInpatient ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-amber-200'
+                      }`}
                     >
                       {/* Top row: Họ tên & Missing Info */}
                       <div className="space-y-1.5">
@@ -2022,13 +2033,25 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           )}
                         </div>
 
-                        {/* Missing fields notice */}
-                        {comp.missingFields.length > 0 && (
+                        {/* Gợi ý ghép nối thông minh nếu tìm thấy BN trong khoa */}
+                        {matchedInpatient ? (
+                          <div className="text-[11px] text-emerald-900 bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-300 font-bold flex items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span className="truncate">
+                                Đã có trong khoa: <strong>P.{matchedInpatient.patient.roomNumber} - {matchedInpatient.patient.fullName}</strong>
+                              </span>
+                            </div>
+                            <span className="px-1.5 py-0.2 rounded bg-emerald-200 text-emerald-950 font-black text-[10px] shrink-0">
+                              {matchedInpatient.score}% Khớp
+                            </span>
+                          </div>
+                        ) : comp.missingFields.length > 0 ? (
                           <div className="text-[11px] text-amber-900 bg-amber-50 px-2 py-1 rounded-md border border-amber-200/80 font-semibold flex items-center gap-1">
                             <span className="text-amber-600 font-black">⚠️ Cần bổ sung:</span>
                             <span className="font-bold text-amber-950">{comp.missingFields.join(', ')}</span>
                           </div>
-                        )}
+                        ) : null}
 
                         {/* Diagnosis */}
                         <div className="text-xs text-slate-800 font-medium line-clamp-2 pt-0.5 flex items-start gap-1">
@@ -2062,20 +2085,39 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           </button>
                         )}
 
-                        {onOpenSatelliteDraft && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onOpenSatelliteDraft(record);
-                            }}
-                            className="ml-auto px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
-                            title="Mở hồ sơ để bổ sung buồng phòng và tiếp nhận vào khoa"
-                          >
-                            <UserPlus className="w-3.5 h-3.5" />
-                            <span>Bổ Sung & Nhập Viện</span>
-                          </button>
-                        )}
+                        <div className="flex items-center gap-1.5 ml-auto">
+                          {matchedInpatient && onUpdatePatient && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuickEnrich(matchedInpatient.patient, record);
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-xs transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                              title={`Hợp nhất chẩn đoán & sinh hiệu vệ tinh vào ${matchedInpatient.patient.fullName} (Phòng ${matchedInpatient.patient.roomNumber})`}
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Hợp Nhất Vào P.{matchedInpatient.patient.roomNumber}</span>
+                            </button>
+                          )}
+
+                          {onOpenSatelliteDraft && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onOpenSatelliteDraft(record);
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-white font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                                matchedInpatient ? 'bg-amber-500 hover:bg-amber-600' : 'bg-[#0b4d8c] hover:bg-[#083a69]'
+                              }`}
+                              title="Mở hồ sơ để bổ sung buồng phòng và tiếp nhận vào khoa"
+                            >
+                              <UserPlus className="w-3.5 h-3.5" />
+                              <span>{matchedInpatient ? 'Tách Ca Mới' : 'Bổ Sung & Nhập Viện'}</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
