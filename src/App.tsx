@@ -43,6 +43,7 @@ import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { WardRoomMap } from './components/WardRoomMap';
 import { PatientTableView } from './components/PatientTableView';
 import { DoctorAllocationView } from './components/DoctorAllocationView';
+import { ClinicalKardexView } from './components/ClinicalKardexView';
 import { PatientDetailModal } from './components/PatientDetailModal';
 import { NewPatientModal } from './components/NewPatientModal';
 import { BedTransferModal } from './components/BedTransferModal';
@@ -83,7 +84,7 @@ export default function App() {
   const [pendingSatelliteRecords, setPendingSatelliteRecords] = useState<ClinicalRecord[]>(() => loadPendingSatelliteRecords());
 
   // Main active view: 'detailed_list' (Default and primary screen)
-  const [activeView, setActiveView] = useState<'detailed_list' | 'horizontal_rows' | 'map' | 'table' | 'doctors'>('detailed_list');
+  const [activeView, setActiveView] = useState<'detailed_list' | 'horizontal_rows' | 'kardex' | 'map' | 'table' | 'doctors'>('detailed_list');
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Quick room doctor assignments map (persisted in localStorage)
@@ -965,6 +966,17 @@ export default function App() {
             patients={patients}
             doctors={doctors}
             onSelectPatient={(p) => setSelectedPatient(p)}
+            onTransferPatient={(p) => setTransferringPatient(p)}
+            onUpdatePatient={handleUpdatePatient}
+          />
+        )}
+
+        {activeView === 'kardex' && (
+          <ClinicalKardexView
+            patients={patients}
+            doctors={doctors}
+            onSelectPatient={(p) => setSelectedPatient(p)}
+            onOpenEvolution={(p) => setEvolutionPatient(p)}
             onTransferPatient={(p) => setTransferringPatient(p)}
             onUpdatePatient={handleUpdatePatient}
           />

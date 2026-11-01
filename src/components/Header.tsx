@@ -21,7 +21,8 @@ import {
   ChevronDown,
   X,
   User,
-  Sparkles
+  Sparkles,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Patient, Doctor } from '../types/patient';
 import { SyncStatus } from '../services/firebaseSync';
@@ -29,8 +30,8 @@ import { formatDoctorShortName } from './DetailedPatientListView';
 
 interface HeaderProps {
   patients: Patient[];
-  activeView: 'detailed_list' | 'horizontal_rows' | 'map' | 'table' | 'doctors';
-  onViewChange: (view: 'detailed_list' | 'horizontal_rows' | 'map' | 'table' | 'doctors') => void;
+  activeView: 'detailed_list' | 'horizontal_rows' | 'kardex' | 'map' | 'table' | 'doctors';
+  onViewChange: (view: 'detailed_list' | 'horizontal_rows' | 'kardex' | 'map' | 'table' | 'doctors') => void;
   onOpenNewPatient: () => void;
   onOpenHandover?: () => void;
   onOpenWatchlist?: () => void;
@@ -436,6 +437,20 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               type="button"
+              onClick={() => onViewChange('kardex')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeView === 'kardex'
+                  ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
+                  : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-blue-50/60'
+              }`}
+              title="Bảng Kardex lâm sàng 1 trang: Chẩn đoán, Diễn tiến, Hướng xử trí, CLS & Dặn dò trực"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-blue-500" />
+              <span>Bảng Kardex 1 Trang</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => onViewChange('doctors')}
               className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeView === 'doctors'
@@ -525,7 +540,20 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <TableProperties className="w-3 h-3" />
-              <span>Hàng Ngang</span>
+              <span>Dòng</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onViewChange('kardex')}
+              className={`px-2 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                activeView === 'kardex'
+                  ? 'bg-[#0b4d8c] text-white font-black shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <FileSpreadsheet className="w-3 h-3 text-blue-500" />
+              <span>Kardex</span>
             </button>
 
             <button
