@@ -453,11 +453,13 @@ export function getPatientEarlyWarning(patient: Patient): ClinicalEarlyWarning {
     reasons.push(...criticalLabs);
   }
 
+  const cleanFirstReason = (reasons[0] || '').replace(/^[🚨⚠️⚡📷🩺]\s*/, '');
+
   if (isPanic) {
     return {
       level: 'PANIC',
       title: 'BÁO ĐỘNG ĐỎ Y KHOA',
-      badgeText: `🚨 Báo động: ${reasons[0]}`,
+      badgeText: `🚨 Báo động: ${cleanFirstReason}`,
       reasons,
     };
   }
@@ -466,7 +468,7 @@ export function getPatientEarlyWarning(patient: Patient): ClinicalEarlyWarning {
     return {
       level: 'WARNING',
       title: 'Cần Theo Dõi Sát',
-      badgeText: `⚠️ Theo dõi: ${reasons[0]}`,
+      badgeText: `⚠️ Theo dõi: ${cleanFirstReason}`,
       reasons,
     };
   }
@@ -2609,9 +2611,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                       // Chẩn đoán cập nhật mới nhất
                       const latestDiagnosis = getLatestDiagnosis(patient);
 
-                      // Cảnh báo cận lâm sàng bất thường nặng, nguy hiểm
-                      const criticalAlerts = getCriticalLabAlerts(patient);
-
                       // Kế hoạch điều trị
                       const currentPlan = patient.treatmentPlan || 
                         patient.evolutions?.[0]?.treatmentAction || 
@@ -2843,24 +2842,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 {currentPlan || 'Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa'}
                               </p>
                             </div>
-
-                            {/* 6. Cảnh báo xét nghiệm bất thường nguy hiểm (Hiển thị ngay phía dưới Hướng xử trí) */}
-                            {criticalAlerts.length > 0 && (
-                              <div className="mb-2.5 p-3 rounded-xl bg-rose-50 border-2 border-rose-400 shadow-2xs">
-                                <div className="flex items-center gap-1.5 text-rose-800 mb-1.5" title="Cảnh báo cận lâm sàng bất thường nặng, nguy hiểm">
-                                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
-                                  <span className="text-xs font-black uppercase text-rose-900">Cảnh báo xét nghiệm nguy hiểm:</span>
-                                </div>
-                                <ul className="space-y-1">
-                                  {criticalAlerts.map((alert, idx) => (
-                                    <li key={idx} className="text-xs font-bold text-rose-900 flex items-start gap-1.5">
-                                      <span className="text-rose-600 font-black shrink-0">•</span>
-                                      <span>{alert}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
 
                             {/* 7. Ghi chú của bs (hiển thị bằng Icon) */}
                             {doctorNotes && (
