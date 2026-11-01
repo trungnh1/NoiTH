@@ -76,6 +76,29 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
   // Chế độ xem: 'rooms' (Theo buồng phòng) hoặc 'doctor_stats' (Thống kê chi tiết theo BS)
   const [viewMode, setViewMode] = useState<'rooms' | 'doctor_stats'>('rooms');
 
+  // Tùy chọn hiển thị danh sách bệnh nhân trong buồng phòng (lưu vào localStorage)
+  const [showPatientsInRooms, setShowPatientsInRooms] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('hvg_allocation_show_patients');
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleShowPatientsInRooms = () => {
+    setShowPatientsInRooms((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('hvg_allocation_show_patients', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      showToast(next ? 'Đã bật hiển thị bệnh nhân trong phòng' : 'Đã ẩn danh sách bệnh nhân (giao diện siêu gọn)');
+      return next;
+    });
+  };
+
   // Search & filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
@@ -526,8 +549,29 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
             </div>
 
             {/* Tìm kiếm & Sao chép nhanh */}
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 sm:w-64">
+            <div className="flex items-center flex-wrap gap-2">
+              {/* NÚT TÍCH CHỌN HIỂN THỊ / ẨN BỆNH NHÂN TRONG PHÒNG */}
+              <button
+                type="button"
+                onClick={toggleShowPatientsInRooms}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0 active:scale-95 border ${
+                  showPatientsInRooms
+                    ? 'bg-emerald-50 text-emerald-900 border-emerald-300 ring-1 ring-emerald-200'
+                    : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                }`}
+                title={showPatientsInRooms ? 'Bấm để ẩn danh sách bệnh nhân (giúp giao diện gọn gàng)' : 'Bấm để hiện danh sách bệnh nhân trong từng buồng'}
+              >
+                <div className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
+                  showPatientsInRooms 
+                    ? 'bg-emerald-600 border-emerald-600 text-white' 
+                    : 'border-slate-400 bg-white'
+                }`}>
+                  {showPatientsInRooms && <Check className="w-3 h-3 stroke-[3]" />}
+                </div>
+                <span>{showPatientsInRooms ? 'Hiện Bệnh Nhân' : 'Ẩn Bệnh Nhân'}</span>
+              </button>
+
+              <div className="relative flex-1 sm:w-56 min-w-[140px]">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -719,8 +763,8 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                         </div>
                       </div>
 
-                      {/* 3. DANH SÁCH BỆNH NHÂN TRONG PHÒNG */}
-                      {roomPatients.length > 0 && (
+                      {/* 3. DANH SÁCH BỆNH NHÂN TRONG PHÒNG (ẨN/HIỆN THEO TÙY CHỌN TÍCH CHỌN) */}
+                      {showPatientsInRooms && roomPatients.length > 0 && (
                         <div className="pt-2 border-t border-slate-100">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[10.5px] font-black uppercase text-slate-500 tracking-wider">
@@ -793,13 +837,15 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                       <span>Ngày Mai ({dateLabels.tomorrow})</span>
                     </div>
                   </th>
-                  <th className="py-2.5 px-3 sm:px-4 text-right">Bệnh Nhân Trong Phòng</th>
+                  {showPatientsInRooms && (
+                    <th className="py-2.5 px-3 sm:px-4 text-right">Bệnh Nhân Trong Phòng</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredRooms.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-400">
+                    <td colSpan={showPatientsInRooms ? 5 : 4} className="py-8 text-center text-slate-400">
                       Không tìm thấy phòng nào phù hợp với bộ lọc tìm kiếm.
                     </td>
                   </tr>
@@ -927,8 +973,9 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                           </div>
                         </td>
 
-                        {/* Bệnh nhân trong phòng */}
-                        <td className="py-2.5 px-3 sm:px-4 align-middle text-right">
+                        {/* Bệnh nhân trong phòng (Ẩn/Hiện theo tùy chọn) */}
+                        {showPatientsInRooms && (
+                          <td className="py-2.5 px-3 sm:px-4 align-middle text-right">
                           {roomPatients.length === 0 ? (
                             <span className="text-[11px] text-slate-400 italic">
                               Phòng trống
@@ -962,8 +1009,9 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                                 );
                               })}
                             </div>
-                          )}
-                        </td>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     );
                   })
