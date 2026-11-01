@@ -1,113 +1,616 @@
 import { Patient, LabResult, ClinicalTag, SeverityLevel, AdmissionDischargeStatus } from '../types/patient';
 
+export interface EvaluatedLabItem {
+  key: string;            // 'dengue', 'plt', 'crp', 'glucose', 'ast', 'alt', 'k', 'na', etc.
+  shortName: string;      // 'Test Dengue NS1Ag', 'Tiểu cầu', 'CRP', etc.
+  value: string;          // '137', '17.6', 'DƯƠNG TÍNH'
+  unit?: string;          // 'G/L', 'mg/L', ''
+  severity: 'CRITICAL' | 'WARNING';
+  badgeLabel: string;     // '🚨 Test Dengue NS1Ag: DƯƠNG TÍNH', '⚠️ Tiểu cầu: 137 G/L', '⚠️ CRP: 17.6 mg/L'
+}
+
+/**
+ * Đánh giá chuyên sâu từng chỉ số cận lâm sàng dựa trên ngưỡng nguy hiểm / quá bất thường thực tế.
+ * Không cảnh báo các chỉ số bất thường nhẹ, dao động biên (như Glucose 7.54, AST 41.2, ALT 77.1).
+ */
+export function evaluateLabMetric(
+  testName: string,
+  rawVal: string | number,
+  unit: string = '',
+  isPanicInput: boolean = false
+): EvaluatedLabItem | null {
+  const nameLower = testName.toLowerCase().trim();
+  const valStr = String(rawVal).trim();
+  const numVal = parseFloat(valStr.replace(/[^0-9.]/g, ''));
+
+  // 1. DENGUE / NS1Ag: Đã được gắn nhãn Tag lâm sàng Sốt xuất huyết, không đưa vào danh sách cảnh báo báo động đỏ
+  if (nameLower.includes('dengue') || nameLower.includes('ns1')) {
+    return null;
+  }
+
+  // 2. TIỂU CẦU (PLT / Platelets)
+  if (nameLower.includes('plt') || nameLower.includes('tiểu cầu') || nameLower.includes('platelet')) {
+    if (!isNaN(numVal)) {
+      if (numVal < 50) {
+        return {
+          key: 'plt',
+          shortName: 'Tiểu cầu',
+          value: String(numVal),
+          unit: 'G/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 Tiểu cầu: ${numVal} G/L (Giảm nặng < 50)`,
+        };
+      }
+      if (numVal < 150) {
+        return {
+          key: 'plt',
+          shortName: 'Tiểu cầu',
+          value: String(numVal),
+          unit: 'G/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ Tiểu cầu: ${numVal} G/L`,
+        };
+      }
+      if (numVal > 1000) {
+        return {
+          key: 'plt',
+          shortName: 'Tiểu cầu',
+          value: String(numVal),
+          unit: 'G/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 Tiểu cầu: ${numVal} G/L (Tăng rất cao)`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 3. CRP (Protein phản ứng C)
+  if (nameLower.includes('crp') && !nameLower.includes('troponin')) {
+    if (!isNaN(numVal)) {
+      if (numVal >= 100) {
+        return {
+          key: 'crp',
+          shortName: 'CRP',
+          value: String(numVal),
+          unit: 'mg/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 CRP: ${numVal} mg/L (Nhiễm trùng nặng)`,
+        };
+      }
+      if (numVal >= 10.0) {
+        return {
+          key: 'crp',
+          shortName: 'CRP',
+          value: String(numVal),
+          unit: 'mg/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ CRP: ${numVal} mg/L`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 4. PROCALCITONIN (PCT)
+  if (nameLower.includes('procalcitonin') || nameLower.includes('pct')) {
+    if (!isNaN(numVal)) {
+      if (numVal >= 2.0) {
+        return {
+          key: 'pct',
+          shortName: 'PCT',
+          value: String(numVal),
+          unit: 'ng/mL',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 PCT: ${numVal} ng/mL (Nguy cơ NT huyết)`,
+        };
+      }
+      if (numVal >= 0.5) {
+        return {
+          key: 'pct',
+          shortName: 'PCT',
+          value: String(numVal),
+          unit: 'ng/mL',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ PCT: ${numVal} ng/mL`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 5. GLUCOSE (ĐƯỜNG HUYẾT) - Chỉ cảnh báo khi quá cao (> 14) hoặc quá thấp (< 3.5)
+  if (nameLower.includes('glucose') || nameLower.includes('đường huyết')) {
+    if (!isNaN(numVal)) {
+      if (numVal < 3.5) {
+        return {
+          key: 'glucose',
+          shortName: 'Glucose',
+          value: String(numVal),
+          unit: 'mmol/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 Hạ đường huyết: ${numVal} mmol/L`,
+        };
+      }
+      if (numVal > 18.0) {
+        return {
+          key: 'glucose',
+          shortName: 'Glucose',
+          value: String(numVal),
+          unit: 'mmol/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 Glucose: ${numVal} mmol/L (Tăng cấp > 18)`,
+        };
+      }
+      if (numVal >= 14.0) {
+        return {
+          key: 'glucose',
+          shortName: 'Glucose',
+          value: String(numVal),
+          unit: 'mmol/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ Glucose: ${numVal} mmol/L`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 6. MEN GAN AST & ALT - Chỉ cảnh báo khi tăng cao (>= 150 U/L)
+  if (nameLower.includes('ast') || nameLower.includes('got')) {
+    if (!isNaN(numVal)) {
+      if (numVal >= 500) {
+        return {
+          key: 'ast',
+          shortName: 'AST',
+          value: String(numVal),
+          unit: 'U/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 AST: ${numVal} U/L (Tổn thương gan cấp)`,
+        };
+      }
+      if (numVal >= 150) {
+        return {
+          key: 'ast',
+          shortName: 'AST',
+          value: String(numVal),
+          unit: 'U/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ AST: ${numVal} U/L`,
+        };
+      }
+    }
+    return null;
+  }
+
+  if (nameLower.includes('alt') || nameLower.includes('gpt')) {
+    if (!isNaN(numVal)) {
+      if (numVal >= 500) {
+        return {
+          key: 'alt',
+          shortName: 'ALT',
+          value: String(numVal),
+          unit: 'U/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 ALT: ${numVal} U/L (Tổn thương gan cấp)`,
+        };
+      }
+      if (numVal >= 150) {
+        return {
+          key: 'alt',
+          shortName: 'ALT',
+          value: String(numVal),
+          unit: 'U/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ ALT: ${numVal} U/L`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 7. KALI MÁU (K+)
+  if (nameLower.includes('k+') || nameLower.includes('kali')) {
+    if (!isNaN(numVal)) {
+      if (numVal < 3.0) {
+        return {
+          key: 'k',
+          shortName: 'Kali (K+)',
+          value: String(numVal),
+          unit: 'mmol/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 Hạ Kali máu: K+ = ${numVal} mmol/L`,
+        };
+      }
+      if (numVal < 3.5) {
+        return {
+          key: 'k',
+          shortName: 'Kali (K+)',
+          value: String(numVal),
+          unit: 'mmol/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ Hạ Kali: K+ = ${numVal} mmol/L`,
+        };
+      }
+      if (numVal > 5.5) {
+        return {
+          key: 'k',
+          shortName: 'Kali (K+)',
+          value: String(numVal),
+          unit: 'mmol/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 Tăng Kali máu nguy hiểm: K+ = ${numVal} mmol/L`,
+        };
+      }
+      if (numVal > 5.0) {
+        return {
+          key: 'k',
+          shortName: 'Kali (K+)',
+          value: String(numVal),
+          unit: 'mmol/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ Tăng Kali: K+ = ${numVal} mmol/L`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 8. NATRI MÁU (Na+)
+  if (nameLower.includes('na+') || nameLower.includes('natri')) {
+    if (!isNaN(numVal)) {
+      if (numVal < 125) {
+        return {
+          key: 'na',
+          shortName: 'Natri (Na+)',
+          value: String(numVal),
+          unit: 'mmol/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 Hạ Natri máu nặng: Na+ = ${numVal} mmol/L`,
+        };
+      }
+      if (numVal < 130) {
+        return {
+          key: 'na',
+          shortName: 'Natri (Na+)',
+          value: String(numVal),
+          unit: 'mmol/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ Hạ Natri: Na+ = ${numVal} mmol/L`,
+        };
+      }
+      if (numVal > 155) {
+        return {
+          key: 'na',
+          shortName: 'Natri (Na+)',
+          value: String(numVal),
+          unit: 'mmol/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 Tăng Natri máu nặng: Na+ = ${numVal} mmol/L`,
+        };
+      }
+      if (numVal > 150) {
+        return {
+          key: 'na',
+          shortName: 'Natri (Na+)',
+          value: String(numVal),
+          unit: 'mmol/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ Tăng Natri: Na+ = ${numVal} mmol/L`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 9. CREATININE (Tổn thương thận)
+  if (nameLower.includes('creatinine') || nameLower.includes('cre')) {
+    if (!isNaN(numVal)) {
+      if (numVal > 250) {
+        return {
+          key: 'creatinine',
+          shortName: 'Creatinine',
+          value: String(numVal),
+          unit: 'µmol/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 Creatinine: ${numVal} µmol/L (Suy thận nặng)`,
+        };
+      }
+      if (numVal > 150) {
+        return {
+          key: 'creatinine',
+          shortName: 'Creatinine',
+          value: String(numVal),
+          unit: 'µmol/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ Creatinine: ${numVal} µmol/L`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 10. BẠCH CẦU (WBC)
+  if (nameLower.includes('bạch cầu') || nameLower.includes('wbc')) {
+    if (!isNaN(numVal)) {
+      if (numVal < 2.5) {
+        return {
+          key: 'wbc',
+          shortName: 'Bạch cầu',
+          value: String(numVal),
+          unit: 'G/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 Giảm bạch cầu nặng: WBC = ${numVal} G/L`,
+        };
+      }
+      if (numVal < 3.5) {
+        return {
+          key: 'wbc',
+          shortName: 'Bạch cầu',
+          value: String(numVal),
+          unit: 'G/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ Giảm bạch cầu: WBC = ${numVal} G/L`,
+        };
+      }
+      if (numVal > 20.0) {
+        return {
+          key: 'wbc',
+          shortName: 'Bạch cầu',
+          value: String(numVal),
+          unit: 'G/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 Bạch cầu rất cao: WBC = ${numVal} G/L`,
+        };
+      }
+      if (numVal > 15.0) {
+        return {
+          key: 'wbc',
+          shortName: 'Bạch cầu',
+          value: String(numVal),
+          unit: 'G/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ Bạch cầu tăng: WBC = ${numVal} G/L`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 11. HUYẾT SẮC TỐ (HGB / Hb)
+  if (nameLower.includes('huyết sắc tố') || nameLower.includes('hgb') || nameLower === 'hb') {
+    if (!isNaN(numVal)) {
+      if (numVal < 70) {
+        return {
+          key: 'hgb',
+          shortName: 'HGB',
+          value: String(numVal),
+          unit: 'g/L',
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 HGB: ${numVal} g/L (Thiếu máu nặng cần truyền)`,
+        };
+      }
+      if (numVal < 90) {
+        return {
+          key: 'hgb',
+          shortName: 'HGB',
+          value: String(numVal),
+          unit: 'g/L',
+          severity: 'WARNING',
+          badgeLabel: `⚠️ HGB: ${numVal} g/L (Thiếu máu)`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 12. MEN TIM (Troponin, CK-MB) & NT-proBNP
+  if (nameLower.includes('troponin')) {
+    if (!isNaN(numVal) && numVal > 14) {
+      return {
+        key: 'troponin',
+        shortName: 'Troponin',
+        value: String(numVal),
+        unit: 'ng/L',
+        severity: 'CRITICAL',
+        badgeLabel: `🚨 Troponin tăng: ${numVal} ng/L (Nghi ngờ NMCT)`,
+      };
+    }
+    if (/dương|pos|\+/i.test(valStr) || isPanicInput) {
+      return {
+        key: 'troponin',
+        shortName: 'Troponin',
+        value: valStr,
+        severity: 'CRITICAL',
+        badgeLabel: `🚨 Troponin: DƯƠNG TÍNH (Nghi ngờ NMCT)`,
+      };
+    }
+    return null;
+  }
+
+  if (nameLower.includes('ck-mb') || nameLower.includes('ckmb')) {
+    if (!isNaN(numVal) && numVal > 25) {
+      return {
+        key: 'ckmb',
+        shortName: 'CK-MB',
+        value: String(numVal),
+        unit: 'U/L',
+        severity: 'CRITICAL',
+        badgeLabel: `🚨 CK-MB tăng: ${numVal} U/L`,
+      };
+    }
+    return null;
+  }
+
+  if (nameLower.includes('bnp') || nameLower.includes('nt-probnp')) {
+    if (!isNaN(numVal) && numVal > 1000) {
+      return {
+        key: 'bnp',
+        shortName: 'NT-proBNP',
+        value: String(numVal),
+        unit: 'pg/mL',
+        severity: numVal > 5000 ? 'CRITICAL' : 'WARNING',
+        badgeLabel: `${numVal > 5000 ? '🚨' : '⚠️'} NT-proBNP: ${numVal} pg/mL`,
+      };
+    }
+    return null;
+  }
+
+  // 13. ĐÔNG MÁU (INR)
+  if (nameLower.includes('inr')) {
+    if (!isNaN(numVal) && numVal > 2.0) {
+      return {
+        key: 'inr',
+        shortName: 'INR',
+        value: String(numVal),
+        severity: numVal > 4.0 ? 'CRITICAL' : 'WARNING',
+        badgeLabel: `${numVal > 4.0 ? '🚨' : '⚠️'} Rối loạn đông máu (INR: ${numVal})`,
+      };
+    }
+    return null;
+  }
+
+  // Nếu là panic value chung chưa được phân loại
+  if (isPanicInput) {
+    return {
+      key: nameLower,
+      shortName: testName,
+      value: valStr,
+      unit,
+      severity: 'CRITICAL',
+      badgeLabel: `🚨 ${testName}: ${valStr} ${unit || ''}`.trim(),
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Đánh giá và lọc toàn bộ các xét nghiệm quá bất thường hoặc nguy hiểm của bệnh nhân.
+ * Tự động loại bỏ trùng lặp và loại bỏ các chỉ số bất thường nhẹ không cần cảnh báo.
+ */
+export function getAllEvaluatedLabAlerts(patient: Patient): EvaluatedLabItem[] {
+  const alertMap = new Map<string, EvaluatedLabItem>();
+
+  const addAlert = (item: EvaluatedLabItem) => {
+    const existing = alertMap.get(item.key);
+    if (!existing) {
+      alertMap.set(item.key, item);
+    } else if (existing.severity === 'WARNING' && item.severity === 'CRITICAL') {
+      alertMap.set(item.key, item);
+    }
+  };
+
+  // 1. Quét từ mảng patient.labs
+  if (patient.labs && patient.labs.length > 0) {
+    patient.labs.forEach((lab) => {
+      const evaluated = evaluateLabMetric(lab.testName, lab.value, lab.unit, lab.isPanicValue);
+      if (evaluated) {
+        addAlert(evaluated);
+      }
+    });
+  }
+
+  // 2. Quét từ văn bản initialLabsText
+  if (patient.initialLabsText) {
+    const text = patient.initialLabsText;
+
+    // a) Huyết khối mạch máu
+    if (/huyết khối/i.test(text)) {
+      addAlert({
+        key: 'thrombus',
+        shortName: 'Huyết khối',
+        value: 'Phát hiện',
+        severity: 'CRITICAL',
+        badgeLabel: '🚨 CĐHA: Phát hiện Huyết Khối Mạch Máu',
+      });
+    }
+
+    // c) Hẹp lòng động mạch nặng
+    if (/hẹp\s*(khoảng\s*)?4\d%|hẹp\s*(khoảng\s*)?[5-9]\d%|hẹp nặng|hẹp\s*khảo\s*sát\s*đm/i.test(text)) {
+      const matchHep = text.match(/hẹp\s*[^;\.\n]+/i);
+      addAlert({
+        key: 'stenosis',
+        shortName: 'Hẹp ĐM',
+        value: matchHep ? matchHep[0].trim() : 'Hẹp lòng ĐM',
+        severity: 'WARNING',
+        badgeLabel: `⚠️ ${matchHep ? matchHep[0].trim() : 'Hẹp lòng động mạch đáng kể'}`,
+      });
+    }
+
+    // d) Tự động phân tích các chỉ số số học từ văn bản
+    const autoParsed = parseRawLabsText(text);
+    autoParsed.forEach((lab) => {
+      const evaluated = evaluateLabMetric(lab.testName, lab.value, lab.unit, lab.isPanicValue);
+      if (evaluated) {
+        addAlert(evaluated);
+      }
+    });
+
+    // e) ECG đặc biệt
+    const ecgMatch = text.match(/(?:ecg|điện tâm đồ)[^:\n]*:([^\n;.]+)/i);
+    if (ecgMatch && ecgMatch[1]) {
+      const desc = ecgMatch[1].trim();
+      if (/rung nhĩ|st chênh lên|nhanh thất|rung thất|block nhĩ thất độ 3/i.test(desc)) {
+        addAlert({
+          key: 'ecg',
+          shortName: 'ECG',
+          value: desc,
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 ECG: ${desc}`,
+        });
+      } else if (/thiếu máu|st chênh xuống|sóng t âm/i.test(desc)) {
+        addAlert({
+          key: 'ecg',
+          shortName: 'ECG',
+          value: desc,
+          severity: 'WARNING',
+          badgeLabel: `⚠️ ECG: ${desc}`,
+        });
+      }
+    }
+
+    // X-Quang tràn dịch / tràn khí
+    const xqMatch = text.match(/(?:x-?quang|xquang)[^:\n]*:([^\n;.]+)/i);
+    if (xqMatch && xqMatch[1]) {
+      const desc = xqMatch[1].trim();
+      if (/tràn khí|tràn dịch nhiều|phù phổi cấp/i.test(desc)) {
+        addAlert({
+          key: 'xquang',
+          shortName: 'X-Quang',
+          value: desc,
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 X-Quang: ${desc}`,
+        });
+      }
+    }
+  }
+
+  // 3. AI critical alerts (nếu có)
+  if (patient.aiAnalysis?.clinicalAlerts) {
+    patient.aiAnalysis.clinicalAlerts
+      .filter((a) => a.type === 'critical')
+      .forEach((a, idx) => {
+        addAlert({
+          key: `ai_alert_${idx}`,
+          shortName: 'Cảnh báo AI',
+          value: a.message,
+          severity: 'CRITICAL',
+          badgeLabel: a.message.startsWith('🚨') || a.message.startsWith('⚠️') ? a.message : `🚨 ${a.message}`,
+        });
+      });
+  }
+
+  return Array.from(alertMap.values());
+}
+
 /**
  * Trích xuất các cảnh báo cận lâm sàng bất thường nặng, nguy hiểm (Panic Values)
  * để cảnh báo ngay phía dưới Hướng xử trí / Kế hoạch điều trị.
  */
 export function getCriticalLabAlerts(patient: Patient): string[] {
-  const alerts: string[] = [];
-
-  // 1. Kiểm tra mảng kết quả xét nghiệm (labs)
-  if (patient.labs && patient.labs.length > 0) {
-    patient.labs.forEach((lab) => {
-      if (lab.isPanicValue) {
-        alerts.push(`${lab.testName}: ${lab.value} ${lab.unit || ''} (Ngưỡng báo động đỏ)`);
-      } else if (lab.isAbnormal) {
-        const numVal = parseFloat(String(lab.value).replace(/[^0-9.]/g, ''));
-        const nameLower = lab.testName.toLowerCase();
-
-        if (nameLower.includes('k+') || nameLower.includes('kali')) {
-          if (!isNaN(numVal) && (numVal < 3.0 || numVal > 5.5)) {
-            alerts.push(`Kali máu (K+): ${lab.value} ${lab.unit || 'mmol/L'} (${numVal < 3.0 ? 'Hạ Kali máu nguy hiểm < 3.0' : 'Tăng Kali máu nguy hiểm > 5.5'})`);
-          }
-        } else if (nameLower.includes('na+') || nameLower.includes('natri')) {
-          if (!isNaN(numVal) && (numVal < 125 || numVal > 155)) {
-            alerts.push(`Natri máu (Na+): ${lab.value} ${lab.unit || 'mmol/L'} (Rối loạn điện giải nặng)`);
-          }
-        } else if (nameLower.includes('plt') || nameLower.includes('tiểu cầu') || nameLower.includes('platelet')) {
-          if (!isNaN(numVal) && numVal < 50) {
-            alerts.push(`Tiểu cầu (PLT): ${lab.value} G/L (Giảm tiểu cầu nặng < 50)`);
-          }
-        } else if (nameLower.includes('glucose') || nameLower.includes('đường huyết')) {
-          if (!isNaN(numVal) && (numVal < 3.0 || numVal > 18)) {
-            alerts.push(`Đường huyết: ${lab.value} mmol/L (${numVal < 3.0 ? 'Hạ đường huyết cấp < 3.0' : 'Tăng đường huyết cấp > 18'})`);
-          }
-        } else if (nameLower.includes('troponin') || nameLower.includes('ck-mb')) {
-          alerts.push(`${lab.testName}: ${lab.value} (Tăng men tim - Nghi ngờ Hội chứng mạch vành cấp/NMCT)`);
-        } else if (nameLower.includes('ns1') || nameLower.includes('dengue')) {
-          if (/dương|pos|\+/i.test(lab.value)) {
-            alerts.push(`Test NS1Ag / Dengue: DƯƠNG TÍNH (Sốt xuất huyết Dengue)`);
-          }
-        } else if (nameLower.includes('creatinine')) {
-          if (!isNaN(numVal) && numVal > 200) {
-            alerts.push(`Creatinine máu: ${lab.value} µmol/L (Tăng cao - Tổn thương thận cấp/Tăng Ure huyết)`);
-          }
-        } else if (nameLower.includes('wbc') || nameLower.includes('bạch cầu')) {
-          if (!isNaN(numVal) && (numVal > 20 || numVal < 2.5)) {
-            alerts.push(`Bạch cầu (WBC): ${lab.value} G/L (${numVal > 20 ? 'Tăng bạch cầu rất cao > 20 (Nhiễm trùng nặng)' : 'Giảm bạch cầu < 2.5'})`);
-          }
-        }
-      }
-    });
-  }
-
-  // 2. Kiểm tra văn bản CLS ban đầu (initialLabsText)
-  if (patient.initialLabsText) {
-    const text = patient.initialLabsText;
-
-    if (/dengue.*dương tính|ns1.*dương tính|ns1ag.*\(\+\)|dengue.*\(\+\)/i.test(text)) {
-      if (!alerts.some((a) => a.includes('Dengue') || a.includes('NS1'))) {
-        alerts.push('Test Dengue NS1Ag: DƯƠNG TÍNH (Sốt xuất huyết Dengue)');
-      }
-    }
-    if (/huyết khối/i.test(text)) {
-      if (!alerts.some((a) => a.includes('huyết khối'))) {
-        alerts.push('Hình ảnh siêu âm/CĐHA: Phát hiện Huyết Khối Mạch Máu');
-      }
-    }
-    if (/hẹp\s*(khoảng\s*)?4\d%|hẹp\s*(khoảng\s*)?[5-9]\d%|hẹp nặng|hẹp\s*khảo\s*sát\s*đm/i.test(text)) {
-      const matchHep = text.match(/hẹp\s*[^;\.\n]+/i);
-      if (!alerts.some((a) => a.includes('Hẹp'))) {
-        alerts.push(matchHep ? matchHep[0].trim() : 'Hẹp lòng động mạch đáng kể');
-      }
-    }
-    if (/platelets[^:]*:\s*([1-4]\d)\b|tiểu cầu[^:]*:\s*([1-4]\d)\b/i.test(text)) {
-      const matchPlt = text.match(/(?:platelets|tiểu cầu)[^:]*:\s*([1-4]\d)\b/i);
-      if (matchPlt && !alerts.some((a) => a.includes('Tiểu cầu'))) {
-        alerts.push(`Tiểu cầu (PLT) giảm thấp nguy hiểm: ${matchPlt[1]} G/L`);
-      }
-    }
-    if (/k\+:\s*([12]\.\d+)\b|kali:\s*([12]\.\d+)\b/i.test(text)) {
-      const matchK = text.match(/(?:k\+|kali):\s*([12]\.\d+)\b/i);
-      if (matchK && !alerts.some((a) => a.includes('Kali'))) {
-        alerts.push(`Hạ Kali máu nguy hiểm: K+ = ${matchK[1]} mmol/L`);
-      }
-    }
-    if (/k\+:\s*([5-9]\.\d+)\b|kali:\s*([5-9]\.\d+)\b/i.test(text)) {
-      const matchK = text.match(/(?:k\+|kali):\s*([5-9]\.\d+)\b/i);
-      if (matchK && !alerts.some((a) => a.includes('Kali'))) {
-        alerts.push(`Tăng Kali máu nguy hiểm: K+ = ${matchK[1]} mmol/L`);
-      }
-    }
-    if (/troponin.*dương tính|troponin.*tăng/i.test(text)) {
-      if (!alerts.some((a) => a.includes('Troponin'))) {
-        alerts.push('Men tim Troponin tăng - Cảnh báo Nhồi máu cơ tim / Hội chứng mạch vành cấp');
-      }
-    }
-  }
-
-  // 3. Cảnh báo mức độ nghiêm trọng từ AI Analysis (nếu có)
-  if (patient.aiAnalysis?.clinicalAlerts) {
-    patient.aiAnalysis.clinicalAlerts
-      .filter((a) => a.type === 'critical')
-      .forEach((a) => {
-        if (!alerts.includes(a.message)) {
-          alerts.push(a.message);
-        }
-      });
-  }
-
-  return Array.from(new Set(alerts));
+  const evaluated = getAllEvaluatedLabAlerts(patient);
+  return evaluated.map((item) => item.badgeLabel);
 }
 
 export interface ImportantLabItem {
@@ -124,138 +627,15 @@ export interface ImportantLabItem {
  * phục vụ hiển thị trên Bảng Kardex Lâm Sàng 1 Trang.
  */
 export function getImportantOrAbnormalLabs(patient: Patient): ImportantLabItem[] {
-  const items: ImportantLabItem[] = [];
-  const addedNames = new Set<string>();
-
-  // 1. Critical Panic Alerts (Báo động đỏ)
-  const criticals = getCriticalLabAlerts(patient);
-  criticals.forEach((c, idx) => {
-    const namePart = (c.split(':')[0] || 'Cảnh báo nguy hiểm').trim();
-    items.push({
-      id: `crit-${idx}`,
-      name: namePart,
-      value: c.includes(':') ? c.split(':').slice(1).join(':').trim() : c,
-      severity: 'CRITICAL',
-      badgeLabel: c.startsWith('🚨') ? c : `🚨 ${c}`,
-    });
-    addedNames.add(namePart.toLowerCase());
-  });
-
-  // 2. Các xét nghiệm bất thường từ patient.labs (nếu chưa có trong critical alerts)
-  if (patient.labs && patient.labs.length > 0) {
-    patient.labs.forEach((lab) => {
-      const nameKey = lab.testName.toLowerCase().trim();
-      if (addedNames.has(nameKey)) return;
-
-      if (lab.isPanicValue) {
-        items.push({
-          id: lab.id,
-          name: lab.testName,
-          value: `${lab.value} ${lab.unit || ''}`.trim(),
-          unit: lab.unit,
-          severity: 'CRITICAL',
-          badgeLabel: `🚨 ${lab.testName}: ${lab.value} ${lab.unit || ''}`.trim(),
-        });
-        addedNames.add(nameKey);
-      } else if (lab.isAbnormal) {
-        items.push({
-          id: lab.id,
-          name: lab.testName,
-          value: `${lab.value} ${lab.unit || ''}`.trim(),
-          unit: lab.unit,
-          severity: 'WARNING',
-          badgeLabel: `⚠️ ${lab.testName}: ${lab.value} ${lab.unit || ''}`.trim(),
-        });
-        addedNames.add(nameKey);
-      }
-    });
-  }
-
-  // 3. Nếu chưa có parsed labs nhưng có initialLabsText, tự động parse để trích xuất các chỉ số bất thường
-  if ((!patient.labs || patient.labs.length === 0) && patient.initialLabsText) {
-    const autoParsed = parseRawLabsText(patient.initialLabsText);
-    autoParsed.forEach((lab) => {
-      const nameKey = lab.testName.toLowerCase().trim();
-      if (addedNames.has(nameKey)) return;
-
-      if (lab.isPanicValue) {
-        items.push({
-          id: lab.id,
-          name: lab.testName,
-          value: `${lab.value} ${lab.unit || ''}`.trim(),
-          unit: lab.unit,
-          severity: 'CRITICAL',
-          badgeLabel: `🚨 ${lab.testName}: ${lab.value} ${lab.unit || ''}`.trim(),
-        });
-        addedNames.add(nameKey);
-      } else if (lab.isAbnormal) {
-        items.push({
-          id: lab.id,
-          name: lab.testName,
-          value: `${lab.value} ${lab.unit || ''}`.trim(),
-          unit: lab.unit,
-          severity: 'WARNING',
-          badgeLabel: `⚠️ ${lab.testName}: ${lab.value} ${lab.unit || ''}`.trim(),
-        });
-        addedNames.add(nameKey);
-      }
-    });
-  }
-
-  // 4. Trích xuất CĐHA quan trọng (ECG, X-Quang, Siêu âm, CT-Scanner)
-  if (patient.initialLabsText) {
-    const text = patient.initialLabsText;
-
-    // ECG
-    const ecgMatch = text.match(/(?:ecg|điện tâm đồ)[^:\n]*:([^\n;.]+)/i);
-    if (ecgMatch && ecgMatch[1] && !addedNames.has('ecg')) {
-      const desc = ecgMatch[1].trim();
-      if (/rung nhĩ|st chênh|thiếu máu|block|ngoại tâm thu|nhanh xoang|sóng t âm/i.test(desc)) {
-        items.push({
-          id: `ecg-abn`,
-          name: 'Điện tâm đồ (ECG)',
-          value: desc,
-          severity: /rung nhĩ|st chênh|thiếu máu cấp/i.test(desc) ? 'CRITICAL' : 'WARNING',
-          badgeLabel: `⚡ ECG: ${desc}`,
-        });
-        addedNames.add('ecg');
-      }
-    }
-
-    // X-Quang
-    const xqMatch = text.match(/(?:x-?quang|xquang)[^:\n]*:([^\n;.]+)/i);
-    if (xqMatch && xqMatch[1] && !addedNames.has('x-quang')) {
-      const desc = xqMatch[1].trim();
-      if (/thâm nhiễm|tràn dịch|dày|bóng tim|ứ huyết|gãy|viêm/i.test(desc)) {
-        items.push({
-          id: `xq-abn`,
-          name: 'X-Quang ngực',
-          value: desc,
-          severity: /tràn dịch|thâm nhiễm diện rộng/i.test(desc) ? 'CRITICAL' : 'WARNING',
-          badgeLabel: `📷 X-Quang: ${desc}`,
-        });
-        addedNames.add('x-quang');
-      }
-    }
-
-    // Siêu âm
-    const saMatch = text.match(/(?:siêu âm|sieu am)[^:\n]*:([^\n;.]+)/i);
-    if (saMatch && saMatch[1] && !addedNames.has('siêu âm')) {
-      const desc = saMatch[1].trim();
-      if (/tràn dịch|huyết khối|sỏi|u|nang|giãn|xơ/i.test(desc)) {
-        items.push({
-          id: `sa-abn`,
-          name: 'Siêu âm',
-          value: desc,
-          severity: /huyết khối|tràn dịch nhiều/i.test(desc) ? 'CRITICAL' : 'WARNING',
-          badgeLabel: `🩺 Siêu âm: ${desc}`,
-        });
-        addedNames.add('siêu âm');
-      }
-    }
-  }
-
-  return items;
+  const evaluated = getAllEvaluatedLabAlerts(patient);
+  return evaluated.map((item, idx) => ({
+    id: `lab-eval-${item.key}-${idx}`,
+    name: item.shortName,
+    value: item.value,
+    unit: item.unit,
+    severity: item.severity,
+    badgeLabel: item.badgeLabel,
+  }));
 }
 
 /**
@@ -407,7 +787,7 @@ export function parseSingleLabBatch(text: string, batchTimestamp?: string): LabR
       unit: '',
       normalRange: 'Âm tính (-)',
       isAbnormal: isPos,
-      isPanicValue: isPos,
+      isPanicValue: false, // Không phải panic value báo động đỏ
     });
   }
 
