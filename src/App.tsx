@@ -974,6 +974,7 @@ export default function App() {
           <ClinicalKardexView
             patients={patients}
             doctors={doctors}
+            roomDoctorAssignments={roomDoctorAssignments}
             onSelectPatient={(p) => setSelectedPatient(p)}
             onOpenEvolution={(p) => setEvolutionPatient(p)}
             onTransferPatient={(p) => setTransferringPatient(p)}

@@ -50,6 +50,7 @@ import {
 interface ClinicalKardexViewProps {
   patients: Patient[];
   doctors: Doctor[];
+  roomDoctorAssignments?: Record<string, string>;
   onSelectPatient: (patient: Patient) => void;
   onOpenEvolution?: (patient: Patient) => void;
   onTransferPatient?: (patient: Patient) => void;
@@ -59,6 +60,7 @@ interface ClinicalKardexViewProps {
 export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
   patients,
   doctors,
+  roomDoctorAssignments = {},
   onSelectPatient,
   onOpenEvolution,
   onTransferPatient,
@@ -138,6 +140,68 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
       return bedA - bedB;
     });
   }, [patients, selectedGroup, currentGroupRoomNumbers, selectedRoom, selectedDoctorId, severityFilter, searchTerm, doctorMap]);
+
+  // Định dạng hiển thị giường chuẩn xác, loại bỏ tiền tố G hoặc G. lặp lại
+  const formatBedDisplay = (bed?: string) => {
+    if (!bed) return '';
+    const trimmed = bed.trim();
+    const raw = trimmed.replace(/^(Giường\s*|G\.\s*|G)+/i, '').trim();
+    return raw ? `G.${raw}` : trimmed;
+  };
+
+  // Gom nhóm bệnh nhân theo buồng phòng để hiển thị dạng gộp (rowSpan)
+  const groupedPatients = useMemo(() => {
+    const groups: {
+      roomKey: string;
+      roomNumber: string;
+      doctorName: string;
+      patients: Patient[];
+    }[] = [];
+
+    filteredPatients.forEach((patient) => {
+      const cleanRoom = (patient.roomNumber || '---').replace(/^(P\.|Phòng\s*)/i, '').trim() || '---';
+      const lastGroup = groups[groups.length - 1];
+
+      if (lastGroup && lastGroup.roomNumber === cleanRoom) {
+        lastGroup.patients.push(patient);
+      } else {
+        groups.push({
+          roomKey: `${cleanRoom}_${groups.length}`,
+          roomNumber: cleanRoom,
+          doctorName: '',
+          patients: [patient],
+        });
+      }
+    });
+
+    // Xác định Bác sĩ điều trị cho từng buồng phòng
+    groups.forEach((group) => {
+      // 1. Lấy từ attendingDoctorId của bệnh nhân trong phòng
+      const docNames = Array.from(
+        new Set(
+          group.patients
+            .map((p) => {
+              const doc = doctorMap.get(p.attendingDoctorId);
+              return formatDoctorShortName(doc?.name || '');
+            })
+            .filter(Boolean)
+        )
+      );
+
+      if (docNames.length > 0) {
+        group.doctorName = docNames.join(', ');
+      } else {
+        // 2. Lấy từ roomDoctorAssignments nếu có
+        const assignedDocId = roomDoctorAssignments[group.roomNumber];
+        if (assignedDocId) {
+          const doc = doctorMap.get(assignedDocId);
+          group.doctorName = formatDoctorShortName(doc?.name || '');
+        }
+      }
+    });
+
+    return groups;
+  }, [filteredPatients, doctorMap, roomDoctorAssignments]);
 
   // Statistics
   const criticalCount = patients.filter((p) => p.status === 'ACTIVE' && p.severity === 'CRITICAL').length;
@@ -410,7 +474,7 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
           {/* Table Header */}
           <thead className="bg-[#0b4d8c] text-white font-black uppercase tracking-wider sticky top-0 z-10 shadow-xs print:bg-slate-900 print:text-white">
             <tr className="divide-x divide-blue-800/60 print:divide-slate-700">
-              <th className="py-2.5 px-3 w-[105px]">Phòng / BS</th>
+              <th className="py-2.5 px-3 w-[115px] text-center">Buồng & Bác Sĩ</th>
               <th className="py-2.5 px-3 w-[170px]">Bệnh Nhân</th>
               <th className="py-2.5 px-3 w-[200px]">Chẩn Đoán</th>
               {/* CỘT DIỄN TIẾN LÂM SÀNG (ĐƯỢC THÊM TRƯỚC HƯỚNG XỬ TRÍ THEO ĐÚNG YÊU CẦU USER) */}
@@ -434,7 +498,7 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
 
           {/* Table Body */}
           <tbody className="divide-y divide-slate-200 bg-white print:divide-slate-300">
-            {filteredPatients.length === 0 ? (
+            {groupedPatients.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-12 text-center text-slate-400">
                   <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
@@ -447,73 +511,96 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                 </td>
               </tr>
             ) : (
-              filteredPatients.map((patient, index) => {
-                const doctor = doctorMap.get(patient.attendingDoctorId);
-                const doctorShortName = formatDoctorShortName(doctor?.name || '');
-                const latestDiagnosis = getLatestDiagnosis(patient);
-                const treatmentInfo = calculateTreatmentDays(patient.admissionDate);
-                const admissionDateDisplay = formatAdmissionDateDisplay(patient.admissionDate);
-                const isNew = isNewAdmissionWithin24Hours(patient.admissionDate);
-                const criticalAlerts = getCriticalLabAlerts(patient);
+              groupedPatients.map((group, groupIndex) => {
+                const patientCount = group.patients.length;
+                const docDisplayName = group.doctorName
+                  ? (group.doctorName.startsWith('BS') || group.doctorName.startsWith('Bs')
+                      ? group.doctorName
+                      : `Bs. ${group.doctorName}`)
+                  : 'Chưa phân công';
+                const roomTitle = group.roomNumber === '---' ? 'Chưa xếp phòng' : `P.${group.roomNumber}`;
 
-                // Diễn tiến lâm sàng & Sinh hiệu
-                const latestEvo = patient.evolutions && patient.evolutions.length > 0 ? patient.evolutions[0] : null;
-                const rawClinicalNote = latestEvo?.clinicalNote || patient.medicalHistory || '';
-                const clinicalNoteClean = rawClinicalNote.split(/\[Sinh hiệu:.*?\]/i)[0].trim();
-                const latestVital = patient.vitals && patient.vitals.length > 0 ? patient.vitals[0] : null;
+                return group.patients.map((patient, pIndex) => {
+                  const isFirstInRoom = pIndex === 0;
+                  const isLastInRoom = pIndex === patientCount - 1;
 
-                // Hướng xử trí & kế hoạch điều trị (Thay thế cho thuốc chính)
-                const treatmentPlanText = patient.treatmentPlan || latestEvo?.treatmentAction || patient.initialMedicationsText || '';
+                  const doctor = doctorMap.get(patient.attendingDoctorId);
+                  const doctorShortName = formatDoctorShortName(doctor?.name || '');
+                  const latestDiagnosis = getLatestDiagnosis(patient);
+                  const treatmentInfo = calculateTreatmentDays(patient.admissionDate);
+                  const admissionDateDisplay = formatAdmissionDateDisplay(patient.admissionDate);
+                  const isNew = isNewAdmissionWithin24Hours(patient.admissionDate);
+                  const criticalAlerts = getCriticalLabAlerts(patient);
 
-                // Ghi chú & Dặn dò trực
-                const handoverText = patient.handoverNotes?.trim() || patient.importantNotes?.trim() || '';
+                  // Diễn tiến lâm sàng & Sinh hiệu
+                  const latestEvo = patient.evolutions && patient.evolutions.length > 0 ? patient.evolutions[0] : null;
+                  const rawClinicalNote = latestEvo?.clinicalNote || patient.medicalHistory || '';
+                  const clinicalNoteClean = rawClinicalNote.split(/\[Sinh hiệu:.*?\]/i)[0].trim();
+                  const latestVital = patient.vitals && patient.vitals.length > 0 ? patient.vitals[0] : null;
 
-                const isCritical = patient.severity === 'CRITICAL';
-                const isModerate = patient.severity === 'MODERATE';
-                const isStable = patient.severity === 'STABLE';
+                  // Hướng xử trí & kế hoạch điều trị (Thay thế cho thuốc chính)
+                  const treatmentPlanText = patient.treatmentPlan || latestEvo?.treatmentAction || patient.initialMedicationsText || '';
 
-                const padClass = isCompactDensity ? 'py-1.5 px-2.5' : 'py-2.5 px-3';
+                  // Ghi chú & Dặn dò trực
+                  const handoverText = patient.handoverNotes?.trim() || patient.importantNotes?.trim() || '';
 
-                return (
-                  <tr
-                    key={patient.id}
-                    className={`hover:bg-blue-50/40 transition-colors border-b border-slate-100 print:border-slate-300 print:break-inside-avoid ${
-                      index % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'
-                    } ${isCritical ? 'bg-rose-50/50' : ''}`}
-                  >
-                    {/* 1. Phòng / Giường & Bác Sĩ */}
-                    <td className={`${padClass} align-top whitespace-nowrap`}>
-                      <div className="space-y-1">
-                        <span className="inline-block font-black text-slate-900 bg-blue-100 text-[#0b4d8c] px-2 py-0.5 rounded-md text-xs border border-blue-200 shadow-2xs">
-                          P.{patient.roomNumber || '---'}
-                          {patient.bedNumber ? ` - G.${patient.bedNumber}` : ''}
-                        </span>
-                        <div className="flex items-center gap-1 text-[11px] font-bold text-slate-700">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
-                          <span className="truncate max-w-[90px]" title={doctor?.name || 'Chưa phân công'}>
-                            {doctorShortName || 'Chưa phân công'}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
+                  const isCritical = patient.severity === 'CRITICAL';
+                  const isModerate = patient.severity === 'MODERATE';
+                  const isStable = patient.severity === 'STABLE';
 
-                    {/* 2. Bệnh Nhân & Hành Chính */}
-                    <td className={`${padClass} align-top`}>
-                      <div className="space-y-1">
-                        <div 
-                          onClick={() => onSelectPatient(patient)}
-                          className="cursor-pointer group"
+                  const padClass = isCompactDensity ? 'py-1.5 px-2.5' : 'py-2.5 px-3';
+
+                  return (
+                    <tr
+                      key={patient.id}
+                      className={`hover:bg-blue-50/40 transition-colors ${
+                        isLastInRoom ? 'border-b-2 border-slate-200' : 'border-b border-slate-100'
+                      } print:border-slate-300 print:break-inside-avoid ${
+                        groupIndex % 2 === 1 ? 'bg-slate-50/30' : 'bg-white'
+                      } ${isCritical ? 'bg-rose-50/50' : ''}`}
+                    >
+                      {/* 1. Phòng & Bác Sĩ (Gộp buồng bệnh với rowSpan) */}
+                      {isFirstInRoom && (
+                        <td
+                          rowSpan={patientCount}
+                          className={`${padClass} align-middle text-center bg-slate-50/80 border-r border-slate-200 print:border-slate-300 whitespace-nowrap`}
                         >
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={`font-black text-xs sm:text-[13px] group-hover:text-blue-700 group-hover:underline transition-colors ${
-                              isCritical ? 'text-rose-700' : isModerate ? 'text-amber-800' : 'text-slate-900'
-                            }`}>
-                              {formatPatientDisplayName(patient.fullName)}
+                          <div className="space-y-1.5 py-1">
+                            <span className="inline-block font-black text-slate-900 bg-blue-100 text-[#0b4d8c] px-2.5 py-1 rounded-md text-xs border border-blue-200 shadow-2xs">
+                              {roomTitle} ({patientCount} BN)
                             </span>
-                            {isNew && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-rose-600 text-white shadow-2xs animate-pulse">
-                                NEW
+                            <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-slate-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
+                              <span className="truncate max-w-[100px]" title={docDisplayName}>
+                                {docDisplayName}
                               </span>
+                            </div>
+                          </div>
+                        </td>
+                      )}
+
+                      {/* 2. Bệnh Nhân & Hành Chính */}
+                      <td className={`${padClass} align-top`}>
+                        <div className="space-y-1">
+                          <div 
+                            onClick={() => onSelectPatient(patient)}
+                            className="cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {patient.bedNumber && (
+                                <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-blue-50 text-blue-700 border border-blue-200/70 shrink-0">
+                                  {formatBedDisplay(patient.bedNumber)}
+                                </span>
+                              )}
+                              <span className={`font-black text-xs sm:text-[13px] group-hover:text-blue-700 group-hover:underline transition-colors ${
+                                isCritical ? 'text-rose-700' : isModerate ? 'text-amber-800' : 'text-slate-900'
+                              }`}>
+                                {formatPatientDisplayName(patient.fullName)}
+                              </span>
+                              {isNew && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-rose-600 text-white shadow-2xs animate-pulse">
+                                  NEW
+                                </span>
                             )}
                           </div>
                         </div>
@@ -786,8 +873,9 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                     </td>
                   </tr>
                 );
-              })
-            )}
+              });
+            })
+          )}
           </tbody>
         </table>
       </div>
