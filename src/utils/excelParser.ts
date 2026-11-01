@@ -923,7 +923,20 @@ export function enrichPatientWithSatelliteData(
     updated.treatmentPlan = cleanSatelliteTreatmentPlan(satelliteRecord.treatmentPlan);
   }
   if (satelliteRecord.clsHtml || satelliteRecord.labsHtml) {
-    updated.initialLabsText = stripHtmlTags(satelliteRecord.clsHtml || satelliteRecord.labsHtml);
+    const newCls = stripHtmlTags(satelliteRecord.clsHtml || satelliteRecord.labsHtml).trim();
+    if (newCls) {
+      if (updated.initialLabsText && !updated.initialLabsText.includes(newCls)) {
+        const timeHeader = satelliteRecord.admissionDate ? ` [${satelliteRecord.admissionDate}]` : '';
+        updated.initialLabsText = `${updated.initialLabsText.trim()}\n\n--- [Cận Lâm Sàng Vệ Tinh${timeHeader}] ---\n${newCls}`;
+      } else if (!updated.initialLabsText) {
+        updated.initialLabsText = newCls;
+      }
+      // Tự động phân tích các chỉ số cận lâm sàng vào labs
+      const parsed = parseRawLabsText(updated.initialLabsText);
+      if (parsed.length > 0) {
+        updated.labs = parsed;
+      }
+    }
   }
   if (satelliteRecord.medicalHistory && !updated.medicalHistory) {
     updated.medicalHistory = satelliteRecord.medicalHistory.trim();

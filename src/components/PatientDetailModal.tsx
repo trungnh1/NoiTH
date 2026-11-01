@@ -119,6 +119,13 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   const [initialLabsText, setInitialLabsText] = useState(patient.initialLabsText || '');
   const [isEditingMedText, setIsEditingMedText] = useState(false);
   const [isEditingLabText, setIsEditingLabText] = useState(false);
+  const [isQuickAppendingLab, setIsQuickAppendingLab] = useState(false);
+  const [newAppendLabText, setNewAppendLabText] = useState('');
+  const [labCategoryFilter, setLabCategoryFilter] = useState<string>('ALL');
+
+  useEffect(() => {
+    setInitialLabsText(patient.initialLabsText || '');
+  }, [patient.id, patient.initialLabsText]);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
   const handleCopyText = (text: string, section: string) => {
@@ -154,33 +161,67 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   const handleParseAndOrganizeLabs = () => {
     const parsedLabs = parseRawLabsText(initialLabsText);
     if (parsedLabs.length === 0) return;
-    const existingOtherLabs = (patient.labs || []).filter(
-      (l) => !parsedLabs.some((p) => p.testName.toLowerCase() === l.testName.toLowerCase())
-    );
-    const updatedLabs = [...parsedLabs, ...existingOtherLabs];
     const updated = {
       ...patient,
       initialLabsText,
-      labs: updatedLabs,
+      labs: parsedLabs,
     };
     onUpdatePatient(updated);
   };
 
   const handleSaveLabText = () => {
+    // Tự động phân tích toàn bộ văn bản và sắp xếp các chỉ số xuống bảng
     const parsedLabs = parseRawLabsText(initialLabsText);
-    const existingOtherLabs = (patient.labs || []).filter(
-      (l) => !parsedLabs.some((p) => p.testName.toLowerCase() === l.testName.toLowerCase())
-    );
-    const updatedLabs = parsedLabs.length > 0 ? [...parsedLabs, ...existingOtherLabs] : (patient.labs || []);
-
     const updated = { 
       ...patient, 
       initialLabsText,
-      labs: updatedLabs,
+      labs: parsedLabs.length > 0 ? parsedLabs : (patient.labs || []),
     };
     onUpdatePatient(updated);
     setIsEditingLabText(false);
   };
+
+  // Tự động thêm mốc thời gian, sắp xếp văn bản nối tiếp xuống dưới và tự động phân tích chỉ số mới
+  const handleAutoAppendAndParseNewLabs = () => {
+    if (!newAppendLabText.trim()) return;
+
+    const now = new Date();
+    const timeDisplay = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+
+    // 1. Tự động thêm mốc thời gian và sắp xếp văn bản nối tiếp xuống dưới
+    const appendHeader = `\n\n--- [Cận Lâm Sàng Mới: ${timeDisplay}] ---\n`;
+    const fullText = initialLabsText.trim()
+      ? `${initialLabsText.trim()}${appendHeader}${newAppendLabText.trim()}`
+      : newAppendLabText.trim();
+
+    // 2. Tự động bóc tách và phân tích các chỉ số mới
+    const newParsedLabs = parseRawLabsText(newAppendLabText, timeDisplay);
+
+    // 3. Tự động sắp xếp các chỉ số xét nghiệm xuống dưới bảng kết quả
+    const existingLabs = patient.labs || [];
+    const combinedLabs = [...existingLabs, ...newParsedLabs];
+
+    const updated: Patient = {
+      ...patient,
+      initialLabsText: fullText,
+      labs: combinedLabs,
+    };
+
+    onUpdatePatient(updated);
+    setInitialLabsText(fullText);
+    setNewAppendLabText('');
+    setIsQuickAppendingLab(false);
+  };
+
+  const displayedLabs = useMemo(() => {
+    let list = patient.labs || [];
+    if (labCategoryFilter === 'PANIC') {
+      list = list.filter((l) => l.isPanicValue);
+    } else if (labCategoryFilter !== 'ALL') {
+      list = list.filter((l) => l.category === labCategoryFilter);
+    }
+    return list;
+  }, [patient.labs, labCategoryFilter]);
 
   const currentDoctor = doctors.find((d) => d.id === patient.attendingDoctorId);
 
@@ -1263,63 +1304,131 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
               </div>
 
               {/* Raw Copy-Paste Labs & Results Card */}
-              <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 space-y-2">
-                <div className="flex items-center justify-between pb-1.5 border-b border-blue-200/60">
+              <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-blue-200/60 gap-2">
                   <div className="flex items-center gap-2">
-                    <TestTube className="w-4 h-4 text-blue-600" />
-                    <span className="font-extrabold text-blue-950 text-xs uppercase tracking-wide">
-                      Văn Bản Cận Lâm Sàng & Kết Quả Ban Đầu (HIS / Copy-Paste)
-                    </span>
+                    <TestTube className="w-4 h-4 text-blue-600 shrink-0" />
+                    <div>
+                      <span className="font-extrabold text-blue-950 text-xs uppercase tracking-wide block">
+                        Văn Bản Cận Lâm Sàng & Kết Quả Ban Đầu (HIS / Copy-Paste)
+                      </span>
+                      <span className="text-[10px] text-blue-700 font-medium">
+                        Tự động phân tích chỉ số & sắp xếp nối tiếp xuống dưới khi có cận lâm sàng mới
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {initialLabsText && (
-                      <button
-                        type="button"
-                        onClick={handleParseAndOrganizeLabs}
-                        className="px-2.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1"
-                        title="Tự động bóc tách các chỉ số xét nghiệm từ văn bản và cập nhật vào bảng phía dưới"
-                      >
-                        <Sparkles className="w-3 h-3 text-amber-200" />
-                        <span>Phân tích & Sắp xếp bảng</span>
-                      </button>
-                    )}
+                  
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* NÚT THÊM CLS MỚI NỐI TIẾP XUỐNG DƯỚI */}
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickAppendingLab(!isQuickAppendingLab)}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-[11px] font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+                      title="Dán kết quả CLS mới từ HIS, hệ thống sẽ tự động thêm mốc thời gian, nối tiếp xuống dưới và phân tích"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                      <span>+ Nối Tiếp CLS Mới Xuống Dưới</span>
+                    </button>
+
                     {initialLabsText && (
                       <button
                         type="button"
                         onClick={() => handleCopyText(initialLabsText, 'labs')}
-                        className="px-2 py-0.5 rounded bg-white hover:bg-blue-100 text-blue-800 border border-blue-200 text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
+                        className="px-2 py-1 rounded-lg bg-white hover:bg-blue-100 text-blue-800 border border-blue-200 text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
                       >
-                        {copiedSection === 'labs' ? '✓ Đã sao chép' : 'Sao chép văn bản'}
+                        {copiedSection === 'labs' ? '✓ Đã sao chép' : 'Sao chép'}
                       </button>
                     )}
+
                     <button
                       type="button"
                       onClick={() => {
                         if (isEditingLabText) handleSaveLabText();
                         else setIsEditingLabText(true);
                       }}
-                      className="px-2.5 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
+                      className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
                     >
-                      {isEditingLabText ? 'Lưu thay đổi' : 'Sửa văn bản'}
+                      {isEditingLabText ? 'Lưu & Tự Động Phân Tích' : 'Sửa văn bản'}
                     </button>
                   </div>
                 </div>
 
+                {/* HỘP DÁN NHANH CẬN LÂM SÀNG MỚI ĐỂ NỐI TIẾP XUỐNG DƯỚI */}
+                {isQuickAppendingLab && (
+                  <div className="bg-white p-3 rounded-xl border-2 border-emerald-400 space-y-2.5 shadow-sm animate-in fade-in">
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-950">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-emerald-600" />
+                        <span>Dán Kết Quả Cận Lâm Sàng Mới (HIS):</span>
+                      </span>
+                      <span className="text-[10.5px] text-slate-500 font-medium">
+                        Hệ thống tự động thêm mốc thời gian & nối xuống dưới
+                      </span>
+                    </div>
+                    <textarea
+                      rows={3}
+                      value={newAppendLabText}
+                      onChange={(e) => setNewAppendLabText(e.target.value)}
+                      placeholder="Dán nhanh kết quả xét nghiệm mới từ HIS tại đây (e.g. CTM: WBC 14.2, HGB 110, Sinh hóa: K+ 3.2, Troponin hs 45, ECG: Nhịp xoang đều...)"
+                      className="w-full p-2.5 bg-slate-50 border border-emerald-300 rounded-lg text-xs font-mono font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500"
+                      autoFocus
+                    />
+                    <div className="flex items-center justify-end gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsQuickAppendingLab(false);
+                          setNewAppendLabText('');
+                        }}
+                        className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold cursor-pointer"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAutoAppendAndParseNewLabs}
+                        disabled={!newAppendLabText.trim()}
+                        className={`px-3.5 py-1.5 rounded-lg font-black text-white shadow-xs flex items-center gap-1.5 transition-all ${
+                          newAppendLabText.trim()
+                            ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 cursor-pointer'
+                            : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                        }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                        <span>⚡ Tự Động Phân Tích & Thêm Xuống Dưới</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* KHUNG HIỂN THỊ / CHỈNH SỬA TOÀN BỘ VĂN BẢN */}
                 {isEditingLabText ? (
-                  <textarea
-                    rows={4}
-                    value={initialLabsText}
-                    onChange={(e) => setInitialLabsText(e.target.value)}
-                    placeholder="Dán hoặc cập nhật kết quả xét nghiệm, CTM, sinh hóa, ECG, X-Quang..."
-                    className="w-full p-2.5 bg-white border border-blue-300 rounded-lg text-xs font-mono font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="space-y-2">
+                    <textarea
+                      rows={5}
+                      value={initialLabsText}
+                      onChange={(e) => setInitialLabsText(e.target.value)}
+                      placeholder="Dán hoặc cập nhật kết quả xét nghiệm, CTM, sinh hóa, ECG, X-Quang..."
+                      className="w-full p-2.5 bg-white border border-blue-300 rounded-lg text-xs font-mono font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
+                    />
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span>Khi bấm Lưu, hệ thống sẽ <strong>tự động phân tích</strong> và sắp xếp các chỉ số xuống bảng phía dưới.</span>
+                      <button
+                        type="button"
+                        onClick={handleSaveLabText}
+                        className="px-3 py-1 bg-blue-600 text-white font-bold rounded-lg cursor-pointer"
+                      >
+                        Lưu & Tự Động Phân Tích
+                      </button>
+                    </div>
+                  </div>
                 ) : initialLabsText ? (
-                  <pre className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed bg-white/80 p-2.5 rounded-lg border border-blue-100">
+                  <pre className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed bg-white/80 p-2.5 rounded-lg border border-blue-100 max-h-48 overflow-y-auto">
                     {initialLabsText}
                   </pre>
                 ) : (
                   <p className="text-xs text-blue-800/80 italic">
-                    Chưa có văn bản kết quả CLS sao chép nhanh. Bấm "Sửa văn bản" để dán trực tiếp từ HIS hoặc bệnh án.
+                    Chưa có văn bản kết quả CLS sao chép nhanh. Bấm "Nối Tiếp CLS Mới Xuống Dưới" hoặc "Sửa văn bản" để dán trực tiếp từ HIS hoặc bệnh án.
                   </p>
                 )}
               </div>
@@ -1413,6 +1522,59 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                 </form>
               )}
 
+              {/* Category Filter Pills & Summary for Labs */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setLabCategoryFilter('ALL')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      labCategoryFilter === 'ALL'
+                        ? 'bg-slate-900 text-white shadow-2xs'
+                        : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    }`}
+                  >
+                    Tất cả ({patient.labs.length})
+                  </button>
+                  {patient.labs.some((l) => l.isPanicValue) && (
+                    <button
+                      type="button"
+                      onClick={() => setLabCategoryFilter('PANIC')}
+                      className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer flex items-center gap-1 ${
+                        labCategoryFilter === 'PANIC'
+                          ? 'bg-rose-600 text-white shadow-2xs ring-2 ring-rose-300'
+                          : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                      <span>Báo động đỏ ({patient.labs.filter((l) => l.isPanicValue).length})</span>
+                    </button>
+                  )}
+                  {['Huyết học', 'Sinh hóa', 'Điện giải', 'Khí máu', 'CĐHA'].map((cat) => {
+                    const count = patient.labs.filter((l) => l.category === cat).length;
+                    if (count === 0) return null;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setLabCategoryFilter(cat)}
+                        className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                          labCategoryFilter === cat
+                            ? 'bg-[#0b4d8c] text-white shadow-2xs'
+                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                        }`}
+                      >
+                        {cat} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <span className="text-[11px] font-bold text-slate-500">
+                  {displayedLabs.length} chỉ số được phân tích
+                </span>
+              </div>
+
               {/* Lab table */}
               <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-xs">
                 <table className="w-full text-left text-xs min-w-[550px]">
@@ -1427,14 +1589,16 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {patient.labs.length === 0 ? (
+                    {displayedLabs.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="py-8 text-center text-slate-400">
-                          Chưa có kết quả xét nghiệm được ghi nhận.
+                          {patient.labs.length === 0 
+                            ? 'Chưa có kết quả xét nghiệm được ghi nhận. Dán văn bản từ HIS phía trên để hệ thống tự động bóc tách.'
+                            : 'Không có chỉ số nào phù hợp với bộ lọc chuyên mục.'}
                         </td>
                       </tr>
                     ) : (
-                      patient.labs.map((lab) => (
+                      displayedLabs.map((lab) => (
                         <tr
                           key={lab.id}
                           className={`hover:bg-slate-50 ${

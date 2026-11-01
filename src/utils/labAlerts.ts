@@ -1,124 +1,49 @@
 import { Patient, LabResult, ClinicalTag, SeverityLevel, AdmissionDischargeStatus } from '../types/patient';
 
 /**
- * Trích xuất các cảnh báo cận lâm sàng bất thường nặng, nguy hiểm (Panic Values)
- * để cảnh báo ngay phía dưới Hướng xử trí / Kế hoạch điều trị.
- */
-export function getCriticalLabAlerts(patient: Patient): string[] {
-  const alerts: string[] = [];
-
-  // 1. Kiểm tra mảng kết quả xét nghiệm (labs)
-  if (patient.labs && patient.labs.length > 0) {
-    patient.labs.forEach((lab) => {
-      if (lab.isPanicValue) {
-        alerts.push(`${lab.testName}: ${lab.value} ${lab.unit || ''} (Ngưỡng báo động đỏ)`);
-      } else if (lab.isAbnormal) {
-        const numVal = parseFloat(String(lab.value).replace(/[^0-9.]/g, ''));
-        const nameLower = lab.testName.toLowerCase();
-
-        if (nameLower.includes('k+') || nameLower.includes('kali')) {
-          if (!isNaN(numVal) && (numVal < 3.0 || numVal > 5.5)) {
-            alerts.push(`Kali máu (K+): ${lab.value} ${lab.unit || 'mmol/L'} (${numVal < 3.0 ? 'Hạ Kali máu nguy hiểm < 3.0' : 'Tăng Kali máu nguy hiểm > 5.5'})`);
-          }
-        } else if (nameLower.includes('na+') || nameLower.includes('natri')) {
-          if (!isNaN(numVal) && (numVal < 125 || numVal > 155)) {
-            alerts.push(`Natri máu (Na+): ${lab.value} ${lab.unit || 'mmol/L'} (Rối loạn điện giải nặng)`);
-          }
-        } else if (nameLower.includes('plt') || nameLower.includes('tiểu cầu') || nameLower.includes('platelet')) {
-          if (!isNaN(numVal) && numVal < 50) {
-            alerts.push(`Tiểu cầu (PLT): ${lab.value} G/L (Giảm tiểu cầu nặng < 50)`);
-          }
-        } else if (nameLower.includes('glucose') || nameLower.includes('đường huyết')) {
-          if (!isNaN(numVal) && (numVal < 3.0 || numVal > 18)) {
-            alerts.push(`Đường huyết: ${lab.value} mmol/L (${numVal < 3.0 ? 'Hạ đường huyết cấp < 3.0' : 'Tăng đường huyết cấp > 18'})`);
-          }
-        } else if (nameLower.includes('troponin') || nameLower.includes('ck-mb')) {
-          alerts.push(`${lab.testName}: ${lab.value} (Tăng men tim - Nghi ngờ Hội chứng mạch vành cấp/NMCT)`);
-        } else if (nameLower.includes('ns1') || nameLower.includes('dengue')) {
-          if (/dương|pos|\+/i.test(lab.value)) {
-            alerts.push(`Test NS1Ag / Dengue: DƯƠNG TÍNH (Sốt xuất huyết Dengue)`);
-          }
-        } else if (nameLower.includes('creatinine')) {
-          if (!isNaN(numVal) && numVal > 200) {
-            alerts.push(`Creatinine máu: ${lab.value} µmol/L (Tăng cao - Tổn thương thận cấp/Tăng Ure huyết)`);
-          }
-        } else if (nameLower.includes('wbc') || nameLower.includes('bạch cầu')) {
-          if (!isNaN(numVal) && (numVal > 20 || numVal < 2.5)) {
-            alerts.push(`Bạch cầu (WBC): ${lab.value} G/L (${numVal > 20 ? 'Tăng bạch cầu rất cao > 20 (Nhiễm trùng nặng)' : 'Giảm bạch cầu < 2.5'})`);
-          }
-        }
-      }
-    });
-  }
-
-  // 2. Kiểm tra văn bản CLS ban đầu (initialLabsText)
-  if (patient.initialLabsText) {
-    const text = patient.initialLabsText;
-
-    if (/dengue.*dương tính|ns1.*dương tính|ns1ag.*\(\+\)|dengue.*\(\+\)/i.test(text)) {
-      if (!alerts.some((a) => a.includes('Dengue') || a.includes('NS1'))) {
-        alerts.push('Test Dengue NS1Ag: DƯƠNG TÍNH (Sốt xuất huyết Dengue)');
-      }
-    }
-    if (/huyết khối/i.test(text)) {
-      if (!alerts.some((a) => a.includes('huyết khối'))) {
-        alerts.push('Hình ảnh siêu âm/CĐHA: Phát hiện Huyết Khối Mạch Máu');
-      }
-    }
-    if (/hẹp\s*(khoảng\s*)?4\d%|hẹp\s*(khoảng\s*)?[5-9]\d%|hẹp nặng|hẹp\s*khảo\s*sát\s*đm/i.test(text)) {
-      const matchHep = text.match(/hẹp\s*[^;\.\n]+/i);
-      if (!alerts.some((a) => a.includes('Hẹp'))) {
-        alerts.push(matchHep ? matchHep[0].trim() : 'Hẹp lòng động mạch đáng kể');
-      }
-    }
-    if (/platelets[^:]*:\s*([1-4]\d)\b|tiểu cầu[^:]*:\s*([1-4]\d)\b/i.test(text)) {
-      const matchPlt = text.match(/(?:platelets|tiểu cầu)[^:]*:\s*([1-4]\d)\b/i);
-      if (matchPlt && !alerts.some((a) => a.includes('Tiểu cầu'))) {
-        alerts.push(`Tiểu cầu (PLT) giảm thấp nguy hiểm: ${matchPlt[1]} G/L`);
-      }
-    }
-    if (/k\+:\s*([12]\.\d+)\b|kali:\s*([12]\.\d+)\b/i.test(text)) {
-      const matchK = text.match(/(?:k\+|kali):\s*([12]\.\d+)\b/i);
-      if (matchK && !alerts.some((a) => a.includes('Kali'))) {
-        alerts.push(`Hạ Kali máu nguy hiểm: K+ = ${matchK[1]} mmol/L`);
-      }
-    }
-    if (/k\+:\s*([5-9]\.\d+)\b|kali:\s*([5-9]\.\d+)\b/i.test(text)) {
-      const matchK = text.match(/(?:k\+|kali):\s*([5-9]\.\d+)\b/i);
-      if (matchK && !alerts.some((a) => a.includes('Kali'))) {
-        alerts.push(`Tăng Kali máu nguy hiểm: K+ = ${matchK[1]} mmol/L`);
-      }
-    }
-    if (/troponin.*dương tính|troponin.*tăng/i.test(text)) {
-      if (!alerts.some((a) => a.includes('Troponin'))) {
-        alerts.push('Men tim Troponin tăng - Cảnh báo Nhồi máu cơ tim / Hội chứng mạch vành cấp');
-      }
-    }
-  }
-
-  // 3. Cảnh báo mức độ nghiêm trọng từ AI Analysis (nếu có)
-  if (patient.aiAnalysis?.clinicalAlerts) {
-    patient.aiAnalysis.clinicalAlerts
-      .filter((a) => a.type === 'critical')
-      .forEach((a) => {
-        if (!alerts.includes(a.message)) {
-          alerts.push(a.message);
-        }
-      });
-  }
-
-  return Array.from(new Set(alerts));
-}
-
-/**
  * Tự động phân tích văn bản kết quả Cận Lâm Sàng sao chép từ HIS / Bệnh án
- * và chuyển đổi thành danh sách đối tượng xét nghiệm chuẩn hóa (LabResult)
+ * và chuyển đổi thành danh sách đối tượng xét nghiệm chuẩn hóa (LabResult).
+ * Tự động nhận diện nhiều lần xét nghiệm khác nhau và sắp xếp theo trình tự thời gian.
  */
 export function parseRawLabsText(text: string, defaultTimestamp?: string): LabResult[] {
   if (!text || !text.trim()) return [];
 
+  // Tách văn bản nếu có các mốc thời gian / header xét nghiệm mới
+  // Ví dụ: "--- [Cận Lâm Sàng Mới: 14:30 01/11/2026] ---"
+  const sectionSplitRegex = /(?:^|\n)\s*---\s*\[(?:Cận Lâm Sàng Mới|CLS Mới|Xét Nghiệm Mới|CLS|Xét Nghiệm)[\s:]*([^\]\n]+)\]\s*---\s*(?:\n|$)/i;
+
+  if (sectionSplitRegex.test(text)) {
+    const parts = text.split(/(?:^|\n)\s*---\s*\[(?:Cận Lâm Sàng Mới|CLS Mới|Xét Nghiệm Mới|CLS|Xét Nghiệm)[\s:]*([^\]\n]+)\]\s*---\s*(?:\n|$)/i);
+    const allResults: LabResult[] = [];
+
+    // Phân đoạn ban đầu (trước header mốc thời gian đầu tiên)
+    if (parts[0] && parts[0].trim()) {
+      allResults.push(...parseSingleLabBatch(parts[0], defaultTimestamp));
+    }
+
+    // Các phân đoạn tiếp theo đi theo cặp [mốc thời gian, nội dung CLS]
+    for (let i = 1; i < parts.length; i += 2) {
+      const timeHeader = parts[i]?.trim();
+      const sectionContent = parts[i + 1]?.trim();
+      if (sectionContent) {
+        allResults.push(...parseSingleLabBatch(sectionContent, timeHeader || defaultTimestamp));
+      }
+    }
+
+    return allResults.length > 0 ? allResults : parseSingleLabBatch(text, defaultTimestamp);
+  }
+
+  return parseSingleLabBatch(text, defaultTimestamp);
+}
+
+/**
+ * Phân tích một đợt cận lâm sàng cụ thể
+ */
+export function parseSingleLabBatch(text: string, batchTimestamp?: string): LabResult[] {
+  if (!text || !text.trim()) return [];
+
   const now = new Date();
-  const timeStr = defaultTimestamp || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const timeStr = batchTimestamp || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const results: LabResult[] = [];
 
   // Từ điển các xét nghiệm phổ biến trong Khoa Nội
@@ -148,11 +73,14 @@ export function parseRawLabsText(text: string, defaultTimestamp?: string): LabRe
     
     // Sinh hóa
     { pattern: /\b(?:glucose|đường\s*huyết)\b[^\d]*?([\d.]+)/i, name: 'Glucose máu', category: 'Sinh hóa', unit: 'mmol/L', normalRange: '3.9 - 6.4', minNormal: 3.9, maxNormal: 6.4, panicLow: 2.8, panicHigh: 18.0 },
+    { pattern: /\b(?:hba1c)\b[^\d]*?([\d.]+)/i, name: 'HbA1c', category: 'Sinh hóa', unit: '%', normalRange: '4.0 - 6.0', maxNormal: 6.0, panicHigh: 10.0 },
     { pattern: /\b(?:ure|urea)\b[^\d]*?([\d.]+)/i, name: 'Ure máu', category: 'Sinh hóa', unit: 'mmol/L', normalRange: '2.5 - 7.5', minNormal: 2.5, maxNormal: 7.5, panicHigh: 25.0 },
     { pattern: /\b(?:creatinine|cre)\b[^\d]*?([\d.]+)/i, name: 'Creatinine máu', category: 'Sinh hóa', unit: 'µmol/L', normalRange: '53 - 106', minNormal: 53, maxNormal: 106, panicHigh: 250.0 },
     { pattern: /\b(?:ast|got)\b[^\d]*?([\d.]+)/i, name: 'Men gan AST (GOT)', category: 'Sinh hóa', unit: 'U/L', normalRange: '< 37', maxNormal: 37, panicHigh: 500 },
     { pattern: /\b(?:alt|gpt)\b[^\d]*?([\d.]+)/i, name: 'Men gan ALT (GPT)', category: 'Sinh hóa', unit: 'U/L', normalRange: '< 40', maxNormal: 40, panicHigh: 500 },
     { pattern: /\b(?:ggt)\b[^\d]*?([\d.]+)/i, name: 'Men gan GGT', category: 'Sinh hóa', unit: 'U/L', normalRange: '9 - 48', minNormal: 9, maxNormal: 48 },
+    { pattern: /\b(?:bilirubin\s*(?:tp|toàn\s*phần)|bili\s*tp)\b[^\d]*?([\d.]+)/i, name: 'Bilirubin toàn phần', category: 'Sinh hóa', unit: 'µmol/L', normalRange: '< 21', maxNormal: 21, panicHigh: 85 },
+    { pattern: /\b(?:albumin|alb)\b[^\d]*?([\d.]+)/i, name: 'Albumin máu', category: 'Sinh hóa', unit: 'g/L', normalRange: '35 - 52', minNormal: 35, maxNormal: 52, panicLow: 25 },
     { pattern: /\b(?:acid\s*uric|uric)\b[^\d]*?([\d.]+)/i, name: 'Acid Uric máu', category: 'Sinh hóa', unit: 'µmol/L', normalRange: '200 - 420', minNormal: 200, maxNormal: 420 },
     { pattern: /\b(?:crp|crp-hs)\b[^\d]*?([\d.]+)/i, name: 'Protein phản ứng C (CRP)', category: 'Sinh hóa', unit: 'mg/L', normalRange: '< 5.0', maxNormal: 5.0, panicHigh: 100 },
     { pattern: /\b(?:procalcitonin|pct)\b[^\d]*?([\d.]+)/i, name: 'Procalcitonin (PCT)', category: 'Sinh hóa', unit: 'ng/mL', normalRange: '< 0.05', maxNormal: 0.05, panicHigh: 2.0 },
@@ -165,6 +93,12 @@ export function parseRawLabsText(text: string, defaultTimestamp?: string): LabRe
     { pattern: /\b(?:na\+|natri)\b[^\d]*?([\d.]+)/i, name: 'Natri máu (Na+)', category: 'Điện giải', unit: 'mmol/L', normalRange: '135 - 145', minNormal: 135, maxNormal: 145, panicLow: 125, panicHigh: 155 },
     { pattern: /\b(?:cl-|clo|chloride)\b[^\d]*?([\d.]+)/i, name: 'Clo máu (Cl-)', category: 'Điện giải', unit: 'mmol/L', normalRange: '98 - 106', minNormal: 98, maxNormal: 106 },
     { pattern: /\b(?:ca(?:\+\+|2\+|[\s_]tp|[\s_]toàn\s*phần))\b[^\d]*?([\d.]+)/i, name: 'Canxi toàn phần', category: 'Điện giải', unit: 'mmol/L', normalRange: '2.15 - 2.55', minNormal: 2.15, maxNormal: 2.55, panicLow: 1.6, panicHigh: 3.0 },
+
+    // Khí máu động mạch
+    { pattern: /\b(?:ph\s*máu|khí\s*máu\s*ph)\b[^\d]*?([\d.]+)/i, name: 'pH máu (Khí máu)', category: 'Khí máu', unit: '', normalRange: '7.35 - 7.45', minNormal: 7.35, maxNormal: 7.45, panicLow: 7.20, panicHigh: 7.60 },
+    { pattern: /\b(?:pco2)\b[^\d]*?([\d.]+)/i, name: 'pCO2 (Khí máu)', category: 'Khí máu', unit: 'mmHg', normalRange: '35 - 45', minNormal: 35, maxNormal: 45, panicLow: 20, panicHigh: 70 },
+    { pattern: /\b(?:po2)\b[^\d]*?([\d.]+)/i, name: 'pO2 (Khí máu)', category: 'Khí máu', unit: 'mmHg', normalRange: '80 - 100', minNormal: 80, panicLow: 60 },
+    { pattern: /\b(?:hco3-?)\b[^\d]*?([\d.]+)/i, name: 'HCO3- (Khí máu)', category: 'Khí máu', unit: 'mmol/L', normalRange: '22 - 26', minNormal: 22, maxNormal: 26, panicLow: 15, panicHigh: 40 },
   ];
 
   // 1. Quét theo các chỉ số số học đã định nghĩa
@@ -189,7 +123,7 @@ export function parseRawLabsText(text: string, defaultTimestamp?: string): LabRe
         }
 
         results.push({
-          id: `lab-parsed-${idx}-${Date.now()}`,
+          id: `lab-parsed-${idx}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           timestamp: timeStr,
           category: def.category,
           testName: def.name,
@@ -207,7 +141,7 @@ export function parseRawLabsText(text: string, defaultTimestamp?: string): LabRe
   if (/dengue|ns1/i.test(text)) {
     const isPos = /dương|pos|\(\+\)/i.test(text);
     results.push({
-      id: `lab-dengue-${Date.now()}`,
+      id: `lab-dengue-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: timeStr,
       category: 'Huyết học',
       testName: 'Test nhanh Dengue NS1Ag',
@@ -219,13 +153,13 @@ export function parseRawLabsText(text: string, defaultTimestamp?: string): LabRe
     });
   }
 
-  // 3. Quét CĐHA: X-Quang, Siêu âm, ECG
+  // 3. Quét CĐHA: X-Quang, Siêu âm, ECG, CT-Scanner
   const xquangMatch = text.match(/(?:x-?quang|xquang)[^:\n]*:([^\n;.]+)/i);
   if (xquangMatch && xquangMatch[1]) {
     const desc = xquangMatch[1].trim();
     const isAbn = /dày|ứ huyết|bóng tim|thâm nhiễm|tràn dịch|gãy|tổn thương/i.test(desc);
     results.push({
-      id: `lab-xq-${Date.now()}`,
+      id: `lab-xq-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: timeStr,
       category: 'CĐHA',
       testName: 'X-Quang ngực thẳng',
@@ -242,7 +176,7 @@ export function parseRawLabsText(text: string, defaultTimestamp?: string): LabRe
     const desc = ecgMatch[1].trim();
     const isAbn = /rung nhĩ|st chênh|thiếu máu|ngoại tâm thu|nhanh xoang|block/i.test(desc);
     results.push({
-      id: `lab-ecg-${Date.now()}`,
+      id: `lab-ecg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: timeStr,
       category: 'CĐHA',
       testName: 'Điện tâm đồ (ECG)',
@@ -258,7 +192,7 @@ export function parseRawLabsText(text: string, defaultTimestamp?: string): LabRe
   if (saMatch && saMatch[1]) {
     const desc = saMatch[1].trim();
     results.push({
-      id: `lab-sa-${Date.now()}`,
+      id: `lab-sa-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: timeStr,
       category: 'CĐHA',
       testName: 'Siêu âm',
@@ -267,6 +201,22 @@ export function parseRawLabsText(text: string, defaultTimestamp?: string): LabRe
       normalRange: 'Không ghi nhận bất thường',
       isAbnormal: /huyết khối|dịch|sỏi|giãn|hẹp/i.test(desc),
       isPanicValue: /huyết khối/i.test(desc),
+    });
+  }
+
+  const ctMatch = text.match(/(?:ct-?scanner|chụp\s*ct|cắt\s*lớp)[^:\n]*:([^\n;.]+)/i);
+  if (ctMatch && ctMatch[1]) {
+    const desc = ctMatch[1].trim();
+    results.push({
+      id: `lab-ct-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: timeStr,
+      category: 'CĐHA',
+      testName: 'Chụp CT-Scanner',
+      value: desc,
+      unit: '',
+      normalRange: 'Bình thường',
+      isAbnormal: /xuất huyết|nhồi máu|u|gãy|dịch|tổn thương/i.test(desc),
+      isPanicValue: /xuất huyết não|nhồi máu não diện rộng|chèn ép/i.test(desc),
     });
   }
 
