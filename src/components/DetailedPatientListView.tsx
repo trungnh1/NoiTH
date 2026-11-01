@@ -58,6 +58,7 @@ import {
   isRoomNumberMatch, 
   matchesPatientSearch 
 } from '../utils/searchUtils';
+import { getCriticalLabAlerts } from '../utils/labAlerts';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
 export const GROUP_1_ROOM_NUMBERS = [
@@ -378,7 +379,7 @@ export function isNewAdmissionWithin24Hours(admissionDateStr: string, referenceT
 export const isNewAdmissionFromYesterday1630 = isNewAdmissionWithin24Hours;
 
 // Trích xuất cảnh báo cận lâm sàng bất thường nặng, nguy hiểm (đồng bộ từ labAlerts)
-export { getCriticalLabAlerts } from '../utils/labAlerts';
+export { getCriticalLabAlerts };
 /**
  * Hệ thống Cảnh Báo Sớm Y Khoa Tự Động (Clinical Early Warning & Panic Alerts)
  * Dựa trên thang điểm NEWS2, sinh hiệu nguy hiểm và cận lâm sàng bất thường
