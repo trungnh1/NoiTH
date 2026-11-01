@@ -7,6 +7,7 @@ import {
   Filter, 
   ChevronRight,
   ArrowRight,
+  Check,
   CheckCircle2,
   Stethoscope,
   Copy,

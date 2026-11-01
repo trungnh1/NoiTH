@@ -19,6 +19,7 @@ import {
   SlidersHorizontal, 
   ChevronDown, 
   UserCheck,
+  Check,
   ShieldAlert,
   AlertTriangle
 } from 'lucide-react';
