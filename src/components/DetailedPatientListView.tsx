@@ -2738,20 +2738,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 </div>
                               </div>
 
-                                {/* Cảnh báo sớm y khoa tự động trong Card View */}
-                                {earlyWarningCard.level !== 'NORMAL' && (
-                                  <div className="mt-1">
-                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black shadow-2xs ${
-                                      earlyWarningCard.level === 'PANIC'
-                                        ? 'bg-rose-600 text-white animate-pulse'
-                                        : 'bg-amber-500 text-white'
-                                    }`} title={earlyWarningCard.reasons.join(' • ')}>
-                                      {earlyWarningCard.level === 'PANIC' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
-                                      <span>{earlyWarningCard.badgeText}</span>
-                                    </span>
-                                  </div>
-                                )}
-
                               {/* Tình trạng bệnh: Bấm để sửa phân loại Nặng, Trung bình, Nhẹ */}
                               <div className="relative flex flex-col items-end gap-1 shrink-0">
                                 <button
@@ -2973,6 +2959,20 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 <p className="text-xs font-medium text-slate-800 leading-relaxed whitespace-pre-line" title={handoverNotes}>
                                   {handoverNotes}
                                 </p>
+                              </div>
+                            )}
+
+                            {/* Cảnh báo sớm y khoa tự động trong Card View (Nằm ở dưới cùng, ngay trên phần + Diễn Tiến) */}
+                            {earlyWarningCard.level !== 'NORMAL' && (
+                              <div className="mb-2.5 flex items-center">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black shadow-xs ${
+                                  earlyWarningCard.level === 'PANIC'
+                                    ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-300'
+                                    : 'bg-amber-500 text-white ring-2 ring-amber-300'
+                                }`} title={earlyWarningCard.reasons.join(' • ')}>
+                                  {earlyWarningCard.level === 'PANIC' && <span className="w-2 h-2 rounded-full bg-white animate-ping shrink-0" />}
+                                  <span>{earlyWarningCard.badgeText}</span>
+                                </span>
                               </div>
                             )}
 
