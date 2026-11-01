@@ -128,10 +128,10 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     setFileName(file.name);
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
         const buffer = evt.target?.result as ArrayBuffer;
-        const { rows: parsed, detectedHeaders: headers } = parseExcelFile(buffer);
+        const { rows: parsed, detectedHeaders: headers } = await parseExcelFile(buffer);
         setExcelRows(parsed);
         setDetectedColumns(headers);
 

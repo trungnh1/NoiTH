@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { 
   ClinicalRecord, 
   parseAgeNumber,
@@ -278,11 +277,13 @@ export function extractCleanBedNumber(bedRaw?: string): string {
 /**
  * Parses binary/arraybuffer Excel/CSV file content into structured ExcelPatientRow list
  */
-export function parseExcelFile(fileBuffer: ArrayBuffer | Uint8Array): {
+export async function parseExcelFile(fileBuffer: ArrayBuffer | Uint8Array): Promise<{
   rows: ExcelPatientRow[];
   detectedHeaders: string[];
   sheetNames: string[];
-} {
+}> {
+  // Tải SheetJS động khi người dùng thực sự tải lên file Excel (không làm phình bundle lúc mở trang)
+  const XLSX = await import('xlsx');
   // Bật cellDates: true để SheetJS tự động nhận diện ngày tháng nếu ô được format là Date
   const workbook = XLSX.read(fileBuffer, { type: 'array', cellDates: true });
   const firstSheetName = workbook.SheetNames[0] || 'Sheet1';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Trash2, LogOut } from 'lucide-react';
 import { 
   Patient, 
@@ -15,15 +15,9 @@ import {
 } from './utils/storage';
 import { Header } from './components/Header';
 import { DetailedPatientListView } from './components/DetailedPatientListView';
-import { SimplifiedNewPatientModal } from './components/SimplifiedNewPatientModal';
-import { QuickEvolutionModal } from './components/QuickEvolutionModal';
-import { PatientPrintModal } from './components/PatientPrintModal';
 import { DoctorLoginScreen } from './components/DoctorLoginScreen';
-import { SatelliteClinicalSyncModal } from './components/SatelliteClinicalSyncModal';
 import { getSavedDoctorSession, saveDoctorSession, clearDoctorSession } from './utils/auth';
 import { loadAppSettings, saveAppSettings, getFontSizeScale, AppSettings, FONT_FAMILY_MAP } from './utils/settings';
-import { AppSettingsModal } from './components/AppSettingsModal';
-import { ExcelDataSyncModal } from './components/ExcelDataSyncModal';
 import { isRealAllergy } from './utils/clinicalTextParser';
 import { normalizeSearchText } from './utils/searchUtils';
 import { 
@@ -38,18 +32,6 @@ import {
   deleteSatelliteRecord,
   parseAgeNumber
 } from './services/clinicalFirebase';
-
-import { ChangePasswordModal } from './components/ChangePasswordModal';
-import { WardRoomMap } from './components/WardRoomMap';
-import { PatientTableView } from './components/PatientTableView';
-import { DoctorAllocationView } from './components/DoctorAllocationView';
-import { ClinicalKardexView } from './components/ClinicalKardexView';
-import { PatientDetailModal } from './components/PatientDetailModal';
-import { NewPatientModal } from './components/NewPatientModal';
-import { BedTransferModal } from './components/BedTransferModal';
-import { ShiftHandoverModal } from './components/ShiftHandoverModal';
-import { ClinicalWatchlistModal } from './components/ClinicalWatchlistModal';
-import { DutyRosterModal } from './components/DutyRosterModal';
 import { 
   subscribeToEmergencyRecords, 
   subscribeToDepartmentPatients,
@@ -63,13 +45,35 @@ import {
   subscribeToDismissedSatelliteRecords
 } from './services/firebaseSync';
 
+// Lazy load secondary views and modals to minimize initial bundle size and enable instant load
+const SimplifiedNewPatientModal = React.lazy(() => import('./components/SimplifiedNewPatientModal').then(m => ({ default: m.SimplifiedNewPatientModal })));
+const QuickEvolutionModal = React.lazy(() => import('./components/QuickEvolutionModal').then(m => ({ default: m.QuickEvolutionModal })));
+const PatientPrintModal = React.lazy(() => import('./components/PatientPrintModal').then(m => ({ default: m.PatientPrintModal })));
+const SatelliteClinicalSyncModal = React.lazy(() => import('./components/SatelliteClinicalSyncModal').then(m => ({ default: m.SatelliteClinicalSyncModal })));
+const AppSettingsModal = React.lazy(() => import('./components/AppSettingsModal').then(m => ({ default: m.AppSettingsModal })));
+const ExcelDataSyncModal = React.lazy(() => import('./components/ExcelDataSyncModal').then(m => ({ default: m.ExcelDataSyncModal })));
+const ChangePasswordModal = React.lazy(() => import('./components/ChangePasswordModal').then(m => ({ default: m.ChangePasswordModal })));
+const WardRoomMap = React.lazy(() => import('./components/WardRoomMap').then(m => ({ default: m.WardRoomMap })));
+const PatientTableView = React.lazy(() => import('./components/PatientTableView').then(m => ({ default: m.PatientTableView })));
+const DoctorAllocationView = React.lazy(() => import('./components/DoctorAllocationView').then(m => ({ default: m.DoctorAllocationView })));
+const ClinicalKardexView = React.lazy(() => import('./components/ClinicalKardexView').then(m => ({ default: m.ClinicalKardexView })));
+const PatientDetailModal = React.lazy(() => import('./components/PatientDetailModal').then(m => ({ default: m.PatientDetailModal })));
+const NewPatientModal = React.lazy(() => import('./components/NewPatientModal').then(m => ({ default: m.NewPatientModal })));
+const BedTransferModal = React.lazy(() => import('./components/BedTransferModal').then(m => ({ default: m.BedTransferModal })));
+const ShiftHandoverModal = React.lazy(() => import('./components/ShiftHandoverModal').then(m => ({ default: m.ShiftHandoverModal })));
+const ClinicalWatchlistModal = React.lazy(() => import('./components/ClinicalWatchlistModal').then(m => ({ default: m.ClinicalWatchlistModal })));
+const DutyRosterModal = React.lazy(() => import('./components/DutyRosterModal').then(m => ({ default: m.DutyRosterModal })));
+
 export default function App() {
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [rooms, setRooms] = useState<DepartmentRoom[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [authenticatedDoctor, setAuthenticatedDoctor] = useState<Doctor | null>(null);
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
+  const [patients, setPatients] = useState<Patient[]>(() => loadPatients());
+  const [doctors, setDoctors] = useState<Doctor[]>(() => loadDoctors());
+  const [rooms, setRooms] = useState<DepartmentRoom[]>(() => loadRooms());
+  const [authenticatedDoctor, setAuthenticatedDoctor] = useState<Doctor | null>(() => {
+    const loadedDocs = loadDoctors();
+    return getSavedDoctorSession(loadedDocs);
+  });
+  const [isLoaded, setIsLoaded] = useState(true);
+  const [isAuthChecked, setIsAuthChecked] = useState(true);
 
   // Firestore Sync State & Auto-save status
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
@@ -146,20 +150,6 @@ export default function App() {
 
   // Initial load & Realtime 2-way Cloud Firestore Sync
   useEffect(() => {
-    const initialPatients = loadPatients();
-    const loadedDocs = loadDoctors();
-    setPatients(initialPatients);
-    setDoctors(loadedDocs);
-    setRooms(loadRooms());
-
-    // Restore saved authenticated doctor session
-    const savedDoc = getSavedDoctorSession(loadedDocs);
-    if (savedDoc) {
-      setAuthenticatedDoctor(savedDoc);
-    }
-    setIsAuthChecked(true);
-    setIsLoaded(true);
-
     // 1. Automatic continuous 2-way sync for Inpatients in Khoa Nội Tổng Hợp
     const unsubDept = subscribeToDepartmentPatients(
       (cloudPatients) => {
@@ -216,7 +206,10 @@ export default function App() {
     }
 
     // 3. Real-time background subscriber to Satellite Cloud Firestore (iron-foundation-kbcxw)
-    const unsubSatellite = subscribeToClinicalRecords((satelliteRecords) => {
+    // Defer 1200ms để ưu tiên toàn bộ tài nguyên CPU/Network cho first paint & tương tác ban đầu
+    let unsubSatellite: (() => void) | undefined;
+    const timerSatellite = setTimeout(() => {
+      unsubSatellite = subscribeToClinicalRecords((satelliteRecords) => {
       if (!satelliteRecords || satelliteRecords.length === 0) {
         return;
       }
@@ -347,9 +340,11 @@ export default function App() {
 
       setPendingSatelliteRecords(pendingQueue);
       savePendingSatelliteRecords(pendingQueue);
-    });
+      });
+    }, 1200);
 
     return () => {
+      clearTimeout(timerSatellite);
       unsubDept();
       if (typeof unsubSatellite === 'function') unsubSatellite();
       if (typeof unsubDismissed === 'function') unsubDismissed();
@@ -940,63 +935,71 @@ export default function App() {
         )}
 
         {activeView === 'map' && (
-          <WardRoomMap
-            rooms={rooms}
-            patients={patients}
-            doctors={doctors}
-            onSelectPatient={(p) => setSelectedPatient(p)}
-            onTransferPatient={(p) => setTransferringPatient(p)}
-            onAdmitToBed={(rNum, bNum) => {
-              setPrefilledRoom(rNum);
-              setPrefilledBed(bNum);
-              setIsSimplifiedNewPatientOpen(true);
-            }}
-            onDeletePatient={(pId) => {
-              const target = patients.find((p) => p.id === pId);
-              if (target) handleDeletePatient(target);
-            }}
-            onReassignDoctorForRoom={handleAssignRoomDoctor}
-            onUpdatePatient={handleUpdatePatient}
-          />
+          <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium">Đang tải Sơ Đồ Buồng Bệnh...</div>}>
+            <WardRoomMap
+              rooms={rooms}
+              patients={patients}
+              doctors={doctors}
+              onSelectPatient={(p) => setSelectedPatient(p)}
+              onTransferPatient={(p) => setTransferringPatient(p)}
+              onAdmitToBed={(rNum, bNum) => {
+                setPrefilledRoom(rNum);
+                setPrefilledBed(bNum);
+                setIsSimplifiedNewPatientOpen(true);
+              }}
+              onDeletePatient={(pId) => {
+                const target = patients.find((p) => p.id === pId);
+                if (target) handleDeletePatient(target);
+              }}
+              onReassignDoctorForRoom={handleAssignRoomDoctor}
+              onUpdatePatient={handleUpdatePatient}
+            />
+          </Suspense>
         )}
 
         {activeView === 'table' && (
-          <PatientTableView
-            patients={patients}
-            doctors={doctors}
-            onSelectPatient={(p) => setSelectedPatient(p)}
-            onTransferPatient={(p) => setTransferringPatient(p)}
-            onUpdatePatient={handleUpdatePatient}
-          />
+          <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium">Đang tải Danh Sách Bệnh Nhân...</div>}>
+            <PatientTableView
+              patients={patients}
+              doctors={doctors}
+              onSelectPatient={(p) => setSelectedPatient(p)}
+              onTransferPatient={(p) => setTransferringPatient(p)}
+              onUpdatePatient={handleUpdatePatient}
+            />
+          </Suspense>
         )}
 
         {activeView === 'kardex' && (
-          <ClinicalKardexView
-            patients={patients}
-            doctors={doctors}
-            roomDoctorAssignments={roomDoctorAssignments}
-            onSelectPatient={(p) => setSelectedPatient(p)}
-            onOpenEvolution={(p) => setEvolutionPatient(p)}
-            onTransferPatient={(p) => setTransferringPatient(p)}
-            onUpdatePatient={handleUpdatePatient}
-          />
+          <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium">Đang tải Bảng Theo Dõi Điều Trị (Kardex)...</div>}>
+            <ClinicalKardexView
+              patients={patients}
+              doctors={doctors}
+              roomDoctorAssignments={roomDoctorAssignments}
+              onSelectPatient={(p) => setSelectedPatient(p)}
+              onOpenEvolution={(p) => setEvolutionPatient(p)}
+              onTransferPatient={(p) => setTransferringPatient(p)}
+              onUpdatePatient={handleUpdatePatient}
+            />
+          </Suspense>
         )}
 
         {activeView === 'doctors' && (
-          <DoctorAllocationView
-            rooms={rooms}
-            doctors={doctors}
-            patients={patients}
-            onSelectPatient={(p) => setSelectedPatient(p)}
-            onReassignDoctor={(patientId, newDoctorId) => {
-              const target = patients.find((p) => p.id === patientId);
-              if (target) {
-                handleUpdatePatient({ ...target, attendingDoctorId: newDoctorId });
-              }
-            }}
-            onReassignDoctorForRoom={handleAssignRoomDoctor}
-            onUpdatePatient={handleUpdatePatient}
-          />
+          <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium">Đang tải Phân Bổ Bác Sĩ...</div>}>
+            <DoctorAllocationView
+              rooms={rooms}
+              doctors={doctors}
+              patients={patients}
+              onSelectPatient={(p) => setSelectedPatient(p)}
+              onReassignDoctor={(patientId, newDoctorId) => {
+                const target = patients.find((p) => p.id === patientId);
+                if (target) {
+                  handleUpdatePatient({ ...target, attendingDoctorId: newDoctorId });
+                }
+              }}
+              onReassignDoctorForRoom={handleAssignRoomDoctor}
+              onUpdatePatient={handleUpdatePatient}
+            />
+          </Suspense>
         )}
       </main>
 
@@ -1092,8 +1095,10 @@ export default function App() {
         </div>
       )}
 
-      {/* 1. Simplified New Patient Admission Modal */}
-      {isSimplifiedNewPatientOpen && (
+      {/* Lazy-loaded Dialogs & Modals */}
+      <Suspense fallback={null}>
+        {/* 1. Simplified New Patient Admission Modal */}
+        {isSimplifiedNewPatientOpen && (
         <SimplifiedNewPatientModal
           rooms={rooms}
           doctors={doctors}
@@ -1314,6 +1319,7 @@ export default function App() {
           onSelectDoctor={() => setIsDutyModalOpen(false)}
         />
       )}
+      </Suspense>
 
       {/* Delete All Patients Confirmation Modal (BS ID 00979 Exclusive) */}
       {showDeleteAllConfirmModal && (
