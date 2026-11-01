@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { formatPatientDisplayName } from '../utils/storage';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
-import { getCriticalLabAlerts } from '../utils/labAlerts';
+import { getCriticalLabAlerts, getImportantOrAbnormalLabs } from '../utils/labAlerts';
 import { matchesPatientSearch } from '../utils/searchUtils';
 import { 
   formatDoctorShortName, 
@@ -688,33 +688,41 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                       </div>
                     </td>
 
-                    {/* 6. Cận Lâm Sàng & Báo Động Nguy Hiểm */}
+                    {/* 6. Cận Lâm Sàng & Báo Động Nguy Hiểm (CHỈ HIỂN THỊ CLS QUAN TRỌNG HOẶC BẤT THƯỜNG NHIỀU) */}
                     <td className={`${padClass} align-top`}>
-                      <div className="space-y-1.5">
-                        {/* Cảnh báo xét nghiệm nguy hiểm (Báo động đỏ) */}
-                        {criticalAlerts.length > 0 && (
-                          <div className="p-1.5 rounded-lg bg-rose-50 border border-rose-300 shadow-2xs space-y-0.5">
-                            <div className="flex items-center gap-1 text-rose-800 text-[10px] font-black uppercase">
-                              <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0 animate-bounce" />
-                              <span>Báo động đỏ:</span>
-                            </div>
-                            {criticalAlerts.slice(0, 2).map((alert, idx) => (
-                              <p key={idx} className="text-[10.5px] font-bold text-rose-900 leading-tight">
-                                • {alert}
-                              </p>
+                      {(() => {
+                        const importantLabs = getImportantOrAbnormalLabs(patient);
+                        if (importantLabs.length === 0) {
+                          return patient.initialLabsText || (patient.labs && patient.labs.length > 0) ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[10.5px]">
+                              <span>🟢</span>
+                              <span>Bình thường</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-[10.5px]">Chưa có kết quả CLS</span>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-1">
+                            {importantLabs.map((item) => (
+                              <div
+                                key={item.id}
+                                className={`text-[10.5px] p-1 rounded leading-tight shadow-2xs ${
+                                  item.severity === 'CRITICAL'
+                                    ? 'bg-rose-50 border border-rose-300 text-rose-900 font-black'
+                                    : item.severity === 'WARNING'
+                                    ? 'bg-amber-50 border border-amber-200 text-amber-900 font-bold'
+                                    : 'bg-blue-50 border border-blue-200 text-blue-900 font-bold'
+                                }`}
+                                title={item.badgeLabel}
+                              >
+                                {item.badgeLabel}
+                              </div>
                             ))}
                           </div>
-                        )}
-
-                        {/* Kết quả xét nghiệm / CLS tóm tắt */}
-                        {patient.initialLabsText ? (
-                          <p className="text-[10.5px] font-mono text-slate-700 line-clamp-3 bg-slate-50 p-1.5 rounded border border-slate-200" title={patient.initialLabsText}>
-                            {patient.initialLabsText}
-                          </p>
-                        ) : (
-                          <span className="text-slate-400 italic text-[10.5px]">Chưa có kết quả CLS sao chép</span>
-                        )}
-                      </div>
+                        );
+                      })()}
                     </td>
 
                     {/* 7. Dặn Dò Trực & Bàn Giao */}

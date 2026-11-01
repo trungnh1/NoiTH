@@ -110,6 +110,154 @@ export function getCriticalLabAlerts(patient: Patient): string[] {
   return Array.from(new Set(alerts));
 }
 
+export interface ImportantLabItem {
+  id: string;
+  name: string;
+  value: string;
+  unit?: string;
+  severity: 'CRITICAL' | 'WARNING' | 'INFO';
+  badgeLabel: string;
+}
+
+/**
+ * Trích xuất CHỈ các xét nghiệm bất thường nhiều hoặc cận lâm sàng quan trọng
+ * phục vụ hiển thị trên Bảng Kardex Lâm Sàng 1 Trang.
+ */
+export function getImportantOrAbnormalLabs(patient: Patient): ImportantLabItem[] {
+  const items: ImportantLabItem[] = [];
+  const addedNames = new Set<string>();
+
+  // 1. Critical Panic Alerts (Báo động đỏ)
+  const criticals = getCriticalLabAlerts(patient);
+  criticals.forEach((c, idx) => {
+    const namePart = (c.split(':')[0] || 'Cảnh báo nguy hiểm').trim();
+    items.push({
+      id: `crit-${idx}`,
+      name: namePart,
+      value: c.includes(':') ? c.split(':').slice(1).join(':').trim() : c,
+      severity: 'CRITICAL',
+      badgeLabel: c.startsWith('🚨') ? c : `🚨 ${c}`,
+    });
+    addedNames.add(namePart.toLowerCase());
+  });
+
+  // 2. Các xét nghiệm bất thường từ patient.labs (nếu chưa có trong critical alerts)
+  if (patient.labs && patient.labs.length > 0) {
+    patient.labs.forEach((lab) => {
+      const nameKey = lab.testName.toLowerCase().trim();
+      if (addedNames.has(nameKey)) return;
+
+      if (lab.isPanicValue) {
+        items.push({
+          id: lab.id,
+          name: lab.testName,
+          value: `${lab.value} ${lab.unit || ''}`.trim(),
+          unit: lab.unit,
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 ${lab.testName}: ${lab.value} ${lab.unit || ''}`.trim(),
+        });
+        addedNames.add(nameKey);
+      } else if (lab.isAbnormal) {
+        items.push({
+          id: lab.id,
+          name: lab.testName,
+          value: `${lab.value} ${lab.unit || ''}`.trim(),
+          unit: lab.unit,
+          severity: 'WARNING',
+          badgeLabel: `⚠️ ${lab.testName}: ${lab.value} ${lab.unit || ''}`.trim(),
+        });
+        addedNames.add(nameKey);
+      }
+    });
+  }
+
+  // 3. Nếu chưa có parsed labs nhưng có initialLabsText, tự động parse để trích xuất các chỉ số bất thường
+  if ((!patient.labs || patient.labs.length === 0) && patient.initialLabsText) {
+    const autoParsed = parseRawLabsText(patient.initialLabsText);
+    autoParsed.forEach((lab) => {
+      const nameKey = lab.testName.toLowerCase().trim();
+      if (addedNames.has(nameKey)) return;
+
+      if (lab.isPanicValue) {
+        items.push({
+          id: lab.id,
+          name: lab.testName,
+          value: `${lab.value} ${lab.unit || ''}`.trim(),
+          unit: lab.unit,
+          severity: 'CRITICAL',
+          badgeLabel: `🚨 ${lab.testName}: ${lab.value} ${lab.unit || ''}`.trim(),
+        });
+        addedNames.add(nameKey);
+      } else if (lab.isAbnormal) {
+        items.push({
+          id: lab.id,
+          name: lab.testName,
+          value: `${lab.value} ${lab.unit || ''}`.trim(),
+          unit: lab.unit,
+          severity: 'WARNING',
+          badgeLabel: `⚠️ ${lab.testName}: ${lab.value} ${lab.unit || ''}`.trim(),
+        });
+        addedNames.add(nameKey);
+      }
+    });
+  }
+
+  // 4. Trích xuất CĐHA quan trọng (ECG, X-Quang, Siêu âm, CT-Scanner)
+  if (patient.initialLabsText) {
+    const text = patient.initialLabsText;
+
+    // ECG
+    const ecgMatch = text.match(/(?:ecg|điện tâm đồ)[^:\n]*:([^\n;.]+)/i);
+    if (ecgMatch && ecgMatch[1] && !addedNames.has('ecg')) {
+      const desc = ecgMatch[1].trim();
+      if (/rung nhĩ|st chênh|thiếu máu|block|ngoại tâm thu|nhanh xoang|sóng t âm/i.test(desc)) {
+        items.push({
+          id: `ecg-abn`,
+          name: 'Điện tâm đồ (ECG)',
+          value: desc,
+          severity: /rung nhĩ|st chênh|thiếu máu cấp/i.test(desc) ? 'CRITICAL' : 'WARNING',
+          badgeLabel: `⚡ ECG: ${desc}`,
+        });
+        addedNames.add('ecg');
+      }
+    }
+
+    // X-Quang
+    const xqMatch = text.match(/(?:x-?quang|xquang)[^:\n]*:([^\n;.]+)/i);
+    if (xqMatch && xqMatch[1] && !addedNames.has('x-quang')) {
+      const desc = xqMatch[1].trim();
+      if (/thâm nhiễm|tràn dịch|dày|bóng tim|ứ huyết|gãy|viêm/i.test(desc)) {
+        items.push({
+          id: `xq-abn`,
+          name: 'X-Quang ngực',
+          value: desc,
+          severity: /tràn dịch|thâm nhiễm diện rộng/i.test(desc) ? 'CRITICAL' : 'WARNING',
+          badgeLabel: `📷 X-Quang: ${desc}`,
+        });
+        addedNames.add('x-quang');
+      }
+    }
+
+    // Siêu âm
+    const saMatch = text.match(/(?:siêu âm|sieu am)[^:\n]*:([^\n;.]+)/i);
+    if (saMatch && saMatch[1] && !addedNames.has('siêu âm')) {
+      const desc = saMatch[1].trim();
+      if (/tràn dịch|huyết khối|sỏi|u|nang|giãn|xơ/i.test(desc)) {
+        items.push({
+          id: `sa-abn`,
+          name: 'Siêu âm',
+          value: desc,
+          severity: /huyết khối|tràn dịch nhiều/i.test(desc) ? 'CRITICAL' : 'WARNING',
+          badgeLabel: `🩺 Siêu âm: ${desc}`,
+        });
+        addedNames.add('siêu âm');
+      }
+    }
+  }
+
+  return items;
+}
+
 /**
  * Tự động phân tích văn bản kết quả Cận Lâm Sàng sao chép từ HIS / Bệnh án
  * và chuyển đổi thành danh sách đối tượng xét nghiệm chuẩn hóa (LabResult).

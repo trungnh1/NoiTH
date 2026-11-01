@@ -631,6 +631,11 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const [notification, setNotification] = useState<string | null>(null);
   const [hoveredPatientId, setHoveredPatientId] = useState<string | null>(null);
 
+  // Ghi Chú Nhanh Tại Chỗ (Inline Quick Note)
+  const [inlineNotePatientId, setInlineNotePatientId] = useState<string | null>(null);
+  const [inlineNoteText, setInlineNoteText] = useState<string>('');
+  const [isSavingInlineNote, setIsSavingInlineNote] = useState<boolean>(false);
+
   const handleOpenInlineNote = (patient: Patient, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setInlineNotePatientId(patient.id);
