@@ -660,7 +660,7 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                             )}
                           </div>
                           <div className="text-[10.5px] text-slate-500 font-medium">
-                            {roomPatients.length}/{room.totalBeds} giường có bệnh
+                            {roomPatients.length} bệnh nhân đang điều trị
                           </div>
                         </div>
                       </div>
@@ -897,7 +897,7 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                                 )}
                               </div>
                               <div className="text-[11px] text-slate-500 mt-0.5 font-medium">
-                                {roomPatients.length}/{room.totalBeds} giường có bệnh
+                                {roomPatients.length} bệnh nhân trong phòng
                               </div>
                             </div>
                           </div>

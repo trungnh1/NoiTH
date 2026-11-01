@@ -94,7 +94,7 @@ export const ClinicalWatchlistModal: React.FC<ClinicalWatchlistModalProps> = ({
                     <div className="space-y-1.5 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="px-2 py-0.5 rounded bg-rose-600 text-white font-black text-xs">
-                          {patient.roomNumber} - {patient.bedNumber}
+                          Phòng {patient.roomNumber}
                         </span>
                         <h4
                           onClick={() => {

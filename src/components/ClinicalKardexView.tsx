@@ -131,23 +131,13 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
 
       return true;
     }).sort((a, b) => {
-      // Sắp xếp tự nhiên theo số phòng và số giường
+      // Sắp xếp tự nhiên theo số phòng, sau đó theo tên bệnh nhân
       const roomA = parseInt(a.roomNumber?.replace(/\D/g, '') || '0', 10);
       const roomB = parseInt(b.roomNumber?.replace(/\D/g, '') || '0', 10);
       if (roomA !== roomB) return roomA - roomB;
-      const bedA = parseInt(a.bedNumber?.replace(/\D/g, '') || '0', 10);
-      const bedB = parseInt(b.bedNumber?.replace(/\D/g, '') || '0', 10);
-      return bedA - bedB;
+      return a.fullName.localeCompare(b.fullName, 'vi');
     });
   }, [patients, selectedGroup, currentGroupRoomNumbers, selectedRoom, selectedDoctorId, severityFilter, searchTerm, doctorMap]);
-
-  // Định dạng hiển thị giường chuẩn xác, loại bỏ tiền tố G hoặc G. lặp lại
-  const formatBedDisplay = (bed?: string) => {
-    if (!bed) return '';
-    const trimmed = bed.trim();
-    const raw = trimmed.replace(/^(Giường\s*|G\.\s*|G)+/i, '').trim();
-    return raw ? `G.${raw}` : trimmed;
-  };
 
   // Gom nhóm bệnh nhân theo buồng phòng để hiển thị dạng gộp (rowSpan)
   const groupedPatients = useMemo(() => {
@@ -587,11 +577,6 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                             className="cursor-pointer group"
                           >
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              {patient.bedNumber && (
-                                <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-blue-50 text-blue-700 border border-blue-200/70 shrink-0">
-                                  {formatBedDisplay(patient.bedNumber)}
-                                </span>
-                              )}
                               <span className={`font-black text-xs sm:text-[13px] group-hover:text-blue-700 group-hover:underline transition-colors ${
                                 isCritical ? 'text-rose-700' : isModerate ? 'text-amber-800' : 'text-slate-900'
                               }`}>

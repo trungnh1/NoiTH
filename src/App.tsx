@@ -328,7 +328,7 @@ export default function App() {
             }
 
             setEmergencyAlert({
-              message: `🎉 Tự động tiếp nhận Bệnh nhân mới từ Vệ Tinh: ${mappedPatient.fullName} (${mappedPatient.age}t, ${mappedPatient.gender}) -> Phòng ${mappedPatient.roomNumber} - ${mappedPatient.bedNumber}`,
+              message: `🎉 Tự động tiếp nhận Bệnh nhân mới từ Vệ Tinh: ${mappedPatient.fullName} (${mappedPatient.age}t, ${mappedPatient.gender}) -> Phòng ${mappedPatient.roomNumber}`,
               patient: mappedPatient,
             });
           }
@@ -591,7 +591,7 @@ export default function App() {
       timestamp: timeStr,
       doctorName: doctors.find((d) => d.id === target.attendingDoctorId)?.name || 'Bác sĩ điều trị',
       shift: 'Sáng' as const,
-      clinicalNote: `Điều chuyển giường bệnh: Từ ${target.roomNumber} - ${target.bedNumber} sang ${newRoomNumber} - ${newBedNumber}.`,
+      clinicalNote: `Điều chuyển buồng phòng: Từ Phòng ${target.roomNumber} sang Phòng ${newRoomNumber}.`,
       treatmentAction: 'Bàn giao hồ sơ bệnh án và thuốc cho kíp buồng mới.',
     };
 
@@ -1032,7 +1032,7 @@ export default function App() {
                   <p className="font-semibold">Bạn có chắc chắn muốn xóa vĩnh viễn bệnh nhân:</p>
                   <p className="font-black text-rose-700 text-sm uppercase">{actionConfirmModal.patient.fullName}</p>
                   <p className="text-[11px] text-slate-500 font-semibold">
-                    Phòng {actionConfirmModal.patient.roomNumber} - {actionConfirmModal.patient.bedNumber}
+                    Phòng {actionConfirmModal.patient.roomNumber}
                   </p>
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
@@ -1067,7 +1067,7 @@ export default function App() {
                   <p className="font-semibold">Xác nhận ghi nhận ra viện cho bệnh nhân:</p>
                   <p className="font-black text-emerald-800 text-sm uppercase">{actionConfirmModal.patient.fullName}</p>
                   <p className="text-[11px] text-slate-500 font-semibold">
-                    Phòng {actionConfirmModal.patient.roomNumber} - {actionConfirmModal.patient.bedNumber}
+                    Phòng {actionConfirmModal.patient.roomNumber}
                   </p>
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">

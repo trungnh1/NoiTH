@@ -622,7 +622,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                           </span>
                           <ArrowRight className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                           <span className="bg-emerald-100 text-emerald-900 px-1.5 py-0.2 rounded font-black">
-                            Excel hành chính: Phòng {match.proposedRoom} • {match.proposedAge}T {excel.bedNumber ? `• ${excel.bedNumber}` : ''}
+                            Excel hành chính: Phòng {match.proposedRoom} • {match.proposedAge}T
                           </span>
                         </div>
                       </div>
@@ -703,7 +703,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                       <th className="p-2.5">Mã BN</th>
                       <th className="p-2.5">Họ Và Tên</th>
                       <th className="p-2.5">Tuổi / Giới</th>
-                      <th className="p-2.5">Phòng / Giường</th>
+                      <th className="p-2.5">Phòng Bệnh</th>
                       <th className="p-2.5">Ngày Vào Viện</th>
                       <th className="p-2.5">Chẩn Đoán ICD (Bỏ qua)</th>
                       <th className="p-2.5 text-right">Trạng Thái & Thao Tác</th>

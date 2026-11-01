@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Patient, 
   Doctor, 
@@ -449,7 +449,7 @@ export const AiCriticalTriageDashboard: React.FC<AiCriticalTriageDashboardProps>
                   <div className={`p-2.5 bg-gradient-to-r ${tierInfo.color} text-white flex items-center justify-between`}>
                     <div className="flex items-center gap-1.5 truncate">
                       <span className="px-2 py-0.5 rounded bg-black/30 font-black text-xs shrink-0 tracking-tight">
-                        P.{patient.roomNumber} - {patient.bedNumber}
+                        P.{patient.roomNumber}
                       </span>
                       <span className="font-black text-sm truncate" title={patient.fullName}>
                         {formatPatientDisplayName(patient.fullName)}

@@ -338,7 +338,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
     onImportPatientDirect(patientObj);
     setImportedIds((prev) => new Set(prev).add(record.id));
     setNotification({
-      message: `Đã nhập thành công bệnh nhân "${patientObj.fullName}" vào Phòng ${patientObj.roomNumber} - ${patientObj.bedNumber}!`,
+      message: `Đã nhập thành công bệnh nhân "${patientObj.fullName}" vào Phòng ${patientObj.roomNumber}!`,
       type: 'success',
     });
     setTimeout(() => setNotification(null), 4000);

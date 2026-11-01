@@ -2509,7 +2509,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                         type="button"
                                         onClick={() => onTransferPatient(patient)}
                                         className="p-1 rounded-md text-slate-500 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 transition-colors cursor-pointer"
-                                        title="Chuyển buồng phòng / giường bệnh"
+                                        title="Chuyển buồng phòng"
                                       >
                                         <ArrowRightLeft className="w-3 h-3" />
                                       </button>

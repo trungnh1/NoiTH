@@ -1445,16 +1445,13 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                                   ({pt.age}t)
                                 </span>
                               </div>
-                              <span className="text-[10px] font-mono font-bold text-rose-700 block">
-                                {pt.bedNumber}
-                              </span>
                             </div>
 
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => onTransferPatient(pt)}
                                 className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                                title="Chuyển giường"
+                                title="Chuyển buồng phòng"
                               >
                                 <ArrowRightLeft className="w-3.5 h-3.5" />
                               </button>
@@ -1523,7 +1520,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-semibold mt-0.5">
                 <BedDouble className="w-3 h-3 text-rose-400" />
-                <span>Phòng {hoveredPatientData.patient.roomNumber} - {hoveredPatientData.patient.bedNumber}</span>
+                <span>Phòng {hoveredPatientData.patient.roomNumber}</span>
               </div>
             </div>
 
@@ -1613,7 +1610,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                   Cảnh báo: Xác nhận xóa bệnh nhân khỏi phòng
                 </h3>
                 <p className="text-xs text-rose-700 mt-1">
-                  Hành động này sẽ giải phóng giường bệnh và chuyển hồ sơ bệnh nhân sang trạng thái xuất viện/đã xóa khỏi buồng phòng.
+                  Hành động này sẽ chuyển hồ sơ bệnh nhân sang trạng thái xuất viện/đã xóa khỏi buồng phòng.
                 </p>
               </div>
             </div>
@@ -1625,8 +1622,8 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                   <span className="font-extrabold text-slate-900">{patientToDelete.fullName} ({patientToDelete.age} tuổi)</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500 font-semibold">Vị trí giường:</span>
-                  <span className="font-bold text-rose-700">Phòng {patientToDelete.roomNumber} - {patientToDelete.bedNumber}</span>
+                  <span className="text-slate-500 font-semibold">Buồng phòng:</span>
+                  <span className="font-bold text-rose-700">Phòng {patientToDelete.roomNumber}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500 font-semibold">Chẩn đoán:</span>
