@@ -457,7 +457,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                   {' • '}
                   {printLayout === 'briefing' ? (
                     <span>
-                      Tổng: <b>{briefingStats.total}</b> BN • Nặng: <b className="text-rose-700">{briefingStats.critical}</b> • Vừa: <b className="text-amber-700">{briefingStats.moderate}</b> • Nhẹ: <b className="text-emerald-700">{briefingStats.stable}</b> • Mới (<24h): <b>{briefingStats.newAdmit}</b> • Dự RV: <b>{briefingStats.discharge}</b>
+                      Tổng: <b>{briefingStats.total}</b> BN • Nặng: <b className="text-rose-700">{briefingStats.critical}</b> • Vừa: <b className="text-amber-700">{briefingStats.moderate}</b> • Nhẹ: <b className="text-emerald-700">{briefingStats.stable}</b> • Mới (&lt;24h): <b>{briefingStats.newAdmit}</b> • Dự RV: <b>{briefingStats.discharge}</b>
                     </span>
                   ) : (
                     <span>Tổng số: <b>{printablePatients.length}</b> bệnh nhân</span>
