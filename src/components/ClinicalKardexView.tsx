@@ -89,6 +89,41 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
     return Array.from(new Set(patients.map((p) => p.roomNumber?.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim()).filter(Boolean))).sort();
   }, [selectedGroup, patients]);
 
+  // Helper lấy thông tin Bác sĩ điều trị của từng bệnh nhân (ưu tiên attendingDoctorId, sau đó đến phân công theo buồng)
+  const getPatientDoctorInfo = (patient: Patient) => {
+    const cleanRoom = (patient.roomNumber || '---').replace(/^(P\.|Phòng\s*)/i, '').trim() || '---';
+    if (patient.attendingDoctorId) {
+      const doc = doctorMap.get(patient.attendingDoctorId);
+      if (doc) {
+        return {
+          id: patient.attendingDoctorId,
+          name: formatDoctorShortName(doc.name),
+        };
+      }
+    }
+    const assignedDocId = roomDoctorAssignments[cleanRoom];
+    if (assignedDocId) {
+      const doc = doctorMap.get(assignedDocId);
+      if (doc) {
+        return {
+          id: assignedDocId,
+          name: formatDoctorShortName(doc.name),
+        };
+      }
+    }
+    return {
+      id: 'unassigned',
+      name: 'Chưa phân công',
+    };
+  };
+
+  const formatDoctorDisplay = (name: string) => {
+    if (!name || name === 'Chưa phân công') return 'Chưa phân công';
+    const trimmed = name.trim();
+    if (/^bs\.?/i.test(trimmed)) return trimmed;
+    return `Bs. ${trimmed}`;
+  };
+
   // Filtered patients for Kardex
   const filteredPatients = useMemo(() => {
     return patients.filter((patient) => {
@@ -131,62 +166,49 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
 
       return true;
     }).sort((a, b) => {
-      // Sắp xếp tự nhiên theo số phòng, sau đó theo tên bệnh nhân
+      // 1. Sắp xếp tự nhiên theo số phòng
       const roomA = parseInt(a.roomNumber?.replace(/\D/g, '') || '0', 10);
       const roomB = parseInt(b.roomNumber?.replace(/\D/g, '') || '0', 10);
       if (roomA !== roomB) return roomA - roomB;
+
+      // 2. Trong cùng phòng: gom nhóm theo Bác sĩ điều trị
+      const docA = getPatientDoctorInfo(a).name;
+      const docB = getPatientDoctorInfo(b).name;
+      const docComp = docA.localeCompare(docB, 'vi');
+      if (docComp !== 0) return docComp;
+
+      // 3. Cùng phòng & cùng bác sĩ: Sắp xếp theo tên bệnh nhân
       return a.fullName.localeCompare(b.fullName, 'vi');
     });
-  }, [patients, selectedGroup, currentGroupRoomNumbers, selectedRoom, selectedDoctorId, severityFilter, searchTerm, doctorMap]);
+  }, [patients, selectedGroup, currentGroupRoomNumbers, selectedRoom, selectedDoctorId, severityFilter, searchTerm, doctorMap, roomDoctorAssignments]);
 
-  // Gom nhóm bệnh nhân theo buồng phòng để hiển thị dạng gộp (rowSpan)
+  // Gom nhóm bệnh nhân theo BUỒNG PHÒNG và BÁC SĨ ĐIỀU TRỊ (Mỗi bác sĩ trong buồng là 1 ô lớn riêng biệt)
   const groupedPatients = useMemo(() => {
     const groups: {
-      roomKey: string;
+      groupKey: string;
       roomNumber: string;
+      doctorId: string;
       doctorName: string;
       patients: Patient[];
     }[] = [];
 
     filteredPatients.forEach((patient) => {
       const cleanRoom = (patient.roomNumber || '---').replace(/^(P\.|Phòng\s*)/i, '').trim() || '---';
+      const docInfo = getPatientDoctorInfo(patient);
+      const groupKey = `${cleanRoom}__${docInfo.id}`;
+
       const lastGroup = groups[groups.length - 1];
 
-      if (lastGroup && lastGroup.roomNumber === cleanRoom) {
+      if (lastGroup && lastGroup.groupKey === groupKey) {
         lastGroup.patients.push(patient);
       } else {
         groups.push({
-          roomKey: `${cleanRoom}_${groups.length}`,
+          groupKey,
           roomNumber: cleanRoom,
-          doctorName: '',
+          doctorId: docInfo.id,
+          doctorName: docInfo.name,
           patients: [patient],
         });
-      }
-    });
-
-    // Xác định Bác sĩ điều trị cho từng buồng phòng
-    groups.forEach((group) => {
-      // 1. Lấy từ attendingDoctorId của bệnh nhân trong phòng
-      const docNames = Array.from(
-        new Set(
-          group.patients
-            .map((p) => {
-              const doc = doctorMap.get(p.attendingDoctorId);
-              return formatDoctorShortName(doc?.name || '');
-            })
-            .filter(Boolean)
-        )
-      );
-
-      if (docNames.length > 0) {
-        group.doctorName = docNames.join(', ');
-      } else {
-        // 2. Lấy từ roomDoctorAssignments nếu có
-        const assignedDocId = roomDoctorAssignments[group.roomNumber];
-        if (assignedDocId) {
-          const doc = doctorMap.get(assignedDocId);
-          group.doctorName = formatDoctorShortName(doc?.name || '');
-        }
       }
     });
 
@@ -503,16 +525,16 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
             ) : (
               groupedPatients.map((group, groupIndex) => {
                 const patientCount = group.patients.length;
-                const docDisplayName = group.doctorName
-                  ? (group.doctorName.startsWith('BS') || group.doctorName.startsWith('Bs')
-                      ? group.doctorName
-                      : `Bs. ${group.doctorName}`)
-                  : 'Chưa phân công';
+                const docDisplayName = formatDoctorDisplay(group.doctorName);
                 const roomTitle = group.roomNumber === '---' ? 'Chưa xếp phòng' : `P.${group.roomNumber}`;
+
+                const nextGroup = groupedPatients[groupIndex + 1];
+                const isDifferentRoomNext = !nextGroup || nextGroup.roomNumber !== group.roomNumber;
 
                 return group.patients.map((patient, pIndex) => {
                   const isFirstInRoom = pIndex === 0;
-                  const isLastInRoom = pIndex === patientCount - 1;
+                  const isLastInGroup = pIndex === patientCount - 1;
+                  const isLastInRoom = isLastInGroup && isDifferentRoomNext;
 
                   const doctor = doctorMap.get(patient.attendingDoctorId);
                   const doctorShortName = formatDoctorShortName(doctor?.name || '');
@@ -544,9 +566,9 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                     <tr
                       key={patient.id}
                       className={`hover:bg-blue-50/40 transition-colors ${
-                        isLastInRoom ? 'border-b-2 border-slate-200' : 'border-b border-slate-100'
+                        isLastInRoom ? 'border-b-2 border-slate-300' : isLastInGroup ? 'border-b border-blue-200' : 'border-b border-slate-100'
                       } print:border-slate-300 print:break-inside-avoid ${
-                        groupIndex % 2 === 1 ? 'bg-slate-50/30' : 'bg-white'
+                        groupIndex % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'
                       } ${isCritical ? 'bg-rose-50/50' : ''}`}
                     >
                       {/* 1. Phòng & Bác Sĩ (Gộp buồng bệnh với rowSpan) */}
