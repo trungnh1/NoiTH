@@ -87,7 +87,12 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
 
   // Form states for adding evolution
   const [showAddEvolution, setShowAddEvolution] = useState(false);
-  const [newEvolutionShift, setNewEvolutionShift] = useState<'Sáng' | 'Chiều' | 'Đêm / Trực'>('Sáng');
+  const [newEvolutionShift, setNewEvolutionShift] = useState<'Sáng' | 'Chiều' | 'Đêm / Trực'>(() => {
+    const h = new Date().getHours();
+    if (h >= 7 && h < 14) return 'Sáng';
+    if (h >= 14 && h < 21) return 'Chiều';
+    return 'Đêm / Trực';
+  });
   const [newEvolutionNote, setNewEvolutionNote] = useState('');
   const [newEvolutionAction, setNewEvolutionAction] = useState('');
   const [newBpSys, setNewBpSys] = useState(patient.vitals?.[0]?.bpSystolic || 120);
@@ -1022,26 +1027,8 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                     <h4 className="text-xs font-black text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
                       <Stethoscope className="w-4 h-4 text-rose-600" />
-                      <span>Thêm Ghi Chép Diễn Tiến Ca Trực Mới</span>
+                      <span>Thêm Ghi Chép Diễn Tiến Mới</span>
                     </h4>
-
-                    {/* Chọn ca trực */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                      {(['Sáng', 'Chiều', 'Đêm / Trực'] as const).map((s) => (
-                        <button
-                          type="button"
-                          key={s}
-                          onClick={() => setNewEvolutionShift(s)}
-                          className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
-                            newEvolutionShift === s
-                              ? 'bg-rose-600 text-white shadow-2xs'
-                              : 'text-slate-600 hover:text-slate-900'
-                          }`}
-                        >
-                          {s === 'Đêm / Trực' ? 'Đêm' : s}
-                        </button>
-                      ))}
-                    </div>
                   </div>
 
                   {/* Sinh hiệu */}

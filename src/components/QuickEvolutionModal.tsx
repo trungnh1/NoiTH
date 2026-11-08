@@ -151,7 +151,26 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
 
   // Form states
   const [evolutionDateTime, setEvolutionDateTime] = useState(defaultDateTimeStr);
-  const [shift, setShift] = useState<'Sáng' | 'Chiều' | 'Đêm / Trực'>('Sáng');
+  const [shift, setShift] = useState<'Sáng' | 'Chiều' | 'Đêm / Trực'>(() => {
+    const h = new Date().getHours();
+    if (h >= 7 && h < 14) return 'Sáng';
+    if (h >= 14 && h < 21) return 'Chiều';
+    return 'Đêm / Trực';
+  });
+
+  useEffect(() => {
+    try {
+      const d = new Date(evolutionDateTime);
+      const h = d.getHours();
+      if (!isNaN(h)) {
+        if (h >= 7 && h < 14) setShift('Sáng');
+        else if (h >= 14 && h < 21) setShift('Chiều');
+        else setShift('Đêm / Trực');
+      }
+    } catch {
+      // ignore
+    }
+  }, [evolutionDateTime]);
   
   // Bác sĩ phụ trách: Bác sĩ đang đăng nhập hoặc bác sĩ điều trị của BN
   const loggedInDoctor = currentUser || getSavedDoctorSession(doctors);
@@ -577,7 +596,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs uppercase tracking-wider font-extrabold text-cyan-300 bg-white/10 px-2 py-0.5 rounded border border-white/15">
-                  Nhập Diễn Tiến Ca Trực
+                  Nhập Diễn Tiến Lâm Sàng
                 </span>
                 <h3 className="text-base sm:text-lg font-black tracking-tight text-white truncate">
                   {formatPatientDisplayName(patient.fullName)}
@@ -755,46 +774,18 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {/* Ngày giờ */}
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">
-                      Ngày Giờ Ghi Nhận <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={evolutionDateTime}
-                      onChange={(e) => setEvolutionDateTime(e.target.value)}
-                      className="w-full p-2 border border-slate-300 rounded-lg font-bold text-xs text-slate-900 focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent bg-slate-50/50"
-                      required
-                    />
-                  </div>
-
-                  {/* Ca trực */}
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">
-                      Ca Trực
-                    </label>
-                    <div className="grid grid-cols-3 gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                      {(['Sáng', 'Chiều', 'Đêm / Trực'] as const).map((s) => (
-                        <button
-                          type="button"
-                          key={s}
-                          onClick={() => setShift(s)}
-                          className={`py-1.5 rounded-md font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                            shift === s
-                              ? 'bg-slate-900 text-white shadow-xs'
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                          }`}
-                        >
-                          {s === 'Sáng' && <Sun className="w-3 h-3 text-amber-400" />}
-                          {s === 'Chiều' && <Sunset className="w-3 h-3 text-orange-400" />}
-                          {s === 'Đêm / Trực' && <Moon className="w-3 h-3 text-indigo-300" />}
-                          <span>{s === 'Đêm / Trực' ? 'Đêm' : s}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                {/* Ngày giờ */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1 text-[11px]">
+                    Ngày Giờ Ghi Nhận <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={evolutionDateTime}
+                    onChange={(e) => setEvolutionDateTime(e.target.value)}
+                    className="w-full p-2 border border-slate-300 rounded-lg font-bold text-xs text-slate-900 focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent bg-slate-50/50"
+                    required
+                  />
                 </div>
 
                 {/* Mức độ tình trạng bệnh nhân */}
@@ -892,7 +883,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-slate-800 font-extrabold text-[11px] uppercase">
                       <HeartPulse className={`w-3.5 h-3.5 ${hasCriticalVitals ? 'text-rose-600 animate-pulse' : 'text-rose-600'}`} />
-                      <span>Sinh Hiệu Ca Trực</span>
+                      <span>Sinh Hiệu Lâm Sàng</span>
                     </div>
                     <span className="text-[10px] text-slate-400 font-medium">(Tự động cảnh báo màu theo ngưỡng y khoa)</span>
                   </div>
@@ -1312,7 +1303,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                       Dòng Thời Gian Diễn Tiến (Clinical Timeline)
                     </h4>
                     <p className="text-[11px] text-slate-500">
-                      Đối chiếu diễn biến & y lệnh theo từng ca trực
+                      Đối chiếu diễn biến & y lệnh theo thời gian
                     </p>
                   </div>
                 </div>
@@ -1345,23 +1336,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                   )}
                 </div>
 
-                {/* Filter Ca trực */}
-                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0 text-[11px]">
-                  {(['ALL', 'Sáng', 'Chiều', 'Đêm / Trực'] as const).map((sh) => (
-                    <button
-                      type="button"
-                      key={sh}
-                      onClick={() => setHistoryShiftFilter(sh)}
-                      className={`px-2 py-1 rounded font-bold transition-all cursor-pointer ${
-                        historyShiftFilter === sh
-                          ? 'bg-slate-900 text-white shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {sh === 'ALL' ? 'Tất cả' : sh === 'Đêm / Trực' ? 'Đêm' : sh}
-                    </button>
-                  ))}
-                </div>
+
               </div>
             </div>
 
