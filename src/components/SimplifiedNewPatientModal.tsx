@@ -995,11 +995,9 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
 
                 if (tempStatus === 'critical') {
                   vitalAlerts.push({
-                    text: Number(temperature) >= 38.5 ? `Sốt cao (${temperature}°C >= 38.5)` : `Hạ thân nhiệt (${temperature}°C < 35.5)`,
+                    text: `Hạ thân nhiệt (${temperature}°C < 35.5)`,
                     isCritical: true,
                   });
-                } else if (tempStatus === 'warning') {
-                  vitalAlerts.push({ text: `Thân nhiệt cảnh báo (${temperature}°C)`, isCritical: false });
                 }
 
                 const hasCritical = vitalAlerts.some((a) => a.isCritical);

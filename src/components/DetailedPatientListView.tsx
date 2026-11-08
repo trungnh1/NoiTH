@@ -435,14 +435,12 @@ export function getPatientEarlyWarning(patient: Patient): ClinicalEarlyWarning {
       }
     }
 
-    // Thân nhiệt
+    // Thân nhiệt: Không báo động sốt (theo yêu cầu lâm sàng: sốt không cần báo động)
+    // Chỉ báo động khi hạ thân nhiệt nguy hiểm (< 35.5°C)
     if (latestVital.temperature !== undefined && latestVital.temperature !== null) {
-      if (latestVital.temperature >= 39.2 || latestVital.temperature < 35.5) {
+      if (latestVital.temperature < 35.5 && latestVital.temperature > 0) {
         isPanic = true;
-        reasons.push(`Nhiệt ${latestVital.temperature}°C`);
-      } else if (latestVital.temperature >= 38.2) {
-        isWarning = true;
-        reasons.push(`Sốt ${latestVital.temperature}°C`);
+        reasons.push(`Hạ thân nhiệt ${latestVital.temperature}°C`);
       }
     }
   }

@@ -90,8 +90,8 @@ export function getTempStatus(valStr: string): VitalStatus {
   if (!valStr.trim()) return 'empty';
   const val = Number(valStr);
   if (isNaN(val)) return 'empty';
-  if (val >= 38.5 || val < 35.5) return 'critical'; // Đỏ: Sốt cao >= 38.5°C hoặc hạ thân nhiệt
-  if (val >= 37.5 || val < 36.0) return 'warning'; // Vàng: Sốt nhẹ 37.5-38.4°C
+  if (val < 35.5 && val > 0) return 'critical'; // Đỏ: Hạ thân nhiệt < 35.5°C
+  if (val >= 38.0 || (val < 36.0 && val >= 35.5)) return 'warning'; // Vàng: Sốt theo dõi, không báo động đỏ
   return 'normal';
 }
 
@@ -548,11 +548,9 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
 
   if (tempStatus === 'critical') {
     vitalAlerts.push({
-      text: Number(temperature) >= 38.5 ? `Sốt cao (${temperature}°C >= 38.5)` : `Hạ thân nhiệt (${temperature}°C < 35.5)`,
+      text: `Hạ thân nhiệt (${temperature}°C < 35.5)`,
       isCritical: true,
     });
-  } else if (tempStatus === 'warning') {
-    vitalAlerts.push({ text: `Thân nhiệt ranh giới (${temperature}°C)`, isCritical: false });
   }
 
   const hasCriticalVitals = vitalAlerts.some((a) => a.isCritical);
