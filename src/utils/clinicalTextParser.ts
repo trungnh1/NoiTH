@@ -252,3 +252,118 @@ Nhiệm vụ của bạn là đọc nội dung tóm tắt bệnh án tiếng Vi�
   "suggestedTags": ["O2_CANULA", "VASOPRESSOR", "CLOSE_MONITORING", "ALLERGY", "FALL_RISK"]
 }
 Chỉ trả về JSON thuần túy, không bọc trong markdown hay text giải thích thừa.`;
+
+export interface QuickVitalsResult {
+  bpSys: string;
+  bpDia: string;
+  pulse: string;
+  temperature: string;
+  spO2: string;
+}
+
+/**
+ * Phân tích chuỗi sinh hiệu nhập nhanh một dòng của bác sĩ lâm sàng
+ * Ví dụ: '130/80 82 98 37' hoặc 'HA 140/90, M 85, SpO2 96%, T 37.2'
+ */
+export function parseQuickVitals(rawText: string): QuickVitalsResult {
+  const result: QuickVitalsResult = {
+    bpSys: '',
+    bpDia: '',
+    pulse: '',
+    temperature: '',
+    spO2: '',
+  };
+  if (!rawText || !rawText.trim()) return result;
+  let text = rawText.trim();
+
+  // 1. Nhận diện Huyết Áp (120/80, 120-80, HA: 130/80, 140/90)
+  const bpMatch = text.match(/(?:ha|bp)?\s*[:=]?\s*(\d{2,3})\s*[/\\-]\s*(\d{2,3})/i);
+  if (bpMatch) {
+    result.bpSys = bpMatch[1];
+    result.bpDia = bpMatch[2];
+    text = text.replace(bpMatch[0], ' ');
+  }
+
+  // 2. Nhận diện Nhiệt Độ (T: 37, Nhiệt 37.5, 37.2°C, 36.8)
+  const tempExplicitMatch = text.match(/(?:t|temp|nhi[eệ]t(?: độ)?)\s*[:=]?\s*(\d{2}(?:[.,]\d+)?)\s*(?:°?c|độ)?/i);
+  if (tempExplicitMatch) {
+    result.temperature = tempExplicitMatch[1].replace(',', '.');
+    text = text.replace(tempExplicitMatch[0], ' ');
+  } else {
+    const tempUnitMatch = text.match(/(\d{2}(?:[.,]\d+)?)\s*(?:°c|°|độ)/i);
+    if (tempUnitMatch) {
+      result.temperature = tempUnitMatch[1].replace(',', '.');
+      text = text.replace(tempUnitMatch[0], ' ');
+    } else {
+      const tempDecimalMatch = text.match(/\b(3[4-9](?:[.,]\d+)|4[0-2](?:[.,]\d+))\b/);
+      if (tempDecimalMatch) {
+        result.temperature = tempDecimalMatch[1].replace(',', '.');
+        text = text.replace(tempDecimalMatch[0], ' ');
+      }
+    }
+  }
+
+  // 3. Nhận diện SpO2 (SpO2 98%, 98%, O2 96)
+  const spo2ExplicitMatch = text.match(/(?:spo2|sp02|o2|oxy)\s*[:=]?\s*(\d{2,3})\s*%?/i);
+  if (spo2ExplicitMatch) {
+    result.spO2 = spo2ExplicitMatch[1];
+    text = text.replace(spo2ExplicitMatch[0], ' ');
+  } else {
+    const spo2PercentMatch = text.match(/\b(\d{2,3})\s*%/);
+    if (spo2PercentMatch) {
+      result.spO2 = spo2PercentMatch[1];
+      text = text.replace(spo2PercentMatch[0], ' ');
+    }
+  }
+
+  // 4. Nhận diện Mạch (Mạch 80, M 80, P 80, HR 80)
+  const pulseExplicitMatch = text.match(/(?:m[aạ]ch|pulse|hr|m|p)\s*[:=]?\s*(\d{2,3})\s*(?:l\/p|l\/ph|bpm)?/i);
+  if (pulseExplicitMatch) {
+    result.pulse = pulseExplicitMatch[1];
+    text = text.replace(pulseExplicitMatch[0], ' ');
+  }
+
+  // 5. Phân tích các số còn lại theo dải sinh lý nội khoa
+  const remainingNumbers = (text.match(/\b\d+(?:[.,]\d+)?\b/g) || []).map((n) => n.replace(',', '.'));
+
+  for (const numStr of remainingNumbers) {
+    const num = parseFloat(numStr);
+    if (isNaN(num)) continue;
+
+    // Số thập phân trong khoảng nhiệt độ 35.0 - 42.0
+    if (!result.temperature && num >= 35.0 && num <= 42.0 && numStr.includes('.')) {
+      result.temperature = String(num);
+      continue;
+    }
+
+    // Nếu chưa có HA
+    if (!result.bpSys && num >= 80 && num <= 240) {
+      result.bpSys = String(Math.round(num));
+      continue;
+    }
+    if (result.bpSys && !result.bpDia && num >= 40 && num <= 140) {
+      result.bpDia = String(Math.round(num));
+      continue;
+    }
+
+    // Mạch thông thường 45 - 180
+    if (!result.pulse && num >= 45 && num <= 180) {
+      result.pulse = String(Math.round(num));
+      continue;
+    }
+
+    // SpO2 thông thường 80 - 100
+    if (!result.spO2 && num >= 80 && num <= 100) {
+      result.spO2 = String(Math.round(num));
+      continue;
+    }
+
+    // Nhiệt độ nguyên 35 - 42 (VD: 37, 38)
+    if (!result.temperature && num >= 35 && num <= 42) {
+      result.temperature = String(num);
+      continue;
+    }
+  }
+
+  return result;
+}

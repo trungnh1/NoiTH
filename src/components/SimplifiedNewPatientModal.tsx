@@ -13,7 +13,7 @@ import {
 import { GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS, getDoctorsForRoomOrGroup, getRoomGroupKey } from '../data/mockData';
 import { formatDoctorShortName, GROUP_1_ROOM_NUMBERS, CARDIO_ROOM_NUMBERS, GROUP_2_ROOM_NUMBERS } from './DetailedPatientListView';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
-import { isRealAllergy } from '../utils/clinicalTextParser';
+import { isRealAllergy, parseQuickVitals } from '../utils/clinicalTextParser';
 import { 
   X, 
   UserPlus, 
@@ -181,6 +181,31 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   const [pulse, setPulse] = useState<string>(latestVital?.heartRate ? String(latestVital.heartRate) : '');
   const [temperature, setTemperature] = useState<string>(latestVital?.temperature ? String(latestVital.temperature) : '');
   const [spO2, setSpO2] = useState<string>(latestVital?.spO2 ? String(latestVital.spO2) : '');
+
+  // Nhập nhanh 1 dòng sinh hiệu ban đầu
+  const [quickVitalsInput, setQuickVitalsInput] = useState('');
+  const [quickVitalsFeedback, setQuickVitalsFeedback] = useState<string | null>(null);
+
+  const handleApplyQuickVitals = (textToParse?: string) => {
+    const text = textToParse !== undefined ? textToParse : quickVitalsInput;
+    if (!text.trim()) return;
+    const parsed = parseQuickVitals(text);
+    const applied: string[] = [];
+    if (parsed.bpSys) { setBpSys(parsed.bpSys); applied.push(`HA ${parsed.bpSys}/${parsed.bpDia || ''}`); }
+    if (parsed.bpDia && !parsed.bpSys) { setBpDia(parsed.bpDia); applied.push(`HA /${parsed.bpDia}`); }
+    else if (parsed.bpDia) { setBpDia(parsed.bpDia); }
+    if (parsed.pulse) { setPulse(parsed.pulse); applied.push(`Mạch ${parsed.pulse}`); }
+    if (parsed.spO2) { setSpO2(parsed.spO2); applied.push(`SpO2 ${parsed.spO2}%`); }
+    if (parsed.temperature) { setTemperature(parsed.temperature); applied.push(`T ${parsed.temperature}°C`); }
+
+    if (applied.length > 0) {
+      setQuickVitalsFeedback(`⚡ Đã bóc tách: ${applied.join(' • ')}`);
+      setTimeout(() => setQuickVitalsFeedback(null), 3000);
+    } else {
+      setQuickVitalsFeedback('Không nhận diện được số sinh hiệu. Hãy thử: 130/80 82 98 37');
+      setTimeout(() => setQuickVitalsFeedback(null), 3500);
+    }
+  };
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -1016,6 +1041,91 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                         <span>Sinh Hiệu Ban Đầu</span>
                       </div>
                       <span className="text-[10px] text-slate-400 font-semibold">(Tùy chọn)</span>
+                    </div>
+
+                    {/* THANH NHẬP NHANH 1 DÒNG SINH HIỆU */}
+                    <div className="bg-white p-2 rounded-xl border border-blue-200 shadow-2xs space-y-1.5">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <label className="text-[10px] font-black uppercase text-[#0b4d8c] flex items-center gap-1">
+                          <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                          <span>Nhập Nhanh 1 Dòng (Gõ hoặc dán chuỗi)</span>
+                        </label>
+                        {quickVitalsFeedback && (
+                          <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 animate-in fade-in">
+                            {quickVitalsFeedback}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={quickVitalsInput}
+                            onChange={(e) => setQuickVitalsInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleApplyQuickVitals();
+                              }
+                            }}
+                            placeholder="Gõ nhanh: 130/80 82 98 37 hoặc 120/70 78 99..."
+                            className="w-full pl-8 pr-2 py-1.5 bg-slate-50/70 border border-slate-300 focus:border-[#0b4d8c] focus:bg-white rounded-lg text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:ring-1 focus:ring-[#0b4d8c]/20"
+                          />
+                          <Zap className="w-3.5 h-3.5 text-blue-600 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleApplyQuickVitals()}
+                          className="px-2.5 py-1.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white font-black text-xs rounded-lg shadow-xs transition-all cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
+                          title="Tự động bóc tách vào các ô sinh hiệu"
+                        >
+                          <Zap className="w-3 h-3 text-amber-300 fill-amber-300" />
+                          <span>Bóc tách</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                        <span className="text-[9.5px] font-bold text-slate-400">Mẫu:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuickVitalsInput('120/80 75 98 37');
+                            handleApplyQuickVitals('120/80 75 98 37');
+                          }}
+                          className="px-1.5 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-[#0b4d8c] border border-slate-200 rounded text-[9.5px] font-bold text-slate-700 transition-colors cursor-pointer"
+                        >
+                          120/80 75 98% 37° (Chuẩn)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuickVitalsInput('130/80 80 98');
+                            handleApplyQuickVitals('130/80 80 98');
+                          }}
+                          className="px-1.5 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-[#0b4d8c] border border-slate-200 rounded text-[9.5px] font-bold text-slate-700 transition-colors cursor-pointer"
+                        >
+                          130/80 80 98%
+                        </button>
+                        {(bpSys || bpDia || pulse || spO2 || temperature) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBpSys('');
+                              setBpDia('');
+                              setPulse('');
+                              setSpO2('');
+                              setTemperature('');
+                              setQuickVitalsInput('');
+                              setQuickVitalsFeedback(null);
+                            }}
+                            className="px-1.5 py-0.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded text-[9.5px] font-bold text-rose-700 transition-colors cursor-pointer ml-auto"
+                          >
+                            ✕ Xóa
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-4 gap-1.5">

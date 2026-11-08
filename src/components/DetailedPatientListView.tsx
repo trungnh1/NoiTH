@@ -1,5 +1,5 @@
 import { formatPatientDisplayName } from '../utils/storage';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Patient, 
   Doctor, 
@@ -545,6 +545,15 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   const [tagFilter, setTagFilter] = useState<'ALL' | 'NEW' | 'ALLERGY' | ClinicalTag>('ALL');
   const [isMobileGroupMenuOpen, setIsMobileGroupMenuOpen] = useState(false);
   const [isMobileFilterMenuOpen, setIsMobileFilterMenuOpen] = useState(false);
+  const [isMobileRoomSheetOpen, setIsMobileRoomSheetOpen] = useState(false);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
+
+  const handleMobileSearchClick = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      mobileSearchInputRef.current?.focus();
+    }, 250);
+  };
   const [notification, setNotification] = useState<string | null>(null);
   const [hoveredPatientId, setHoveredPatientId] = useState<string | null>(null);
 
@@ -936,7 +945,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
   }, [activeGroupPatients, doctorMap, doctors]);
 
   return (
-    <div className="space-y-4 animate-in fade-in">
+    <div className="space-y-4 animate-in fade-in pb-24 sm:pb-4">
 
       {/* Quick feedback notification banner */}
       {notification && (
@@ -1454,6 +1463,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               <div className="relative flex-1">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                 <input
+                  ref={mobileSearchInputRef}
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -2862,10 +2872,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                             <button
                               type="button"
                               onClick={() => onOpenEvolution(patient)}
-                              className="py-1.5 px-3 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-xl font-black text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                              className="flex-1 sm:flex-initial py-2.5 sm:py-1.5 px-3.5 min-h-[42px] bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-xl font-black text-xs shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
                               title="Nhập diễn tiến và hướng xử trí / kế hoạch điều trị"
                             >
-                              <Activity className="w-3.5 h-3.5 text-white" />
+                              <Activity className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-white" />
                               <span>+ Diễn Tiến</span>
                             </button>
 
@@ -2873,10 +2883,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               <button
                                 type="button"
                                 onClick={() => onSelectPatient(patient)}
-                                className="py-1.5 px-2 bg-white hover:bg-blue-50 hover:text-[#0b4d8c] text-slate-700 border border-slate-200 hover:border-blue-300 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                                className="py-2.5 sm:py-1.5 px-3 min-h-[42px] bg-white hover:bg-blue-50 hover:text-[#0b4d8c] text-slate-700 border border-slate-200 hover:border-blue-300 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs active:scale-95"
                                 title="Xem chi tiết hồ sơ bệnh nhân"
                               >
-                                <FileEdit className="w-3 h-3" />
+                                <FileEdit className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
                                 <span>Chi tiết</span>
                               </button>
 
@@ -3011,6 +3021,187 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* CỬA SỔ CHỌN BUỒNG PHÒNG NHANH CHO ĐIỆN THOẠI (MOBILE QUICK ROOM SHEET) */}
+      {/* ========================================================================= */}
+      {isMobileRoomSheetOpen && (
+        <>
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-40 sm:hidden animate-in fade-in"
+            onClick={() => setIsMobileRoomSheetOpen(false)}
+          />
+          <div className="fixed bottom-0 left-0 right-0 max-h-[80vh] bg-white rounded-t-3xl shadow-2xl border-t border-slate-200 p-4 z-50 sm:hidden animate-in slide-in-from-bottom duration-200 flex flex-col space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#0b4d8c] flex items-center justify-center font-black">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Chọn Buồng Phòng Nhanh</h3>
+                  <p className="text-[10px] text-slate-500 font-medium">Bấm buồng để nhảy thẳng đến vị trí phòng</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileRoomSheetOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Phân khu nhóm buồng */}
+            <div className="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold">
+              {[
+                { id: 'ALL', label: 'Tất cả (29)' },
+                { id: 'GROUP_1', label: 'Nhóm 1 (15)' },
+                { id: 'GROUP_2', label: 'Nhóm 2 (8)' },
+                { id: 'CARDIO', label: 'TM (6)' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setSelectedGroup(tab.id as any)}
+                  className={`py-1.5 rounded-lg text-center transition-all cursor-pointer truncate text-[11px] ${
+                    selectedGroup === tab.id
+                      ? 'bg-[#0b4d8c] text-white font-black shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Lưới các buồng phòng */}
+            <div className="overflow-y-auto max-h-[50vh] pr-1">
+              <div className="grid grid-cols-4 gap-2">
+                {currentGroupRoomNumbers.map((roomNum) => {
+                  const roomPatients = filteredPatients.filter((p) => {
+                    const clean = p.roomNumber ? p.roomNumber.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim() : '';
+                    return clean === roomNum;
+                  });
+                  const hasCritical = roomPatients.some((p) => p.severity === 'CRITICAL');
+                  const count = roomPatients.length;
+
+                  return (
+                    <button
+                      key={roomNum}
+                      type="button"
+                      onClick={() => {
+                        setSearchTerm(roomNum);
+                        setIsMobileRoomSheetOpen(false);
+                      }}
+                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center relative active:scale-95 ${
+                        count > 0
+                          ? 'bg-blue-50/50 border-blue-200 text-[#0b4d8c] hover:bg-blue-100/60'
+                          : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100'
+                      }`}
+                    >
+                      {hasCritical && (
+                        <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-1 right-1 animate-ping" />
+                      )}
+                      <span className="font-mono font-black text-sm text-slate-900 leading-tight">
+                        {roomNum}
+                      </span>
+                      <span className={`text-[9.5px] font-bold mt-0.5 ${
+                        count > 0 ? 'text-[#0b4d8c]' : 'text-slate-400'
+                      }`}>
+                        {count > 0 ? `${count} BN` : 'Trống'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setIsMobileRoomSheetOpen(false);
+                }}
+                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors text-center cursor-pointer"
+              >
+                ✕ Hủy lọc phòng (Hiện tất cả buồng)
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* THANH ĐIỀU HƯỚNG NGÓN CÁI DƯỚI ĐÁY MÀN HÌNH (MOBILE THUMB-FRIENDLY BAR) */}
+      {/* ========================================================================= */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_25px_rgba(0,0,0,0.12)] px-2 py-1.5 flex items-center justify-around safe-area-bottom">
+        {/* Nút 1: Buồng / Nhóm */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileRoomSheetOpen(!isMobileRoomSheetOpen);
+            setIsMobileFilterMenuOpen(false);
+          }}
+          className={`flex flex-col items-center justify-center p-1 rounded-xl transition-all cursor-pointer min-w-[56px] active:scale-95 ${
+            isMobileRoomSheetOpen ? 'text-[#0b4d8c] font-black' : 'text-slate-600 font-bold'
+          }`}
+        >
+          <Building2 className="w-5 h-5 mb-0.5 text-current" />
+          <span className="text-[10px] leading-tight">Buồng/Nhóm</span>
+        </button>
+
+        {/* Nút 2: Tìm kiếm */}
+        <button
+          type="button"
+          onClick={handleMobileSearchClick}
+          className="flex flex-col items-center justify-center p-1 rounded-xl text-slate-600 hover:text-[#0b4d8c] font-bold transition-all cursor-pointer min-w-[56px] active:scale-95"
+        >
+          <Search className="w-5 h-5 mb-0.5 text-current" />
+          <span className="text-[10px] leading-tight">Tìm kiếm</span>
+        </button>
+
+        {/* Nút 3: Nút trung tâm Nổi bật - + TIẾP NHẬN BN */}
+        <button
+          type="button"
+          onClick={onOpenNewPatient}
+          className="-mt-5 w-13 h-13 rounded-full bg-gradient-to-tr from-[#0b4d8c] via-[#0e599e] to-[#12589b] text-white shadow-lg border-2 border-white flex flex-col items-center justify-center transition-all cursor-pointer active:scale-90 hover:shadow-xl shrink-0"
+          title="Tiếp nhận bệnh nhân mới ngay tại giường"
+        >
+          <UserPlus className="w-5 h-5" />
+          <span className="text-[8.5px] font-black leading-tight mt-0.5">+ Nhận</span>
+        </button>
+
+        {/* Nút 4: Lọc ca bệnh */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileFilterMenuOpen(!isMobileFilterMenuOpen);
+            setIsMobileRoomSheetOpen(false);
+          }}
+          className={`flex flex-col items-center justify-center p-1 rounded-xl transition-all cursor-pointer min-w-[56px] relative active:scale-95 ${
+            statusFilter !== 'ALL' || tagFilter !== 'ALL' || doctorFilter !== 'ALL'
+              ? 'text-[#0b4d8c] font-black'
+              : 'text-slate-600 font-bold'
+          }`}
+        >
+          <Filter className="w-5 h-5 mb-0.5 text-current" />
+          <span className="text-[10px] leading-tight">Lọc ca</span>
+          {(statusFilter !== 'ALL' || tagFilter !== 'ALL' || doctorFilter !== 'ALL') && (
+            <span className="absolute top-0 right-2 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+          )}
+        </button>
+
+        {/* Nút 5: Lên đỉnh trang */}
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="flex flex-col items-center justify-center p-1 rounded-xl text-slate-600 hover:text-[#0b4d8c] font-bold transition-all cursor-pointer min-w-[56px] active:scale-95"
+        >
+          <ChevronUp className="w-5 h-5 mb-0.5 text-current" />
+          <span className="text-[10px] leading-tight">Lên đỉnh</span>
+        </button>
+      </div>
 
       {/* Summary Footer */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-slate-600 shadow-sm">
