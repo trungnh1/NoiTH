@@ -162,7 +162,7 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
     name: "Phòng 704",
     type: "STANDARD",
     totalBeds: 3,
-    group: "GROUP_1",
+    group: "GROUP_2",
     description: "Điều trị nội khoa chung",
     nurseStation: "Trạm ĐD Dãy 1 (Lầu 7)",
   },
@@ -242,10 +242,21 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
     name: "Phòng 718",
     type: "STANDARD",
     totalBeds: 3,
-    group: "GROUP_1",
+    group: "GROUP_2",
     description: "Bệnh đa bệnh lý người cao tuổi, sa sút trí tuệ nhẹ",
     nurseStation: "Trạm ĐD Dãy 1 (Lầu 7)",
   },
+  {
+    id: "R719",
+    number: "719",
+    name: "Phòng 719",
+    type: "STANDARD",
+    totalBeds: 3,
+    group: "GROUP_1",
+    description: "Điều trị nội khoa chung",
+    nurseStation: "Trạm ĐD Dãy 1 (Lầu 7)",
+  },
+
   {
     id: "R721",
     number: "721",
@@ -300,7 +311,7 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
 
 // Group 1 Configuration (Nhóm 1): Phòng 703 -> 731 và bổ sung phòng 733
 export const GROUP_1_ROOM_NUMBERS = [
-  '703', '707', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731', '733'
+  '703', '707', '705', '709', '711', '713', '715', '717', '719', '721', '725', '727', '729', '731', '733'
 ];
 
 // Danh sách 6 Bác sĩ phụ trách Nhóm 1: Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi
@@ -475,7 +486,6 @@ export const INITIAL_PATIENTS: Patient[] = [];
 export const DEFAULT_ROOM_DOCTORS: Record<string, string> = {
   // Nhóm 1 (703 - 731 & 733) - BS: Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi
   "703": "00708",    // Trần Hữu Ngọc
-  "704": "00979",    // Nguyễn Hữu Trung
   "707": "00257",    // Đỗ Thị Vân Huyền
   "705": "00943",    // Trần Bùi Bình Chi
   "709": "00144",    // Phạm Cao Thiên
@@ -483,7 +493,7 @@ export const DEFAULT_ROOM_DOCTORS: Record<string, string> = {
   "713": "00144",    // Phạm Cao Thiên
   "715": "00708",    // Trần Hữu Ngọc
   "717": "00979",    // Nguyễn Hữu Trung
-  "718": "00257",    // Đỗ Thị Vân Huyền
+  "719": "00979",    // Nguyễn Hữu Trung (P.719 Nhóm 1)
   "721": "00943",    // Trần Bùi Bình Chi
   "725": "00226",    // Đặng Thị Ngọc Ánh
   "727": "00708",    // Trần Hữu Ngọc
@@ -500,6 +510,8 @@ export const DEFAULT_ROOM_DOCTORS: Record<string, string> = {
   "745": "00818",    // Võ Hồng Thịnh
 
   // Nhóm 2 (747 - 757) - BS: Linh, Hoài, Mai, Ngoan, Chi
+  "704": "00161",    // Thái Thị Thùy Linh (P.704 Nhóm 2)
+  "718": "00146",    // Dương Thị Hoài (P.718 Nhóm 2)
   "747": "00161",    // Thái Thị Thùy Linh
   "749": "00146",    // Dương Thị Hoài
   "751": "00318",    // Nguyễn Thị Ngọc Mai

@@ -96,7 +96,6 @@ export function loadPatients(): Patient[] {
 
       return {
         ...p,
-        roomNumber: p.roomNumber === '704' ? '707' : p.roomNumber,
         fullName: shortenPatientName(p.fullName),
         patientCode: pCode,
         department: dept,
@@ -169,7 +168,21 @@ export function loadRooms(): DepartmentRoom[] {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length >= 20) {
-        return parsed;
+        // Sync updated room groups (704, 718 -> GROUP_2; 719 -> GROUP_1)
+        const roomNumbers = new Set(parsed.map((r: DepartmentRoom) => r.number));
+        if (!roomNumbers.has('719')) {
+          const r719 = INITIAL_ROOMS.find(r => r.number === '719');
+          if (r719) parsed.push(r719);
+        }
+        return parsed.map((r: DepartmentRoom) => {
+          if (r.number === '704' || r.number === '718') {
+            return { ...r, group: 'GROUP_2' as const };
+          }
+          if (r.number === '719') {
+            return { ...r, group: 'GROUP_1' as const };
+          }
+          return r;
+        });
       }
     }
   } catch (e) {

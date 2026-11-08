@@ -131,8 +131,8 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
 
   // 3 Clinical Room Groups defined by user (Khoa Nội Tổng Hợp - Tim Mạch)
   const CARDIO_ROOM_NUMBERS = ['735', '737', '739', '741', '743', '745'];
-  const GROUP_2_ROOM_NUMBERS = ['747', '749', '751', '753', '755', '757'];
-  const GROUP_1_ROOM_NUMBERS = ['733', '703', '704', '707', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731'];
+  const GROUP_2_ROOM_NUMBERS = ['704', '718', '747', '749', '751', '753', '755', '757'];
+  const GROUP_1_ROOM_NUMBERS = ['733', '703', '707', '705', '709', '711', '713', '715', '717', '719', '721', '725', '727', '729', '731'];
 
   const [selectedGroup, setSelectedGroup] = useState<'ALL' | 'CARDIO' | 'GROUP_2' | 'GROUP_1'>('ALL');
 
@@ -1208,7 +1208,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                   <div className="flex items-center gap-2 pb-2.5 mb-2.5 border-b border-blue-100">
                     <span className="w-3 h-5 rounded-full bg-blue-600 shrink-0" />
                     <h2 className="text-sm font-black text-blue-950 tracking-tight uppercase">
-                      NHÓM 1: PHÒNG 703, 707, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731
+                      NHÓM 1: PHÒNG 703, 707, 705, 709, 711, 713, 715, 717, 719, 721, 725, 727, 729, 731, 733
                     </h2>
                   </div>
                   {renderRoomColumns(group1Rooms)}
@@ -1234,7 +1234,7 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                   <div className="flex items-center gap-2 pb-2.5 mb-2.5 border-b border-indigo-100">
                     <span className="w-3 h-5 rounded-full bg-indigo-600 shrink-0" />
                     <h2 className="text-sm font-black text-indigo-950 tracking-tight uppercase">
-                      NHÓM 2: PHÒNG 747, 749, 751, 753, 755, 757
+                      NHÓM 2: PHÒNG 704, 718, 747, 749, 751, 753, 755, 757
                     </h2>
                   </div>
                   {renderRoomColumns(group2Rooms)}

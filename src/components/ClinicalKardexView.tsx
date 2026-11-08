@@ -324,7 +324,7 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Nhóm 1 (P.703 - 733)
+              Nhóm 1 (P.703 - 733 & 719)
             </button>
             <button
               type="button"
@@ -335,7 +335,7 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Nhóm 2 (P.747 - 757)
+              Nhóm 2 (P.704, 718, 747 - 757)
             </button>
             <button
               type="button"

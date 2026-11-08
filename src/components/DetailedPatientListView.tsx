@@ -62,7 +62,7 @@ import { getCriticalLabAlerts } from '../utils/labAlerts';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
 export const GROUP_1_ROOM_NUMBERS = [
-  '703', '704', '707', '705', '709', '711', '713', '715', '717', '718', '721', '725', '727', '729', '731', '733'
+  '703', '707', '705', '709', '711', '713', '715', '717', '719', '721', '725', '727', '729', '731', '733'
 ];
 
 // Rooms for Nhóm Tim Mạch (Cardio: 735 -> 745)
@@ -72,7 +72,7 @@ export const CARDIO_ROOM_NUMBERS = [
 
 // Rooms for Nhóm 2 (747 -> 757)
 export const GROUP_2_ROOM_NUMBERS = [
-  '747', '749', '751', '753', '755', '757'
+  '704', '718', '747', '749', '751', '753', '755', '757'
 ];
 
 export const ALL_ROOM_NUMBERS = [
@@ -994,9 +994,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
                 }`}
-                title="Nhóm 1: Phòng 703 - 731 & 733 (16 phòng)"
+                title="Nhóm 1: Phòng 703 - 733 & 719 (15 phòng)"
               >
-                <span>Nhóm 1 (16P)</span>
+                <span>Nhóm 1 (15P)</span>
               </button>
               <button
                 type="button"
@@ -1006,9 +1006,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                     ? 'bg-[#0b4d8c] text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-[#0b4d8c] hover:bg-white/80'
                 }`}
-                title="Nhóm 2: Phòng 747 - 757 (6 phòng)"
+                title="Nhóm 2: Phòng 704, 718, 747 - 757 (8 phòng)"
               >
-                <span>Nhóm 2 (6P)</span>
+                <span>Nhóm 2 (8P)</span>
               </button>
               <button
                 type="button"
@@ -1036,7 +1036,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
               >
                 <Building2 className="w-3 h-3 text-[#0b4d8c]" />
                 <span>
-                  {selectedGroup === 'ALL' ? 'Tất cả (28P)' : selectedGroup === 'GROUP_1' ? 'Nhóm 1 (16P)' : selectedGroup === 'GROUP_2' ? 'Nhóm 2 (6P)' : 'Nhóm TM (6P)'}
+                  {selectedGroup === 'ALL' ? 'Tất cả (29P)' : selectedGroup === 'GROUP_1' ? 'Nhóm 1 (15P)' : selectedGroup === 'GROUP_2' ? 'Nhóm 2 (8P)' : 'Nhóm TM (6P)'}
                 </span>
                 <ChevronDown className="w-3 h-3 text-slate-500" />
               </button>
@@ -1047,9 +1047,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                   <div className="absolute top-8 left-0 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 space-y-1">
                     <div className="text-[10px] font-black uppercase text-slate-400 px-2 py-0.5">Chọn Phân Khu Buồng Bệnh:</div>
                     {[
-                      { id: 'ALL', label: 'Tất cả các phòng', desc: 'Toàn khoa (28 phòng)', count: '28P' },
-                      { id: 'GROUP_1', label: 'Nhóm 1', desc: 'P.703 - 731 & 733', count: '16P' },
-                      { id: 'GROUP_2', label: 'Nhóm 2', desc: 'P.747 - 757', count: '6P' },
+                      { id: 'ALL', label: 'Tất cả các phòng', desc: 'Toàn khoa (29 phòng)', count: '29P' },
+                      { id: 'GROUP_1', label: 'Nhóm 1', desc: 'P.703 - 733 & 719', count: '15P' },
+                      { id: 'GROUP_2', label: 'Nhóm 2', desc: 'P.704, 718, 747 - 757', count: '8P' },
                       { id: 'CARDIO', label: 'Nhóm Tim Mạch', desc: 'P.735 - 745', count: '6P' },
                     ].map((g) => (
                       <button

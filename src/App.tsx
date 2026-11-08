@@ -301,7 +301,9 @@ export default function App() {
           });
 
           if (!alreadyInDept) {
-            const mappedPatient = mapClinicalRecordToPatient(rec, loadedDocs, loadRooms(), savedDoc?.id);
+            const currentDocs = loadDoctors();
+            const currentDocSession = getSavedDoctorSession(currentDocs);
+            const mappedPatient = mapClinicalRecordToPatient(rec, currentDocs, loadRooms(), currentDocSession?.id);
             
             setPatients((prev) => {
               if (prev.some((p) => p.id === mappedPatient.id || p.fullName.toLowerCase() === name)) {
