@@ -1284,21 +1284,21 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                       className="px-2 py-0.5 bg-slate-50 border border-slate-300 rounded font-bold text-indigo-700 text-xs focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     >
                       <option value="">-- Chưa phân công BS --</option>
-                      <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)">
+                      <optgroup label="Bác sĩ Nhóm 1 (Ánh, Huyền, Bình Chi, Thiên, Trung, Ngọc)">
                         {group1Doctors.map((doc) => (
                           <option key={doc.id} value={doc.id}>
                             {doc.name}
                           </option>
                         ))}
                       </optgroup>
-                      <optgroup label="Bác sĩ Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)">
+                      <optgroup label="Bác sĩ Nhóm 2 (Linh, Mai, Hoài, Phương Chi, Ngoan)">
                         {group2Doctors.map((doc) => (
                           <option key={doc.id} value={doc.id}>
                             {doc.name}
                           </option>
                         ))}
                       </optgroup>
-                      <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam, Luận)">
+                      <optgroup label="Bác sĩ Tim Mạch (Lam, Thọ, Nhật, Luận, Võ Hồng Thịnh)">
                         {cardioDoctors.map((doc) => (
                           <option key={doc.id} value={doc.id}>
                             {doc.name}

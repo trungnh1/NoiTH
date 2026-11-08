@@ -96,32 +96,32 @@ export function getRoomGroupName(roomNumber: string): { label: string; groupKey:
   return { label: 'Nhóm 1', groupKey: 'GROUP_1' };
 }
 
-// 6 Bác sĩ phụ trách Nhóm 1: Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi
+// 6 Bác sĩ phụ trách Nhóm 1: Ánh, Huyền, Bình Chi, Thiên, Trung, Ngọc
 export const GROUP_1_DOCTOR_IDS = [
-  '00708', // BS. Trần Hữu Ngọc (Ngọc)
-  '00979', // BS. Nguyễn Hữu Trung (Trung)
-  '00257', // BS. Đỗ Thị Vân Huyền (Huyền)
-  '00144', // BS. Phạm Cao Thiên (Thiên)
   '00226', // BS. Đặng Thị Ngọc Ánh (Ánh)
+  '00257', // BS. Đỗ Thị Vân Huyền (Huyền)
   '00943', // BS. Trần Bùi Bình Chi (Bình Chi)
+  '00144', // BS. Phạm Cao Thiên (Thiên)
+  '00979', // BS. Nguyễn Hữu Trung (Trung)
+  '00708', // BS. Trần Hữu Ngọc (Ngọc)
 ];
 
-// Bác sĩ Nhóm 2: Linh, Hoài, Mai, Ngoan, Chi
+// Bác sĩ Nhóm 2: Linh, Mai, Hoài, Phương Chi, Ngoan
 export const GROUP_2_DOCTOR_IDS = [
   '00161', // BS. Thái Thị Thùy Linh (Linh)
-  '00146', // BS. Dương Thị Hoài (Hoài)
   '00318', // BS. Nguyễn Thị Ngọc Mai (Mai)
+  '00146', // BS. Dương Thị Hoài (Hoài)
+  '00769', // BS. Nguyễn Thị Phương Chi (Phương Chi)
   '00176', // BS. Đỗ Thị Ngoan (Ngoan)
-  '00769', // BS. Nguyễn Thị Phương Chi (Chi)
 ];
 
-// Bác sĩ Tim Mạch: Nhật, Thọ, Thịnh, Lam, Luận
+// Bác sĩ Tim Mạch: Lam, Thọ, Nhật, Luận, Võ Hồng Thịnh
 export const CARDIO_DOCTOR_IDS = [
-  '00020', // BS. Nguyễn Văn Phương Nhật (Nhật)
-  '00355', // BS. Võ Văn Thọ (Thọ)
-  '00818', // BS. Võ Hồng Thịnh (Thịnh)
   '00929', // BS. Trương Hoài Lam (Lam)
+  '00355', // BS. Võ Văn Thọ (Thọ)
+  '00020', // BS. Nguyễn Văn Phương Nhật (Nhật)
   '00871', // BS. Đồng Văn Luận (Luận)
+  '00818', // BS. Võ Hồng Thịnh (Thịnh)
 ];
 
 interface DetailedPatientListViewProps {
@@ -1882,21 +1882,21 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber}`}
                                 >
                                   <option value="" className="text-slate-900 bg-white">-- Chọn BS điều trị --</option>
-                                  <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)" className="text-slate-900 bg-white font-bold">
+                                  <optgroup label="Bác sĩ Nhóm 1 (Ánh, Huyền, Bình Chi, Thiên, Trung, Ngọc)" className="text-slate-900 bg-white font-bold">
                                     {group1Doctors.map((doc) => (
                                       <option key={doc.id} value={doc.id}>
                                         BS. {formatDoctorShortName(doc.name)}
                                       </option>
                                     ))}
                                   </optgroup>
-                                  <optgroup label="Bác sĩ Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)" className="text-slate-900 bg-white font-bold">
+                                  <optgroup label="Bác sĩ Nhóm 2 (Linh, Mai, Hoài, Phương Chi, Ngoan)" className="text-slate-900 bg-white font-bold">
                                     {group2Doctors.map((doc) => (
                                       <option key={doc.id} value={doc.id}>
                                         BS. {formatDoctorShortName(doc.name)}
                                       </option>
                                     ))}
                                   </optgroup>
-                                  <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam, Luận)" className="text-slate-900 bg-white font-bold">
+                                  <optgroup label="Bác sĩ Tim Mạch (Lam, Thọ, Nhật, Luận, Võ Hồng Thịnh)" className="text-slate-900 bg-white font-bold">
                                     {cardioDoctors.map((doc) => (
                                       <option key={doc.id} value={doc.id}>
                                         BS. {formatDoctorShortName(doc.name)}
@@ -2511,21 +2511,21 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                         title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber}`}
                       >
                         <option value="" className="text-slate-900 bg-white">-- Chọn BS điều trị --</option>
-                        <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)" className="text-slate-900 bg-white font-bold">
+                        <optgroup label="Bác sĩ Nhóm 1 (Ánh, Huyền, Bình Chi, Thiên, Trung, Ngọc)" className="text-slate-900 bg-white font-bold">
                           {group1Doctors.map((doc) => (
                             <option key={doc.id} value={doc.id}>
                               BS. {formatDoctorShortName(doc.name)}
                             </option>
                           ))}
                         </optgroup>
-                        <optgroup label="Bác sĩ Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)" className="text-slate-900 bg-white font-bold">
+                        <optgroup label="Bác sĩ Nhóm 2 (Linh, Mai, Hoài, Phương Chi, Ngoan)" className="text-slate-900 bg-white font-bold">
                           {group2Doctors.map((doc) => (
                             <option key={doc.id} value={doc.id}>
                               BS. {formatDoctorShortName(doc.name)}
                             </option>
                           ))}
                         </optgroup>
-                        <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam, Luận)" className="text-slate-900 bg-white font-bold">
+                        <optgroup label="Bác sĩ Tim Mạch (Lam, Thọ, Nhật, Luận, Võ Hồng Thịnh)" className="text-slate-900 bg-white font-bold">
                           {cardioDoctors.map((doc) => (
                             <option key={doc.id} value={doc.id}>
                               BS. {formatDoctorShortName(doc.name)}

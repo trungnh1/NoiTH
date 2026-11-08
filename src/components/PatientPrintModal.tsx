@@ -289,21 +289,21 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                     className="bg-transparent font-bold text-slate-900 focus:outline-hidden cursor-pointer max-w-[200px]"
                   >
                     <option value="ALL">Tất cả Bác sĩ</option>
-                    <optgroup label="Bác sĩ Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)">
+                    <optgroup label="Bác sĩ Nhóm 1 (Ánh, Huyền, Bình Chi, Thiên, Trung, Ngọc)">
                       {group1Doctors.map((doc) => (
                         <option key={doc.id} value={doc.id}>
                           BS. {formatDoctorShortName(doc.name)} ({doc.name})
                         </option>
                       ))}
                     </optgroup>
-                    <optgroup label="Bác sĩ Nhóm 2 (Linh, Hoài, Mai, Ngoan, Chi)">
+                    <optgroup label="Bác sĩ Nhóm 2 (Linh, Mai, Hoài, Phương Chi, Ngoan)">
                       {group2Doctors.map((doc) => (
                         <option key={doc.id} value={doc.id}>
                           BS. {formatDoctorShortName(doc.name)} ({doc.name})
                         </option>
                       ))}
                     </optgroup>
-                    <optgroup label="Bác sĩ Tim Mạch (Nhật, Thọ, Thịnh, Lam, Luận)">
+                    <optgroup label="Bác sĩ Tim Mạch (Lam, Thọ, Nhật, Luận, Võ Hồng Thịnh)">
                       {cardioDoctors.map((doc) => (
                         <option key={doc.id} value={doc.id}>
                           BS. {formatDoctorShortName(doc.name)} ({doc.name})

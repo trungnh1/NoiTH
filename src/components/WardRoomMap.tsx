@@ -1728,8 +1728,8 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                     const isCurrent = (roomDoctorState[roomToChangeDoctor] || DEFAULT_ROOM_DOCTORS[roomToChangeDoctor]) === doc.id;
                     const patientCount = doctorPatientCounts[doc.id] || 0;
                     const shortName = getDoctorShortName(doc);
-                    const isGroup1 = GROUP_1_DOCTOR_IDS.includes(doc.id) || /ngọc|trung|huyền|thiên|ánh|bình chi/i.test(doc.name);
-                    const isGroup2 = GROUP_2_DOCTOR_IDS.includes(doc.id) || /linh|hoài|mai|ngoan|nguyễn thị phương chi/i.test(doc.name);
+                    const isGroup1 = GROUP_1_DOCTOR_IDS.includes(doc.id) || /ánh|huyền|bình chi|thiên|trung|ngọc/i.test(doc.name);
+                    const isGroup2 = GROUP_2_DOCTOR_IDS.includes(doc.id) || /linh|mai|hoài|phương chi|ngoan/i.test(doc.name);
                     const groupBadge = isGroup1 
                       ? { label: 'Nhóm 1', bg: 'bg-indigo-50 text-indigo-700 border-indigo-200' }
                       : isGroup2
