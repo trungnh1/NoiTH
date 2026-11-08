@@ -10,7 +10,7 @@ import {
   VitalSign,
   ClinicalEvolution
 } from '../types/patient';
-import { GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS } from '../data/mockData';
+import { GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS, getDoctorsForRoomOrGroup, getRoomGroupKey } from '../data/mockData';
 import { formatDoctorShortName, GROUP_1_ROOM_NUMBERS, CARDIO_ROOM_NUMBERS, GROUP_2_ROOM_NUMBERS } from './DetailedPatientListView';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { isRealAllergy } from '../utils/clinicalTextParser';
@@ -1284,27 +1284,46 @@ Hiện tại: Bệnh tỉnh, tiếp xúc tốt...
                       className="px-2 py-0.5 bg-slate-50 border border-slate-300 rounded font-bold text-indigo-700 text-xs focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     >
                       <option value="">-- Chưa phân công BS --</option>
-                      <optgroup label="Bác sĩ Nhóm 1 (Ánh, Huyền, Bình Chi, Thiên, Trung, Ngọc)">
-                        {group1Doctors.map((doc) => (
-                          <option key={doc.id} value={doc.id}>
-                            {doc.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Bác sĩ Nhóm 2 (Linh, Mai, Hoài, Phương Chi, Ngoan)">
-                        {group2Doctors.map((doc) => (
-                          <option key={doc.id} value={doc.id}>
-                            {doc.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Bác sĩ Tim Mạch (Lam, Thọ, Nhật, Luận, Võ Hồng Thịnh)">
-                        {cardioDoctors.map((doc) => (
-                          <option key={doc.id} value={doc.id}>
-                            {doc.name}
-                          </option>
-                        ))}
-                      </optgroup>
+                      {roomNumber ? (
+                        (() => {
+                          const roomDocs = getDoctorsForRoomOrGroup(roomNumber, doctors, attendingDoctorId);
+                          const roomGroup = getRoomGroupKey(roomNumber);
+                          const groupLabel = roomGroup === 'GROUP_2' ? 'Nhóm 2' : roomGroup === 'CARDIO' ? 'Tim Mạch' : 'Nhóm 1';
+                          return (
+                            <optgroup label={`Bác sĩ ${groupLabel} (Phòng ${roomNumber})`}>
+                              {roomDocs.map((doc) => (
+                                <option key={doc.id} value={doc.id}>
+                                  {doc.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          );
+                        })()
+                      ) : (
+                        <>
+                          <optgroup label="Bác sĩ Nhóm 1 (Ánh, Huyền, Bình Chi, Thiên, Trung, Ngọc)">
+                            {group1Doctors.map((doc) => (
+                              <option key={doc.id} value={doc.id}>
+                                {doc.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Bác sĩ Nhóm 2 (Linh, Mai, Hoài, Phương Chi, Ngoan)">
+                            {group2Doctors.map((doc) => (
+                              <option key={doc.id} value={doc.id}>
+                                {doc.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Bác sĩ Tim Mạch (Lam, Thọ, Nhật, Luận, Võ Hồng Thịnh)">
+                            {cardioDoctors.map((doc) => (
+                              <option key={doc.id} value={doc.id}>
+                                {doc.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        </>
+                      )}
                     </select>
                   </div>
                 </div>

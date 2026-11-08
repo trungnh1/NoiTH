@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { DiseaseStatisticsBar, DiseaseFilterType, matchPatientDisease } from './DiseaseStatisticsBar';
 import { sortDoctorsAlphabetically, getDoctorGivenName } from '../utils/doctorSorter';
+import { getDoctorsForRoomOrGroup } from '../data/mockData';
 import { matchesPatientSearch } from '../utils/searchUtils';
 
 interface PatientTableViewProps {
@@ -600,19 +601,24 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                         {/* Inline Re-assign Selector */}
                         {onReassignDoctor && (
                           <div className="pt-0.5">
-                            <select
-                              value={doctor?.id || ''}
-                              onChange={(e) => onReassignDoctor(patient.id, e.target.value)}
-                              className="text-[11px] font-bold bg-white border border-slate-300 rounded-md px-1.5 py-0.5 text-slate-700 hover:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-500 cursor-pointer"
-                              title="Thay đổi bác sĩ điều trị cho bệnh nhân này"
-                            >
-                              <option value="" disabled>Đổi bác sĩ...</option>
-                              {doctors.map((d) => (
-                                <option key={d.id} value={d.id}>
-                                  {d.name}
-                                </option>
-                              ))}
-                            </select>
+                            {(() => {
+                              const roomDocs = getDoctorsForRoomOrGroup(patient.roomNumber, doctors, doctor?.id);
+                              return (
+                                <select
+                                  value={doctor?.id || ''}
+                                  onChange={(e) => onReassignDoctor(patient.id, e.target.value)}
+                                  className="text-[11px] font-bold bg-white border border-slate-300 rounded-md px-1.5 py-0.5 text-slate-700 hover:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-500 cursor-pointer"
+                                  title="Thay đổi bác sĩ điều trị cho bệnh nhân này"
+                                >
+                                  <option value="" disabled>Đổi bác sĩ...</option>
+                                  {roomDocs.map((d) => (
+                                    <option key={d.id} value={d.id}>
+                                      {d.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              );
+                            })()}
                           </div>
                         )}
                       </div>

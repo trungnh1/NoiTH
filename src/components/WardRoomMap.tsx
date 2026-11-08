@@ -41,7 +41,7 @@ import {
 import { DiseaseStatisticsBar, DiseaseFilterType, matchPatientDisease } from './DiseaseStatisticsBar';
 import { DutyRosterBar } from './DutyRosterBar';
 import { DutyRosterModal } from './DutyRosterModal';
-import { DEFAULT_ROOM_DOCTORS, getDoctorShortName, GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS } from '../data/mockData';
+import { DEFAULT_ROOM_DOCTORS, getDoctorShortName, GROUP_1_DOCTOR_IDS, GROUP_2_DOCTOR_IDS, CARDIO_DOCTOR_IDS, getDoctorsForRoomOrGroup, getRoomGroupKey } from '../data/mockData';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { isRoomNumberMatch, matchesPatientSearch } from '../utils/searchUtils';
 import { formatPatientDisplayName } from '../utils/storage';
@@ -1676,7 +1676,10 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                 <Stethoscope className="w-5 h-5 text-rose-400" />
                 <div>
                   <h3 className="text-sm font-black">
-                    Phân công Bác sĩ phụ trách Phòng {roomToChangeDoctor}
+                    Phân công Bác sĩ phụ trách Phòng {roomToChangeDoctor} ({
+                      getRoomGroupKey(roomToChangeDoctor) === 'GROUP_2' ? 'Nhóm 2' :
+                      getRoomGroupKey(roomToChangeDoctor) === 'CARDIO' ? 'Tim Mạch' : 'Nhóm 1'
+                    })
                   </h3>
                   <p className="text-[11px] text-slate-400">
                     Khoa Nội Tổng Hợp - Tim Mạch
@@ -1715,15 +1718,15 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
               </div>
 
               <div className="max-h-60 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
-                {sortDoctorsAlphabetically(
-                  doctors.filter((d) => 
-                    !['00101', '00199'].includes(d.id) &&
-                    !/tuế|quyên/i.test(d.name) &&
-                    (!doctorSearchInModal.trim() || 
-                    d.name.toLowerCase().includes(doctorSearchInModal.toLowerCase()) ||
-                    (d.specialty && d.specialty.toLowerCase().includes(doctorSearchInModal.toLowerCase())) ||
-                    d.role.toLowerCase().includes(doctorSearchInModal.toLowerCase()))
-                  )
+                {getDoctorsForRoomOrGroup(
+                  roomToChangeDoctor,
+                  doctors,
+                  roomDoctorState[roomToChangeDoctor] || DEFAULT_ROOM_DOCTORS[roomToChangeDoctor]
+                ).filter((d) => 
+                  !doctorSearchInModal.trim() || 
+                  d.name.toLowerCase().includes(doctorSearchInModal.toLowerCase()) ||
+                  (d.specialty && d.specialty.toLowerCase().includes(doctorSearchInModal.toLowerCase())) ||
+                  d.role.toLowerCase().includes(doctorSearchInModal.toLowerCase())
                 ).map((doc) => {
                     const isCurrent = (roomDoctorState[roomToChangeDoctor] || DEFAULT_ROOM_DOCTORS[roomToChangeDoctor]) === doc.id;
                     const patientCount = doctorPatientCounts[doc.id] || 0;

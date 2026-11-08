@@ -59,6 +59,7 @@ import {
   matchesPatientSearch 
 } from '../utils/searchUtils';
 import { getCriticalLabAlerts } from '../utils/labAlerts';
+import { getDoctorsForRoomOrGroup } from '../data/mockData';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
 export const GROUP_1_ROOM_NUMBERS = [
@@ -1875,35 +1876,24 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 <span className="text-slate-500 text-[11px] font-semibold hidden sm:inline">
                                   BS phụ trách:
                                 </span>
-                                <select
-                                  value={group.assignedDoctorId || ''}
-                                  onChange={(e) => handleQuickAssignDoctor(group.roomNumber, e.target.value)}
-                                  className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer w-full truncate"
-                                  title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber}`}
-                                >
-                                  <option value="" className="text-slate-900 bg-white">-- Chọn BS điều trị --</option>
-                                  <optgroup label="Bác sĩ Nhóm 1 (Ánh, Huyền, Bình Chi, Thiên, Trung, Ngọc)" className="text-slate-900 bg-white font-bold">
-                                    {group1Doctors.map((doc) => (
-                                      <option key={doc.id} value={doc.id}>
-                                        BS. {formatDoctorShortName(doc.name)}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                  <optgroup label="Bác sĩ Nhóm 2 (Linh, Mai, Hoài, Phương Chi, Ngoan)" className="text-slate-900 bg-white font-bold">
-                                    {group2Doctors.map((doc) => (
-                                      <option key={doc.id} value={doc.id}>
-                                        BS. {formatDoctorShortName(doc.name)}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                  <optgroup label="Bác sĩ Tim Mạch (Lam, Thọ, Nhật, Luận, Võ Hồng Thịnh)" className="text-slate-900 bg-white font-bold">
-                                    {cardioDoctors.map((doc) => (
-                                      <option key={doc.id} value={doc.id}>
-                                        BS. {formatDoctorShortName(doc.name)}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                </select>
+                                {(() => {
+                                  const roomDocs = getDoctorsForRoomOrGroup(group.roomNumber, doctors, group.assignedDoctorId);
+                                  return (
+                                    <select
+                                      value={group.assignedDoctorId || ''}
+                                      onChange={(e) => handleQuickAssignDoctor(group.roomNumber, e.target.value)}
+                                      className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer w-full truncate"
+                                      title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber} (${groupInfo.label})`}
+                                    >
+                                      <option value="" className="text-slate-900 bg-white">-- Chọn BS (${groupInfo.label}) --</option>
+                                      {roomDocs.map((doc) => (
+                                        <option key={doc.id} value={doc.id}>
+                                          BS. {formatDoctorShortName(doc.name)}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  );
+                                })()}
                               </div>
 
                               {group.assignedDoctorName && (
@@ -2504,35 +2494,24 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                       <span className="text-slate-500 text-xs font-semibold hidden sm:inline">
                         BS phụ trách:
                       </span>
-                      <select
-                        value={group.assignedDoctorId || ''}
-                        onChange={(e) => handleQuickAssignDoctor(group.roomNumber, e.target.value)}
-                        className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer w-full truncate"
-                        title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber}`}
-                      >
-                        <option value="" className="text-slate-900 bg-white">-- Chọn BS điều trị --</option>
-                        <optgroup label="Bác sĩ Nhóm 1 (Ánh, Huyền, Bình Chi, Thiên, Trung, Ngọc)" className="text-slate-900 bg-white font-bold">
-                          {group1Doctors.map((doc) => (
-                            <option key={doc.id} value={doc.id}>
-                              BS. {formatDoctorShortName(doc.name)}
-                            </option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Bác sĩ Nhóm 2 (Linh, Mai, Hoài, Phương Chi, Ngoan)" className="text-slate-900 bg-white font-bold">
-                          {group2Doctors.map((doc) => (
-                            <option key={doc.id} value={doc.id}>
-                              BS. {formatDoctorShortName(doc.name)}
-                            </option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Bác sĩ Tim Mạch (Lam, Thọ, Nhật, Luận, Võ Hồng Thịnh)" className="text-slate-900 bg-white font-bold">
-                          {cardioDoctors.map((doc) => (
-                            <option key={doc.id} value={doc.id}>
-                              BS. {formatDoctorShortName(doc.name)}
-                            </option>
-                          ))}
-                        </optgroup>
-                      </select>
+                      {(() => {
+                        const roomDocs = getDoctorsForRoomOrGroup(group.roomNumber, doctors, group.assignedDoctorId);
+                        return (
+                          <select
+                            value={group.assignedDoctorId || ''}
+                            onChange={(e) => handleQuickAssignDoctor(group.roomNumber, e.target.value)}
+                            className="bg-transparent text-slate-800 font-bold text-xs focus:outline-hidden cursor-pointer w-full truncate"
+                            title={`Chọn nhanh Bác sĩ điều trị cho toàn bộ Phòng ${group.roomNumber} (${groupInfo.label})`}
+                          >
+                            <option value="" className="text-slate-900 bg-white">-- Chọn BS (${groupInfo.label}) --</option>
+                            {roomDocs.map((doc) => (
+                              <option key={doc.id} value={doc.id}>
+                                BS. {formatDoctorShortName(doc.name)}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                     </div>
 
                     {group.assignedDoctorName && (

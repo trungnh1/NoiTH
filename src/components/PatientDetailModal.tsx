@@ -12,6 +12,7 @@ import {
   AdmissionDischargeStatus
 } from '../types/patient';
 import { formatDoctorShortName } from './DetailedPatientListView';
+import { getDoctorsForRoomOrGroup } from '../data/mockData';
 import { formatPatientDisplayName } from '../utils/storage';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { getCriticalLabAlerts, parseRawLabsText, autoClassifyAndTagPatient } from '../utils/labAlerts';
@@ -545,17 +546,22 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                 <div className={`w-4 h-4 rounded-full ${currentDoctor?.avatarColor || 'bg-slate-400'} text-white flex items-center justify-center text-[9px] font-bold`}>
                   {currentDoctor ? currentDoctor.name.split(' ').pop()?.[0] : '?'}
                 </div>
-                <select
-                  value={patient.attendingDoctorId}
-                  onChange={(e) => handleChangeDoctor(e.target.value)}
-                  className="bg-white border border-slate-300 rounded-md px-2 py-0.5 font-bold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-[#0b4d8c] text-xs cursor-pointer"
-                >
-                  {doctors.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      BS. {formatDoctorShortName(d.name)}
-                    </option>
-                  ))}
-                </select>
+                {(() => {
+                  const roomDocs = getDoctorsForRoomOrGroup(patient.roomNumber, doctors, patient.attendingDoctorId);
+                  return (
+                    <select
+                      value={patient.attendingDoctorId}
+                      onChange={(e) => handleChangeDoctor(e.target.value)}
+                      className="bg-white border border-slate-300 rounded-md px-2 py-0.5 font-bold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-[#0b4d8c] text-xs cursor-pointer"
+                    >
+                      {roomDocs.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          BS. {formatDoctorShortName(d.name)}
+                        </option>
+                      ))}
+                    </select>
+                  );
+                })()}
               </div>
             </div>
 

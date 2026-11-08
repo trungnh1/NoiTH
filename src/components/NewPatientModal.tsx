@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { shortenPatientName } from '../utils/storage';
 import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
+import { getDoctorsForRoomOrGroup } from '../data/mockData';
 
 interface NewPatientModalProps {
   rooms: DepartmentRoom[];
@@ -803,17 +804,22 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
 
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Bác sĩ điều trị (*)</label>
-                    <select
-                      value={attendingDoctorId}
-                      onChange={(e) => setAttendingDoctorId(e.target.value)}
-                      className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-rose-700 truncate"
-                    >
-                      {sortDoctorsAlphabetically(doctors).map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
+                    {(() => {
+                      const roomDocs = roomNumber ? getDoctorsForRoomOrGroup(roomNumber, doctors, attendingDoctorId) : sortDoctorsAlphabetically(doctors);
+                      return (
+                        <select
+                          value={attendingDoctorId}
+                          onChange={(e) => setAttendingDoctorId(e.target.value)}
+                          className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-rose-700 truncate"
+                        >
+                          {roomDocs.map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.name}
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

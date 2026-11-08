@@ -26,7 +26,7 @@ import {
   Sparkles
 } from 'lucide-react';
 
-import { getDoctorShortName } from '../data/mockData';
+import { getDoctorShortName, getDoctorsForRoomOrGroup } from '../data/mockData';
 import { sortDoctorsAlphabetically, formatPatientName } from '../utils/doctorSorter';
 
 /**
@@ -633,6 +633,9 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                   : null;
 
                 const todayDocObj = doctors.find((d) => d.id === schedule.todayDoctorId);
+                const roomDoctorsForToday = getDoctorsForRoomOrGroup(room.group || room.number, doctors, schedule.todayDoctorId);
+                const roomDoctorsForYesterday = getDoctorsForRoomOrGroup(room.group || room.number, doctors, schedule.yesterdayDoctorId);
+                const roomDoctorsForTomorrow = getDoctorsForRoomOrGroup(room.group || room.number, doctors, schedule.tomorrowDoctorId);
 
                 return (
                   <div
@@ -698,7 +701,7 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                             onChange={(e) => handleChangeDoctor(room.number, 'today', e.target.value)}
                             className="w-full h-10 pl-3 pr-8 bg-white text-rose-950 font-black text-sm border border-rose-400 rounded-xl shadow-xs focus:outline-hidden focus:ring-2 focus:ring-rose-500 cursor-pointer"
                           >
-                            {doctors.map((doc) => (
+                            {roomDoctorsForToday.map((doc) => (
                               <option key={doc.id} value={doc.id}>
                                 {formatDoctorGivenName(doc)}
                               </option>
@@ -726,7 +729,7 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                             onChange={(e) => handleChangeDoctor(room.number, 'yesterday', e.target.value)}
                             className="w-full h-9 px-2 bg-white text-slate-800 font-bold text-xs border border-slate-300 rounded-lg cursor-pointer"
                           >
-                            {doctors.map((doc) => (
+                            {roomDoctorsForYesterday.map((doc) => (
                               <option key={doc.id} value={doc.id}>
                                 {formatDoctorGivenName(doc)}
                               </option>
@@ -755,7 +758,7 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                             onChange={(e) => handleChangeDoctor(room.number, 'tomorrow', e.target.value)}
                             className="w-full h-9 px-2 bg-white text-[#0b4d8c] font-black text-xs border border-blue-300 rounded-lg cursor-pointer"
                           >
-                            {doctors.map((doc) => (
+                            {roomDoctorsForTomorrow.map((doc) => (
                               <option key={doc.id} value={doc.id}>
                                 {formatDoctorGivenName(doc)}
                               </option>
@@ -868,6 +871,9 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                     const groupMeta = (room.group && room.group in WARD_GROUPS_META) 
                       ? WARD_GROUPS_META[room.group as WardRoomGroup] 
                       : null;
+                    const roomDoctorsForToday = getDoctorsForRoomOrGroup(room.group || room.number, doctors, schedule.todayDoctorId);
+                    const roomDoctorsForYesterday = getDoctorsForRoomOrGroup(room.group || room.number, doctors, schedule.yesterdayDoctorId);
+                    const roomDoctorsForTomorrow = getDoctorsForRoomOrGroup(room.group || room.number, doctors, schedule.tomorrowDoctorId);
 
                     return (
                       <tr
@@ -912,7 +918,7 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                             }
                             className="w-full pl-2 pr-6 py-1.5 bg-slate-50 hover:bg-white text-slate-700 font-bold text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-400 cursor-pointer transition-colors"
                           >
-                            {doctors.map((doc) => (
+                            {roomDoctorsForYesterday.map((doc) => (
                               <option key={doc.id} value={doc.id}>
                                 {formatDoctorGivenName(doc)}
                               </option>
@@ -930,7 +936,7 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                               }
                               className="w-full pl-2.5 pr-7 py-1.5 bg-white text-rose-950 font-black text-xs border-2 border-rose-400 rounded-lg shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-rose-500 cursor-pointer"
                             >
-                              {doctors.map((doc) => (
+                              {roomDoctorsForToday.map((doc) => (
                                 <option key={doc.id} value={doc.id}>
                                   {formatDoctorGivenName(doc)}
                                 </option>
@@ -955,7 +961,7 @@ export const DoctorAllocationView: React.FC<DoctorAllocationViewProps> = ({
                               }
                               className="w-full pl-2 pr-6 py-1.5 bg-blue-50/50 hover:bg-white text-[#0b4d8c] font-black text-xs border border-blue-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-blue-400 cursor-pointer transition-colors"
                             >
-                              {doctors.map((doc) => (
+                              {roomDoctorsForTomorrow.map((doc) => (
                                 <option key={doc.id} value={doc.id}>
                                   {formatDoctorGivenName(doc)}
                                 </option>

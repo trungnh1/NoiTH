@@ -342,6 +342,81 @@ export const CARDIO_DOCTOR_IDS = [
   '00818', // BS. Võ Hồng Thịnh (Thịnh)
 ];
 
+// Group 2 Configuration (Nhóm 2): Phòng 704, 718, 747 -> 757
+export const GROUP_2_ROOM_NUMBERS = [
+  '704', '718', '747', '749', '751', '753', '755', '757'
+];
+
+// Cardio Configuration (Nhóm Tim Mạch): Phòng 735 -> 745
+export const CARDIO_ROOM_NUMBERS = [
+  '735', '737', '739', '741', '743', '745'
+];
+
+/**
+ * Xác định phân nhóm lâm sàng theo số buồng phòng hoặc mã nhóm ('GROUP_1' | 'GROUP_2' | 'CARDIO')
+ */
+export function getRoomGroupKey(roomNumberOrGroup?: string): 'GROUP_1' | 'GROUP_2' | 'CARDIO' {
+  if (!roomNumberOrGroup) return 'GROUP_1';
+  const val = String(roomNumberOrGroup).trim();
+  if (val === 'GROUP_1' || val === 'GROUP_2' || val === 'CARDIO') return val;
+  const clean = val.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim();
+  if (GROUP_2_ROOM_NUMBERS.includes(clean)) return 'GROUP_2';
+  if (CARDIO_ROOM_NUMBERS.includes(clean)) return 'CARDIO';
+  return 'GROUP_1';
+}
+
+/**
+ * Trả về danh sách bác sĩ thuộc phân nhóm của buồng phòng tương ứng theo đúng thứ tự 3 nhóm.
+ * Nếu buồng phòng hiện tại đang được gán cho một bác sĩ khác nhóm, vẫn giữ bác sĩ đó trong danh sách (fallback)
+ * để tránh mất thông tin hiển thị.
+ */
+export function getDoctorsForRoomOrGroup<T extends Doctor>(
+  roomNumberOrGroup: string | undefined,
+  allDoctors: T[],
+  currentDoctorId?: string
+): T[] {
+  if (!Array.isArray(allDoctors)) return [];
+  const groupKey = getRoomGroupKey(roomNumberOrGroup);
+  let targetIds = GROUP_1_DOCTOR_IDS;
+  let targetRegex = /trần hữu ngọc|nguyễn hữu trung|đỗ thị vân huyền|phạm cao thiên|đặng thị ngọc ánh|trần bùi bình chi/i;
+
+  if (groupKey === 'GROUP_2') {
+    targetIds = GROUP_2_DOCTOR_IDS;
+    targetRegex = /thái thị thùy linh|nguyễn thị ngọc mai|dương thị hoài|nguyễn thị phương chi|đỗ thị ngoan/i;
+  } else if (groupKey === 'CARDIO') {
+    targetIds = CARDIO_DOCTOR_IDS;
+    targetRegex = /nguyễn văn phương nhật|võ văn thọ|võ hồng thịnh|trương hoài lam|đồng văn luận/i;
+  }
+
+  const groupDocs = allDoctors.filter((d) => {
+    if (['00101', '00199'].includes(d.id) || /tuế|quyên/i.test(d.name)) return false;
+    if (targetIds.includes(d.id)) return true;
+    if (groupKey === 'GROUP_2' && /bình chi/i.test(d.name)) return false;
+    return targetRegex.test(d.name);
+  });
+
+  const getSortId = (d: Doctor) => (d.id === 'DOC-NGOC' ? '00708' : d.id);
+
+  const sorted = [...groupDocs].sort((a, b) => {
+    const idxA = targetIds.indexOf(getSortId(a));
+    const idxB = targetIds.indexOf(getSortId(b));
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return (a.name || '').localeCompare(b.name || '', 'vi');
+  });
+
+  // Nếu bác sĩ hiện tại không thuộc nhóm này, giữ thêm ở cuối làm fallback để hiển thị đúng
+  if (currentDoctorId && !sorted.some((d) => d.id === currentDoctorId)) {
+    const currentDoc = allDoctors.find((d) => d.id === currentDoctorId);
+    if (currentDoc) {
+      return [...sorted, currentDoc];
+    }
+  }
+
+  return sorted;
+}
+
 // Doctors matching the official staff list at Khoa Nội Tổng Hợp - Bệnh viện Hùng Vương Gia Lai
 export const INITIAL_DOCTORS: Doctor[] = [
   // Nhóm 1 (Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi)
