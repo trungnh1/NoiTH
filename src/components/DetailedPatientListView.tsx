@@ -63,7 +63,7 @@ import { getDoctorsForRoomOrGroup } from '../data/mockData';
 
 // Rooms for Nhóm 1 (Khoa Nội Tổng Hợp: 703 -> 731 và bổ sung phòng 733)
 export const GROUP_1_ROOM_NUMBERS = [
-  '703', '707', '705', '709', '711', '713', '715', '717', '719', '721', '725', '727', '729', '731', '733'
+  '703', '705', '707', '709', '711', '713', '715', '717', '719', '721', '725', '727', '729', '731', '733'
 ];
 
 // Rooms for Nhóm Tim Mạch (Cardio: 735 -> 745)

@@ -174,7 +174,7 @@ export function loadRooms(): DepartmentRoom[] {
           const r719 = INITIAL_ROOMS.find(r => r.number === '719');
           if (r719) parsed.push(r719);
         }
-        return parsed.map((r: DepartmentRoom) => {
+        const updatedRooms = parsed.map((r: DepartmentRoom) => {
           if (r.number === '704' || r.number === '718') {
             return { ...r, group: 'GROUP_2' as const };
           }
@@ -182,6 +182,13 @@ export function loadRooms(): DepartmentRoom[] {
             return { ...r, group: 'GROUP_1' as const };
           }
           return r;
+        });
+        // Sắp xếp theo đúng thứ tự chuẩn của INITIAL_ROOMS (P.703 -> P.705 -> P.707...)
+        return updatedRooms.sort((a: DepartmentRoom, b: DepartmentRoom) => {
+          const idxA = INITIAL_ROOMS.findIndex((ir) => ir.number === a.number);
+          const idxB = INITIAL_ROOMS.findIndex((ir) => ir.number === b.number);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          return 0;
         });
       }
     }

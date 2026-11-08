@@ -143,7 +143,7 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
   },
 
   // ==========================================
-  // NHÓM 1 (703, 707, 705, 709, 711, 713, 715, 717, 718, 721, 725, 727, 729, 731)
+  // NHÓM 1 (703, 705, 707, 709, 711, 713, 715, 717, 719, 721, 725, 727, 729, 731, 733)
   // Mỗi phòng tối đa 3 giường
   // ==========================================
   {
@@ -167,16 +167,6 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
     nurseStation: "Trạm ĐD Dãy 1 (Lầu 7)",
   },
   {
-    id: "R707",
-    number: "707",
-    name: "Phòng 707",
-    type: "STANDARD",
-    totalBeds: 3,
-    group: "GROUP_1",
-    description: "Bệnh cơ tim, xơ vữa động mạch, rối loạn lipid máu",
-    nurseStation: "Trạm ĐD Dãy 1 (Lầu 7)",
-  },
-  {
     id: "R705",
     number: "705",
     name: "Phòng 705",
@@ -184,6 +174,16 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
     totalBeds: 3,
     group: "GROUP_1",
     description: "Bệnh nhân sau can thiệp mạch vành, nong mạch, đặt máy tạo nhịp",
+    nurseStation: "Trạm ĐD Dãy 1 (Lầu 7)",
+  },
+  {
+    id: "R707",
+    number: "707",
+    name: "Phòng 707",
+    type: "STANDARD",
+    totalBeds: 3,
+    group: "GROUP_1",
+    description: "Bệnh cơ tim, xơ vữa động mạch, rối loạn lipid máu",
     nurseStation: "Trạm ĐD Dãy 1 (Lầu 7)",
   },
   {
@@ -311,7 +311,7 @@ export const INITIAL_ROOMS: DepartmentRoom[] = [
 
 // Group 1 Configuration (Nhóm 1): Phòng 703 -> 731 và bổ sung phòng 733
 export const GROUP_1_ROOM_NUMBERS = [
-  '703', '707', '705', '709', '711', '713', '715', '717', '719', '721', '725', '727', '729', '731', '733'
+  '703', '705', '707', '709', '711', '713', '715', '717', '719', '721', '725', '727', '729', '731', '733'
 ];
 
 // Danh sách 6 Bác sĩ phụ trách Nhóm 1: Ánh, Huyền, Bình Chi, Thiên, Trung, Ngọc
@@ -561,8 +561,8 @@ export const INITIAL_PATIENTS: Patient[] = [];
 export const DEFAULT_ROOM_DOCTORS: Record<string, string> = {
   // Nhóm 1 (703 - 731 & 733) - BS: Ngọc, Trung, Huyền, Thiên, Ánh, Bình Chi
   "703": "00708",    // Trần Hữu Ngọc
-  "707": "00257",    // Đỗ Thị Vân Huyền
   "705": "00943",    // Trần Bùi Bình Chi
+  "707": "00257",    // Đỗ Thị Vân Huyền
   "709": "00144",    // Phạm Cao Thiên
   "711": "00226",    // Đặng Thị Ngọc Ánh
   "713": "00144",    // Phạm Cao Thiên
