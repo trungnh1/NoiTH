@@ -32,7 +32,8 @@ import {
   Cpu,
   Key,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Zap
 } from 'lucide-react';
 import { 
   analyzeClinicalNote, 
