@@ -894,7 +894,7 @@ export function enrichPatientWithSatelliteData(
 
     // Cập nhật mức độ nặng dựa trên sinh hiệu nếu hiện tại là UNCLASSIFIED
     if (!updated.severity || updated.severity === 'UNCLASSIFIED') {
-      if (parsed.bpSystolic >= 160 || parsed.spO2 < 93) {
+      if (parsed.bpSystolic > 180 || parsed.spO2 < 93) {
         updated.severity = 'CRITICAL';
       } else if (parsed.spO2 < 95 || parsed.bpSystolic >= 140) {
         updated.severity = 'MODERATE';

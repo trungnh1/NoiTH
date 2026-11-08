@@ -424,13 +424,10 @@ export function getPatientEarlyWarning(patient: Patient): ClinicalEarlyWarning {
       }
     }
 
-    // Huyết áp
+    // Huyết áp: Chỉ báo động khi tăng huyết áp cao > 180 (hoặc tụt huyết áp nặng < 85)
     if (latestVital.bpSystolic !== undefined && latestVital.bpSystolic !== null) {
-      if (latestVital.bpSystolic >= 180 || latestVital.bpSystolic < 85) {
+      if (latestVital.bpSystolic > 180 || (latestVital.bpSystolic < 85 && latestVital.bpSystolic > 0)) {
         isPanic = true;
-        reasons.push(`HA ${latestVital.bpSystolic}/${latestVital.bpDiastolic || ''}`);
-      } else if (latestVital.bpSystolic >= 150 || latestVital.bpSystolic < 90) {
-        isWarning = true;
         reasons.push(`HA ${latestVital.bpSystolic}/${latestVital.bpDiastolic || ''}`);
       }
     }

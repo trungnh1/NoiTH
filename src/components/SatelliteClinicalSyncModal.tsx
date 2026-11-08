@@ -317,7 +317,7 @@ export const SatelliteClinicalSyncModal: React.FC<SatelliteClinicalSyncModalProp
       // Ca nặng
       if (filterMode === 'critical') {
         const parsedVitals = parseVitalSignsText(rec.vitalSigns);
-        const isCritical = parsedVitals.bpSystolic >= 160 || parsedVitals.spO2 < 94;
+        const isCritical = parsedVitals.bpSystolic > 180 || parsedVitals.spO2 < 94;
         if (!isCritical) return false;
       }
 

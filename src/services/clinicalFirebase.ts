@@ -731,7 +731,7 @@ export function mapClinicalRecordToPatient(
 
   // Mức độ
   let severity: SeverityLevel = 'UNCLASSIFIED';
-  if (parsedVitals.bpSystolic >= 160 || parsedVitals.spO2 < 93) {
+  if (parsedVitals.bpSystolic > 180 || parsedVitals.spO2 < 93) {
     severity = 'CRITICAL';
   } else if (parsedVitals.spO2 < 95 || parsedVitals.bpSystolic >= 140) {
     severity = 'MODERATE';

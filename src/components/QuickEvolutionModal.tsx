@@ -54,8 +54,8 @@ export function getBpSysStatus(valStr: string): VitalStatus {
   if (!valStr.trim()) return 'empty';
   const val = Number(valStr);
   if (isNaN(val)) return 'empty';
-  if (val >= 160 || val < 85) return 'critical'; // Đỏ: Tăng huyết áp độ 2-3 hoặc tụt HA nặng
-  if (val >= 140 || val < 90) return 'warning'; // Vàng: THA độ 1 hoặc HA thấp
+  if (val > 180 || (val < 85 && val > 0)) return 'critical'; // Đỏ: Tăng huyết áp khẩn cấp > 180 hoặc tụt HA nặng
+  if (val >= 140 || val < 90) return 'warning'; // Vàng: THA theo dõi hoặc HA thấp
   return 'normal';
 }
 
