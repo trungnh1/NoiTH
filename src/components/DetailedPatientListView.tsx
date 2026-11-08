@@ -453,7 +453,7 @@ export function getPatientEarlyWarning(patient: Patient): ClinicalEarlyWarning {
     reasons.push(...criticalLabs);
   }
 
-  const cleanFirstReason = (reasons[0] || '').replace(/^[🚨⚠️⚡📷🩺]\s*/, '');
+  const cleanFirstReason = (reasons[0] || '').replace(/^[🚨⚠️⚡📷🩺]\s*/u, '');
 
   if (isPanic) {
     return {

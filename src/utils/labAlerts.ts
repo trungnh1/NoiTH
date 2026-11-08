@@ -330,8 +330,33 @@ export function evaluateLabMetric(
     return null;
   }
 
-  // 10. BẠCH CẦU (WBC)
-  if (nameLower.includes('bạch cầu') || nameLower.includes('wbc')) {
+  // 10. BẠCH CẦU (WBC - Tổng số lượng bạch cầu)
+  // Loại trừ các chỉ số thành phần bạch cầu (Neu%, Lym%, Mono%, Eos%, Baso%, v.v.)
+  const isSubWbc =
+    nameLower.includes('đa nhân') ||
+    nameLower.includes('trung tính') ||
+    nameLower.includes('neu') ||
+    nameLower.includes('lym') ||
+    nameLower.includes('mono') ||
+    nameLower.includes('eos') ||
+    nameLower.includes('baso') ||
+    nameLower.includes('hạt') ||
+    nameLower.includes('đoạn') ||
+    nameLower.includes('%') ||
+    unit === '%';
+
+  const isTotalWbc =
+    !isSubWbc &&
+    (
+      nameLower === 'wbc' ||
+      nameLower.includes('wbc') ||
+      nameLower === 'bạch cầu' ||
+      nameLower.includes('số lượng bạch cầu') ||
+      nameLower.includes('tổng số bạch cầu') ||
+      /^bạch\s*cầu(\s*\(wbc\))?$/i.test(nameLower)
+    );
+
+  if (isTotalWbc) {
     if (!isNaN(numVal)) {
       if (numVal < 2.5) {
         return {
@@ -700,13 +725,13 @@ export function parseSingleLabBatch(text: string, batchTimestamp?: string): LabR
 
   const LAB_DEFINITIONS: LabDefinition[] = [
     // Huyết học
-    { pattern: /\b(?:wbc|bạch\s*cầu)\b[^\d]*?([\d.]+)/i, name: 'Bạch cầu (WBC)', category: 'Huyết học', unit: 'G/L', normalRange: '4.0 - 10.0', minNormal: 4.0, maxNormal: 10.0, panicLow: 2.5, panicHigh: 20.0 },
+    { pattern: /\b(?:wbc|(?:tổng\s*số\s*)?bạch\s*cầu(?!\s*(?:đa\s*nhân|trung\s*tính|lympho|mono|ái\s*toan|ái\s*kiềm|hạt|đoạn)))\b[^\d]*?([\d.]+)/i, name: 'Bạch cầu (WBC)', category: 'Huyết học', unit: 'G/L', normalRange: '4.0 - 10.0', minNormal: 4.0, maxNormal: 10.0, panicLow: 2.5, panicHigh: 20.0 },
     { pattern: /\b(?:rbc|hồng\s*cầu)\b[^\d]*?([\d.]+)/i, name: 'Hồng cầu (RBC)', category: 'Huyết học', unit: 'T/L', normalRange: '3.8 - 5.5', minNormal: 3.8, maxNormal: 5.5, panicLow: 2.5, panicHigh: 6.5 },
     { pattern: /\b(?:hgb|hb|huyết\s*sắc\s*tố)\b[^\d]*?([\d.]+)/i, name: 'Huyết sắc tố (HGB)', category: 'Huyết học', unit: 'g/L', normalRange: '120 - 160', minNormal: 120, maxNormal: 160, panicLow: 70, panicHigh: 200 },
     { pattern: /\b(?:hct|hematocrit)\b[^\d]*?([\d.]+)/i, name: 'Hematocrit (HCT)', category: 'Huyết học', unit: '%', normalRange: '35 - 47', minNormal: 35, maxNormal: 47, panicLow: 20, panicHigh: 55 },
     { pattern: /\b(?:plt|tiểu\s*cầu|platelets?)\b[^\d]*?([\d.]+)/i, name: 'Tiểu cầu (PLT)', category: 'Huyết học', unit: 'G/L', normalRange: '150 - 450', minNormal: 150, maxNormal: 450, panicLow: 50, panicHigh: 1000 },
-    { pattern: /\b(?:neu%?|neutrophil%?)\b[^\d]*?([\d.]+)/i, name: 'Bạch cầu đa nhân trung tính (NEU%)', category: 'Huyết học', unit: '%', normalRange: '43 - 75', minNormal: 43, maxNormal: 75 },
-    { pattern: /\b(?:lym%?|lymphocyte%?)\b[^\d]*?([\d.]+)/i, name: 'Bạch cầu Lympho (LYM%)', category: 'Huyết học', unit: '%', normalRange: '17 - 48', minNormal: 17, maxNormal: 48 },
+    { pattern: /\b(?:neu%?|neutrophil%?)\b[^\d]*?([\d.]+)/i, name: 'Neutrophil (NEU%)', category: 'Huyết học', unit: '%', normalRange: '43 - 75', minNormal: 43, maxNormal: 75 },
+    { pattern: /\b(?:lym%?|lymphocyte%?)\b[^\d]*?([\d.]+)/i, name: 'Lympho (LYM%)', category: 'Huyết học', unit: '%', normalRange: '17 - 48', minNormal: 17, maxNormal: 48 },
     { pattern: /\b(?:inr)\b[^\d]*?([\d.]+)/i, name: 'Đông máu (INR)', category: 'Huyết học', unit: '', normalRange: '0.8 - 1.2', minNormal: 0.8, maxNormal: 1.2, panicHigh: 4.5 },
     
     // Sinh hóa
