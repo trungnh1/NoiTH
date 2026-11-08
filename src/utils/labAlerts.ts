@@ -65,7 +65,7 @@ export function evaluateLabMetric(
     return null;
   }
 
-  // 3. CRP (Protein phản ứng C)
+  // 3. CRP (Protein phản ứng C) - Chỉ báo động khi lớn hơn 100 mg/L theo yêu cầu lâm sàng
   if (nameLower.includes('crp') && !nameLower.includes('troponin')) {
     if (!isNaN(numVal)) {
       if (numVal >= 100) {
@@ -75,17 +75,7 @@ export function evaluateLabMetric(
           value: String(numVal),
           unit: 'mg/L',
           severity: 'CRITICAL',
-          badgeLabel: `🚨 CRP: ${numVal} mg/L (Nhiễm trùng nặng)`,
-        };
-      }
-      if (numVal >= 10.0) {
-        return {
-          key: 'crp',
-          shortName: 'CRP',
-          value: String(numVal),
-          unit: 'mg/L',
-          severity: 'WARNING',
-          badgeLabel: `⚠️ CRP: ${numVal} mg/L`,
+          badgeLabel: `🚨 CRP: ${numVal} mg/L (Nhiễm trùng nặng > 100)`,
         };
       }
     }
