@@ -4,8 +4,7 @@ import {
   HeartPulse, 
   Wind, 
   UserPlus, 
-  Cloud,
-  Trash2, 
+  Cloud, 
   CheckCircle2, 
   Printer, 
   AlertCircle,
@@ -38,7 +37,6 @@ interface HeaderProps {
   onOpenWatchlist?: () => void;
   onOpenPrintModal?: () => void;
   onManualPushToCloud?: () => void;
-  onCleanupFirestore?: () => void;
   onOpenDutySchedule?: () => void;
   onOpenSatelliteSync?: () => void;
   onOpenSettings?: () => void;
@@ -60,7 +58,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNewPatient,
   onOpenPrintModal,
   onManualPushToCloud,
-  onCleanupFirestore,
   duplicateGroupCount,
   onOpenDuplicateModal,
   onOpenSatelliteSync,
@@ -346,36 +343,21 @@ export const Header: React.FC<HeaderProps> = ({
               )}
 
               {/* Cloud Sync Status & Action */}
-              <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-1.5 text-[11px]">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 font-bold text-slate-700">
-                    <Cloud className={`w-3.5 h-3.5 ${syncStatus.connected ? 'text-emerald-600' : 'text-blue-500'}`} />
-                    <span>{syncStatus.connected ? 'Cloud online' : 'Đang kết nối Cloud'}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onManualPushToCloud) onManualPushToCloud();
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="px-2 py-0.5 rounded bg-blue-100 text-[#0b4d8c] font-black text-[10px] hover:bg-blue-200 cursor-pointer"
-                  >
-                    Đồng bộ ngay
-                  </button>
+              <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-[11px]">
+                <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                  <Cloud className={`w-3.5 h-3.5 ${syncStatus.connected ? 'text-emerald-600' : 'text-blue-500'}`} />
+                  <span>{syncStatus.connected ? 'Cloud online' : 'Đang kết nối Cloud'}</span>
                 </div>
-                {onCleanupFirestore && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onCleanupFirestore();
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full py-1 px-2 rounded-lg bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100 font-bold text-[10px] flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Trash2 className="w-3 h-3 text-sky-600" />
-                    <span>Dọn dẹp dữ liệu cũ (> 15 ngày)</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onManualPushToCloud) onManualPushToCloud();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="px-2 py-0.5 rounded bg-blue-100 text-[#0b4d8c] font-black text-[10px] hover:bg-blue-200 cursor-pointer"
+                >
+                  Đồng bộ ngay
+                </button>
               </div>
 
               {/* Action List */}

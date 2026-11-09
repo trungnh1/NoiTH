@@ -52,20 +52,6 @@ export function loadPatients(): Patient[] {
       }
     }
 
-    // Tự động loại bỏ bệnh nhân đã ra viện cũ quá 15 ngày khỏi bộ nhớ
-    const FIFTEEN_DAYS_MS = 15 * 24 * 60 * 60 * 1000;
-    const cutoffMs = Date.now() - FIFTEEN_DAYS_MS;
-    list = list.filter((p) => {
-      if (p.status === 'DISCHARGED') {
-        const rawDate = (p as any).dischargeDate || (p as any).updatedAt || p.admissionDate;
-        if (rawDate) {
-          const ts = Date.parse(rawDate);
-          if (!isNaN(ts) && ts < cutoffMs) return false;
-        }
-      }
-      return true;
-    });
-
     // Ensure all required fields exist for every patient
     return list.map((p) => {
       const pCode = p.patientCode || (p.medicalRecordNumber ? p.medicalRecordNumber.replace('HS-', 'BN-') : `BN-${p.id}`);

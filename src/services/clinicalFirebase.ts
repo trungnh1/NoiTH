@@ -232,59 +232,6 @@ export const subscribeToClinicalRecords = (onUpdate: (records: ClinicalRecord[])
 };
 
 /**
- * Tự động xóa các bản ghi bệnh án vệ tinh cũ hơn ngưỡng ngày (mặc định 15 ngày)
- * Nhằm tránh dầy dữ liệu và tiết kiệm dung lượng Firestore vệ tinh
- */
-export async function cleanupOldSatelliteRecords(daysThreshold = 15): Promise<number> {
-  const thresholdMs = daysThreshold * 24 * 60 * 60 * 1000;
-  const cutoffTime = Date.now() - thresholdMs;
-  let deletedCount = 0;
-
-  try {
-    const recordsRef = collection(db, CLINICAL_COLLECTION);
-    const snapshot = await getDocs(recordsRef);
-    for (const docSnap of snapshot.docs) {
-      const data = docSnap.data();
-      const rawDate = data.createdAt || data.admissionDate || data.updatedAt;
-      if (rawDate) {
-        let ts: number | null = null;
-        if (typeof rawDate === 'object' && typeof (rawDate as any).toDate === 'function') {
-          ts = (rawDate as any).toDate().getTime();
-        } else if (typeof rawDate === 'object' && typeof (rawDate as any).seconds === 'number') {
-          ts = (rawDate as any).seconds * 1000;
-        } else if (typeof rawDate === 'string') {
-          const parsed = Date.parse(rawDate);
-          if (!isNaN(parsed)) {
-            ts = parsed;
-          } else {
-            const dMatch = rawDate.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-            if (dMatch && dMatch[1] && dMatch[2] && dMatch[3]) {
-              const y = dMatch[1];
-              const m = String(dMatch[2]).padStart(2, '0');
-              const d = String(dMatch[3]).padStart(2, '0');
-              const dt = new Date(`${y}-${m}-${d}T00:00:00`);
-              if (!isNaN(dt.getTime())) ts = dt.getTime();
-            }
-          }
-        }
-        if (ts && ts < cutoffTime) {
-          try {
-            const docRef = doc(db, CLINICAL_COLLECTION, docSnap.id);
-            await deleteDoc(docRef);
-            deletedCount++;
-          } catch (e) {
-            console.warn('Lỗi xóa bản ghi vệ tinh cũ:', docSnap.id, e);
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('Lỗi cleanupOldSatelliteRecords:', err);
-  }
-  return deletedCount;
-}
-
-/**
  * Trích xuất chỉ số sinh hiệu từ chuỗi text sinh hiệu (ví dụ: "HA: 130/80 mmHg, Mạch: 85 l/p, Nhiệt độ: 37°C, SpO2: 98%")
  */
 export function parseVitalSignsText(vitalText?: string): {
