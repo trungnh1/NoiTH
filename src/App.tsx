@@ -189,14 +189,30 @@ export default function App() {
       if (res.success) {
         localStorage.setItem('HVG_LAST_FIRESTORE_CLEANUP_TS', String(Date.now()));
         if (res.totalDeleted > 0 || res.prunedVitalsCount > 0) {
-          const parts: string[] = [];
-          if (res.deletedPatientsCount > 0) parts.push(`${res.deletedPatientsCount} BN ra viện`);
-          if (res.deletedDismissedCount > 0) parts.push(`${res.deletedDismissedCount} ca vệ tinh đã xử lý`);
-          if (res.deletedProbeCount > 0) parts.push(`${res.deletedProbeCount} dữ liệu thử nghiệm`);
-          if (res.prunedVitalsCount > 0) parts.push(`${res.prunedVitalsCount} chỉ số sinh hiệu cũ`);
-          
-          setManualPushMessage(`🧹 Đã dọn dẹp Firestore: Đã xóa ${res.totalDeleted} bản ghi cũ (> 15 ngày) (${parts.join(', ')}) để tối ưu dung lượng!`);
-          setTimeout(() => setManualPushMessage(null), 8000);
+          // Chỉ thông báo nếu tài khoản 00979 (BS. Nguyễn Hữu Trung) đang đăng nhập, các tài khoản khác không cần thông báo
+          let isDoc00979 = authenticatedDoctor?.id === '00979';
+          if (!isDoc00979) {
+            try {
+              const raw = localStorage.getItem('HVGL_CURRENT_DOCTOR_SESSION');
+              if (raw) {
+                const session = JSON.parse(raw);
+                if (session?.id === '00979') isDoc00979 = true;
+              }
+            } catch {
+              // ignore
+            }
+          }
+
+          if (isDoc00979) {
+            const parts: string[] = [];
+            if (res.deletedPatientsCount > 0) parts.push(`${res.deletedPatientsCount} BN ra viện`);
+            if (res.deletedDismissedCount > 0) parts.push(`${res.deletedDismissedCount} ca vệ tinh đã xử lý`);
+            if (res.deletedProbeCount > 0) parts.push(`${res.deletedProbeCount} dữ liệu thử nghiệm`);
+            if (res.prunedVitalsCount > 0) parts.push(`${res.prunedVitalsCount} chỉ số sinh hiệu cũ`);
+            
+            setManualPushMessage(`🧹 Đã dọn dẹp Firestore: Đã xóa ${res.totalDeleted} bản ghi cũ (> 15 ngày) (${parts.join(', ')}) để tối ưu dung lượng!`);
+            setTimeout(() => setManualPushMessage(null), 8000);
+          }
         }
       }
     } catch (err: any) {
