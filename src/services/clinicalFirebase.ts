@@ -232,9 +232,6 @@ export const subscribeToClinicalRecords = (onUpdate: (records: ClinicalRecord[])
 };
 
 /**
- * Trích xuất chỉ số sinh hiệu từ chuỗi text sinh hiệu (ví dụ: "HA: 130/80 mmHg, Mạch: 85 l/p, Nhiệt độ: 37°C, SpO2: 98%")
- */
-/**
  * Tự động xóa các bản ghi bệnh án vệ tinh cũ hơn ngưỡng ngày (mặc định 15 ngày)
  * Nhằm tránh dầy dữ liệu và tiết kiệm dung lượng Firestore vệ tinh
  */
@@ -251,25 +248,29 @@ export async function cleanupOldSatelliteRecords(daysThreshold = 15): Promise<nu
       const rawDate = data.createdAt || data.admissionDate || data.updatedAt;
       if (rawDate) {
         let ts: number | null = null;
-        if (typeof rawDate === 'object' && typeof rawDate.toDate === 'function') {
-          ts = rawDate.toDate().getTime();
-        } else if (typeof rawDate === 'object' && typeof rawDate.seconds === 'number') {
-          ts = rawDate.seconds * 1000;
+        if (typeof rawDate === 'object' && typeof (rawDate as any).toDate === 'function') {
+          ts = (rawDate as any).toDate().getTime();
+        } else if (typeof rawDate === 'object' && typeof (rawDate as any).seconds === 'number') {
+          ts = (rawDate as any).seconds * 1000;
         } else if (typeof rawDate === 'string') {
           const parsed = Date.parse(rawDate);
           if (!isNaN(parsed)) {
             ts = parsed;
           } else {
-            const dMatch = rawDate.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-            if (dMatch) {
-              const dt = new Date(`${dMatch[1]}-${dMatch[2].padStart(2, '0')}-${dMatch[3].padStart(2, '0')}T00:00:00`);
+            const dMatch = rawDate.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+            if (dMatch && dMatch[1] && dMatch[2] && dMatch[3]) {
+              const y = dMatch[1];
+              const m = String(dMatch[2]).padStart(2, '0');
+              const d = String(dMatch[3]).padStart(2, '0');
+              const dt = new Date(`${y}-${m}-${d}T00:00:00`);
               if (!isNaN(dt.getTime())) ts = dt.getTime();
             }
           }
         }
         if (ts && ts < cutoffTime) {
           try {
-            await deleteDoc(docSnap.ref);
+            const docRef = doc(db, CLINICAL_COLLECTION, docSnap.id);
+            await deleteDoc(docRef);
             deletedCount++;
           } catch (e) {
             console.warn('Lỗi xóa bản ghi vệ tinh cũ:', docSnap.id, e);

@@ -16,8 +16,6 @@ import {
 } from 'firebase/firestore';
 import { Patient, SeverityLevel, VitalSign } from '../types/patient';
 import { isRealAllergy } from '../utils/clinicalTextParser';
-import { extractDateOnly } from '../utils/excelParser';
-import { cleanupOldSatelliteRecords } from './clinicalFirebase';
 
 import firebaseAppletConfig from '../../firebase-applet-config.json';
 
@@ -724,16 +722,41 @@ export function subscribeToDismissedSatelliteRecords(
 
 
 /**
+ * Trích xuất phần ngày chuẩn (YYYY-MM-DD) từ bất kỳ chuỗi ngày nào
+ */
+function extractDateOnly(dateStr?: string): string {
+  if (!dateStr) return '';
+  const clean = String(dateStr).trim();
+  const ymdMatch = clean.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (ymdMatch && ymdMatch[1] && ymdMatch[2] && ymdMatch[3]) {
+    return `${ymdMatch[1]}-${String(ymdMatch[2]).padStart(2, '0')}-${String(ymdMatch[3]).padStart(2, '0')}`;
+  }
+  const dmyMatch = clean.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  if (dmyMatch && dmyMatch[1] && dmyMatch[2] && dmyMatch[3]) {
+    return `${dmyMatch[3]}-${String(dmyMatch[2]).padStart(2, '0')}-${String(dmyMatch[1]).padStart(2, '0')}`;
+  }
+  const timeDmyMatch = clean.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (timeDmyMatch && timeDmyMatch[1] && timeDmyMatch[2] && timeDmyMatch[3]) {
+    return `${timeDmyMatch[3]}-${String(timeDmyMatch[2]).padStart(2, '0')}-${String(timeDmyMatch[1]).padStart(2, '0')}`;
+  }
+  const d = new Date(clean);
+  if (!isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  return '';
+}
+
+/**
  * Chuyển đổi an toàn giá trị ngày (Date, Firestore Timestamp, ISO string, DD/MM/YYYY, YYYY-MM-DD) sang epoch timestamp (ms).
  * Ưu tiên nhận diện đúng định dạng ngày Việt Nam DD/MM/YYYY để tránh bị nhầm lẫn tháng/ngày.
  */
 export function parseDateToTimestamp(val: any): number | null {
   if (!val) return null;
-  if (typeof val === 'object' && typeof val.toDate === 'function') {
-    return val.toDate().getTime();
+  if (typeof val === 'object' && typeof (val as any).toDate === 'function') {
+    return (val as any).toDate().getTime();
   }
-  if (typeof val === 'object' && typeof val.seconds === 'number') {
-    return val.seconds * 1000;
+  if (typeof val === 'object' && typeof (val as any).seconds === 'number') {
+    return (val as any).seconds * 1000;
   }
   if (val instanceof Date) {
     return isNaN(val.getTime()) ? null : val.getTime();
@@ -755,10 +778,10 @@ export function parseDateToTimestamp(val: any): number | null {
     const dOnly = extractDateOnly(clean);
     if (dOnly) {
       const timeMatch = clean.match(/(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
-      if (timeMatch) {
-        const hh = timeMatch[1].padStart(2, '0');
-        const mm = timeMatch[2].padStart(2, '0');
-        const ss = (timeMatch[3] || '00').padStart(2, '0');
+      if (timeMatch && timeMatch[1] && timeMatch[2]) {
+        const hh = String(timeMatch[1]).padStart(2, '0');
+        const mm = String(timeMatch[2]).padStart(2, '0');
+        const ss = String(timeMatch[3] || '00').padStart(2, '0');
         const dt = new Date(`${dOnly}T${hh}:${mm}:${ss}`);
         if (!isNaN(dt.getTime())) return dt.getTime();
       }
@@ -799,8 +822,6 @@ export interface FirestoreCleanupResult {
  *    - Các bản ghi probe/test từ hàm testCloudWrite() cũ > 15 ngày.
  * 3. Collection 'department_satellite_dismissed':
  *    - Các ID ca vệ tinh đã bấm bỏ qua cũ > 15 ngày.
- * 4. Collection vệ tinh 'clinical_records' (iron-foundation-kbcxw):
- *    - Các bản ghi bệnh án vệ tinh cũ > 15 ngày.
  */
 export async function cleanupOldFirestoreData(daysThreshold = 15): Promise<FirestoreCleanupResult> {
   const thresholdMs = daysThreshold * 24 * 60 * 60 * 1000;
@@ -809,7 +830,7 @@ export async function cleanupOldFirestoreData(daysThreshold = 15): Promise<Fires
   let deletedPatientsCount = 0;
   let deletedDismissedCount = 0;
   let deletedProbeCount = 0;
-  let deletedSatelliteCount = 0;
+  const deletedSatelliteCount = 0;
   let prunedVitalsCount = 0;
 
   try {
@@ -865,7 +886,8 @@ export async function cleanupOldFirestoreData(daysThreshold = 15): Promise<Fires
           (isOlderThanLimit && (!data.roomNumber || data.roomNumber === '' || data.roomNumber === 'CHƯA PHÂN BUỒNG'))
         ) {
           try {
-            await deleteDoc(docSnap.ref);
+            const docRef = doc(db, 'department_patients', docId);
+            await deleteDoc(docRef);
             deletedPatientsCount++;
           } catch (delErr) {
             console.warn('[Firestore Cleanup] Lỗi xóa department_patients:', docId, delErr);
@@ -880,7 +902,9 @@ export async function cleanupOldFirestoreData(daysThreshold = 15): Promise<Fires
           if (filteredVitals.length < data.vitals.length) {
             prunedVitalsCount += (data.vitals.length - filteredVitals.length);
             try {
-              await setDoc(docSnap.ref, { vitals: filteredVitals }, { merge: true });
+              const docRef = doc(db, 'department_patients', docId);
+              const payload = sanitizeObjectForFirestore({ vitals: filteredVitals });
+              await setDoc(docRef, payload, { merge: true });
             } catch (pruneErr) {
               console.warn('[Firestore Cleanup] Lỗi tỉa sinh hiệu cũ:', docId, pruneErr);
             }
@@ -897,7 +921,8 @@ export async function cleanupOldFirestoreData(daysThreshold = 15): Promise<Fires
           const recTime = parseDateToTimestamp(data.createdAt || data.timestamp || data.admissionDate);
           if (recTime && recTime < cutoffTime) {
             try {
-              await deleteDoc(docSnap.ref);
+              const docRef = doc(db, 'clinical_records', docSnap.id);
+              await deleteDoc(docRef);
               deletedProbeCount++;
             } catch (delErr) {
               console.warn('[Firestore Cleanup] Lỗi xóa clinical_records cũ:', docSnap.id, delErr);
@@ -917,7 +942,8 @@ export async function cleanupOldFirestoreData(daysThreshold = 15): Promise<Fires
           const dTime = parseDateToTimestamp(data.dismissedAt);
           if (dTime && dTime < cutoffTime) {
             try {
-              await deleteDoc(docSnap.ref);
+              const docRef = doc(db, 'department_satellite_dismissed', docSnap.id);
+              await deleteDoc(docRef);
               deletedDismissedCount++;
             } catch (delErr) {
               console.warn('[Firestore Cleanup] Lỗi xóa department_satellite_dismissed cũ:', docSnap.id, delErr);
@@ -929,25 +955,16 @@ export async function cleanupOldFirestoreData(daysThreshold = 15): Promise<Fires
       }
     });
 
-    // 4. Dọn dẹp bản ghi vệ tinh cũ (iron-foundation-kbcxw)
-    try {
-      if (typeof cleanupOldSatelliteRecords === 'function') {
-        deletedSatelliteCount = await cleanupOldSatelliteRecords(daysThreshold);
-      }
-    } catch (err) {
-      console.warn('[Firestore Cleanup] Lỗi dọn dẹp vệ tinh:', err);
-    }
-
-    const totalDeleted = deletedPatientsCount + deletedDismissedCount + deletedProbeCount + deletedSatelliteCount;
+    const totalDeleted = deletedPatientsCount + deletedDismissedCount + deletedProbeCount;
     return {
       success: true,
       deletedPatientsCount,
       deletedDismissedCount,
       deletedProbeCount,
-      deletedSatelliteCount,
+      deletedSatelliteCount: 0,
       prunedVitalsCount,
       totalDeleted,
-      details: `Đã dọn dẹp thành công ${totalDeleted} bản ghi cũ quá ${daysThreshold} ngày trên Cloud Firestore (BN ra viện: ${deletedPatientsCount}, Vệ tinh đã xóa: ${deletedDismissedCount}, Thử nghiệm: ${deletedProbeCount}, Vệ tinh: ${deletedSatelliteCount}).`,
+      details: `Đã dọn dẹp thành công ${totalDeleted} bản ghi cũ quá ${daysThreshold} ngày trên Cloud Firestore (BN ra viện: ${deletedPatientsCount}, Vệ tinh đã xóa: ${deletedDismissedCount}, Thử nghiệm: ${deletedProbeCount}).`,
     };
   } catch (err: any) {
     console.error('[Firestore Cleanup] Thất bại:', err);
@@ -956,7 +973,7 @@ export async function cleanupOldFirestoreData(daysThreshold = 15): Promise<Fires
       deletedPatientsCount,
       deletedDismissedCount,
       deletedProbeCount,
-      deletedSatelliteCount,
+      deletedSatelliteCount: 0,
       prunedVitalsCount,
       totalDeleted: 0,
       error: err.message || String(err),

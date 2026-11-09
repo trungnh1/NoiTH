@@ -31,6 +31,7 @@ import {
   dismissPendingSatelliteRecord,
   deletePendingSatelliteRecord,
   deleteSatelliteRecord,
+  cleanupOldSatelliteRecords,
   parseAgeNumber
 } from './services/clinicalFirebase';
 import { 
@@ -191,17 +192,26 @@ export default function App() {
     }
     try {
       const res = await cleanupOldFirestoreData(15);
+      let satCount = 0;
+      try {
+        if (typeof cleanupOldSatelliteRecords === 'function') {
+          satCount = await cleanupOldSatelliteRecords(15);
+        }
+      } catch (satErr) {
+        console.warn('Lỗi dọn dẹp satellite cũ:', satErr);
+      }
+      const totalDeleted = res.totalDeleted + satCount;
       if (res.success) {
         localStorage.setItem('HVG_LAST_FIRESTORE_CLEANUP_TS', String(Date.now()));
-        if (res.totalDeleted > 0 || res.prunedVitalsCount > 0) {
+        if (totalDeleted > 0 || res.prunedVitalsCount > 0) {
           const parts: string[] = [];
           if (res.deletedPatientsCount > 0) parts.push(`${res.deletedPatientsCount} BN ra viện`);
           if (res.deletedDismissedCount > 0) parts.push(`${res.deletedDismissedCount} ca vệ tinh đã xử lý`);
           if (res.deletedProbeCount > 0) parts.push(`${res.deletedProbeCount} dữ liệu thử nghiệm`);
-          if (res.deletedSatelliteCount > 0) parts.push(`${res.deletedSatelliteCount} bệnh án vệ tinh`);
+          if (satCount > 0) parts.push(`${satCount} bệnh án vệ tinh`);
           if (res.prunedVitalsCount > 0) parts.push(`${res.prunedVitalsCount} chỉ số sinh hiệu cũ`);
           
-          setManualPushMessage(`🧹 Đã dọn dẹp Firestore: Đã xóa ${res.totalDeleted} bản ghi cũ (> 15 ngày) (${parts.join(', ')}) để tối ưu dung lượng!`);
+          setManualPushMessage(`🧹 Đã dọn dẹp Firestore: Đã xóa ${totalDeleted} bản ghi cũ (> 15 ngày) (${parts.join(', ')}) để tối ưu dung lượng!`);
           setTimeout(() => setManualPushMessage(null), 8000);
         } else if (manual) {
           setManualPushMessage('✨ Cloud Firestore rất gọn gàng: Không phát hiện dữ liệu nào cũ quá 15 ngày cần xóa.');
