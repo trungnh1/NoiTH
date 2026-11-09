@@ -3192,14 +3192,14 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
           )}
         </button>
 
-        {/* Nút 5: Lên đỉnh trang */}
+        {/* Nút 5: Lên đầu trang */}
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="flex flex-col items-center justify-center p-1 rounded-xl text-slate-600 hover:text-[#0b4d8c] font-bold transition-all cursor-pointer min-w-[56px] active:scale-95"
         >
           <ChevronUp className="w-5 h-5 mb-0.5 text-current" />
-          <span className="text-[10px] leading-tight">Lên đỉnh</span>
+          <span className="text-[10px] leading-tight">Lên đầu</span>
         </button>
       </div>
 
