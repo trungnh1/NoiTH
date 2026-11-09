@@ -32,7 +32,9 @@ import {
   ExcelPatientRow, 
   MatchedSatelliteRecord,
   normalizeVietnameseString,
-  extractCleanRoomNumber
+  extractCleanRoomNumber,
+  isPatientDuplicateWithExisting,
+  extractDateOnly
 } from '../utils/excelParser';
 
 interface ExcelDataSyncModalProps {
@@ -71,31 +73,14 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Helper: Kiểm tra bệnh nhân có xuất hiện trong danh sách hàng Excel không
+  // Sử dụng chung bộ quy tắc đối soát chuẩn xác (Mã BN hoặc Họ tên + Tuổi + Ngày nhập viện)
   const isPatientInExcel = (patient: Patient, rows: ExcelPatientRow[]): boolean => {
     if (!rows || rows.length === 0) return false;
-    const pCode = (patient.patientCode || patient.medicalRecordNumber || patient.id || '').trim().toLowerCase();
-    const pNameNorm = normalizeVietnameseString(patient.fullName);
 
     for (const row of rows) {
-      const excelCode = (row.patientCode || '').trim().toLowerCase();
-      // 1. Khớp theo mã bệnh nhân (mabn / medicalRecordNumber / id)
-      if (excelCode && pCode) {
-        if (
-          pCode === excelCode ||
-          (excelCode.length >= 4 && pCode.length >= 4 && (pCode.includes(excelCode) || excelCode.includes(pCode)))
-        ) {
-          return true;
-        }
-      }
-
-      // 2. Khớp theo họ tên chuẩn hóa (accent-insensitive)
-      const excelNameNorm = normalizeVietnameseString(row.patientName);
-      if (excelNameNorm && pNameNorm && excelNameNorm === pNameNorm) {
-        const excelRoomNorm = extractCleanRoomNumber(row.patientRoom);
-        const pRoomNorm = extractCleanRoomNumber(patient.roomNumber);
-        if (!row.patientRoom || !patient.roomNumber || excelRoomNorm === pRoomNorm) {
-          return true;
-        }
+      const dupCheck = isPatientDuplicateWithExisting(row, patient);
+      if (dupCheck.isDuplicate) {
+        return true;
       }
     }
 
@@ -175,31 +160,14 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
   };
 
   // Deduplication Helper: Kiểm tra bệnh nhân đã có trong danh sách khoa chưa
-  const checkPatientAlreadyExists = (row: ExcelPatientRow): { exists: boolean; existingRecord?: Patient } => {
+  // Tiêu chí đối soát (theo yêu cầu BS): Nếu trùng Họ tên, Tuổi, Ngày nhập viện thì bỏ qua không nhập
+  const checkPatientAlreadyExists = (row: ExcelPatientRow): { exists: boolean; existingRecord?: Patient; reason?: string } => {
     if (!existingPatients || existingPatients.length === 0) return { exists: false };
-    const excelCode = (row.patientCode || '').trim().toLowerCase();
-    const excelNameNorm = normalizeVietnameseString(row.patientName);
-    const excelRoomNorm = extractCleanRoomNumber(row.patientRoom);
 
     for (const p of existingPatients) {
-      // 1. Khớp theo mã bệnh nhân (mabn / medicalRecordNumber / id)
-      if (excelCode) {
-        if (
-          (p.patientCode && p.patientCode.trim().toLowerCase() === excelCode) ||
-          (p.medicalRecordNumber && p.medicalRecordNumber.trim().toLowerCase() === excelCode) ||
-          (p.id && p.id.toLowerCase().includes(excelCode))
-        ) {
-          return { exists: true, existingRecord: p };
-        }
-      }
-
-      // 2. Khớp theo họ tên chuẩn hóa và số phòng
-      const pNameNorm = normalizeVietnameseString(p.fullName);
-      const pRoomNorm = extractCleanRoomNumber(p.roomNumber);
-      if (excelNameNorm && pNameNorm && excelNameNorm === pNameNorm) {
-        if (!row.patientRoom || excelRoomNorm === pRoomNorm) {
-          return { exists: true, existingRecord: p };
-        }
+      const dupCheck = isPatientDuplicateWithExisting(row, p);
+      if (dupCheck.isDuplicate) {
+        return { exists: true, existingRecord: p, reason: dupCheck.reason };
       }
     }
 
@@ -230,6 +198,16 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
   const handleMergeAndAdmit = (match: MatchedSatelliteRecord) => {
     const sat = match.satelliteRecord;
     const excel = match.matchedExcelRow;
+
+    // Kiểm tra chặn trùng lặp trước khi tiếp nhận
+    const dupCheck = checkPatientAlreadyExists(excel);
+    if (dupCheck.exists) {
+      setNotification({
+        message: `Bệnh nhân "${excel.patientName}" đã có trong danh sách khoa (${dupCheck.reason || 'đã tồn tại'}), bỏ qua ghép nối trùng!`,
+        type: 'info',
+      });
+      return;
+    }
 
     // Sử dụng bộ engine hợp nhất đa nguồn: Excel (Hành chính) + Vệ tinh (Lâm sàng)
     const patientObj = mergeExcelAndSatellitePatient(excel, sat, doctors, rooms, '');
@@ -274,6 +252,16 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
 
   // Action: Import direct patient from Excel row (Bỏ qua chẩn đoán ICD trong file)
   const handleImportDirectFromExcel = (excelRow: ExcelPatientRow, index: number) => {
+    // Kiểm tra chặn trùng lặp trước khi tiếp nhận trực tiếp
+    const dupCheck = checkPatientAlreadyExists(excelRow);
+    if (dupCheck.exists) {
+      setNotification({
+        message: `Bệnh nhân "${excelRow.patientName}" đã có trong danh sách khoa (${dupCheck.reason || 'đã tồn tại'}), tự động bỏ qua để tránh trùng!`,
+        type: 'info',
+      });
+      return;
+    }
+
     const now = new Date();
     const defaultDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
@@ -712,7 +700,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                   <tbody className="divide-y divide-slate-100">
                     {excelRows.map((row, idx) => {
                       const isImported = importedIds.has(`excel-${idx}`);
-                      const { exists: alreadyInDept, existingRecord } = checkPatientAlreadyExists(row);
+                      const { exists: alreadyInDept, existingRecord, reason: dupReason } = checkPatientAlreadyExists(row);
 
                       return (
                         <tr 
@@ -773,7 +761,7 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                             {alreadyInDept ? (
                               <span 
                                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-300"
-                                title={`Bệnh nhân đã có trong danh sách khoa (${existingRecord?.fullName || ''} - P.${existingRecord?.roomNumber || ''})`}
+                                title={`Bệnh nhân đã có trong danh sách khoa: ${existingRecord?.fullName || ''} - P.${existingRecord?.roomNumber || ''} (${dupReason || 'Trùng thông tin'})`}
                               >
                                 ✓ Đã có trong dữ liệu (Bỏ qua)
                               </span>

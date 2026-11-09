@@ -19,6 +19,7 @@ import { DoctorLoginScreen } from './components/DoctorLoginScreen';
 import { getSavedDoctorSession, saveDoctorSession, clearDoctorSession } from './utils/auth';
 import { loadAppSettings, saveAppSettings, getFontSizeScale, AppSettings, FONT_FAMILY_MAP } from './utils/settings';
 import { isRealAllergy } from './utils/clinicalTextParser';
+import { isSameClinicalPatient } from './utils/excelParser';
 import { normalizeSearchText } from './utils/searchUtils';
 import { 
   subscribeToClinicalRecords, 
@@ -417,6 +418,15 @@ export default function App() {
 
   // Handle new patient admission (automatic upload to Firestore)
   const handleAddPatient = async (newPatient: Patient) => {
+    // Chặn trùng lặp bệnh nhân: trùng họ tên, tuổi, ngày nhập viện hoặc mã BN
+    const duplicate = patients.find((p) => isSameClinicalPatient(p, newPatient));
+    if (duplicate) {
+      console.warn('Patient already exists in ward, skipping duplicate:', newPatient.fullName, duplicate.id);
+      setManualPushMessage(`⚠️ Bệnh nhân "${newPatient.fullName}" đã có trong danh sách khoa (${duplicate.roomNumber ? `P.${duplicate.roomNumber}` : ''}), tự động bỏ qua để tránh trùng.`);
+      setTimeout(() => setManualPushMessage(null), 6000);
+      return;
+    }
+
     const updated = [newPatient, ...patients];
     setPatients(updated);
     savePatients(updated);
@@ -436,12 +446,20 @@ export default function App() {
   // Import nhieu benh nhan cung luc tu Cloud ve tinh
   const handleImportMultiplePatients = async (newPatients: Patient[]) => {
     if (newPatients.length === 0) return;
-    const updated = [...newPatients, ...patients];
+    // Lọc bỏ các bệnh nhân đã có sẵn trong danh sách khoa (trùng họ tên, tuổi, ngày nhập viện hoặc mã BN)
+    const nonDuplicates = newPatients.filter((newP) => !patients.some((p) => isSameClinicalPatient(p, newP)));
+    if (nonDuplicates.length === 0) {
+      setManualPushMessage('⚠️ Tất cả bệnh nhân vừa nạp đều đã có trong danh sách khoa, không có bệnh nhân mới nào được thêm.');
+      setTimeout(() => setManualPushMessage(null), 6000);
+      return;
+    }
+
+    const updated = [...nonDuplicates, ...patients];
     setPatients(updated);
     savePatients(updated);
     setIsAutoSyncing(true);
     try {
-      for (const p of newPatients) {
+      for (const p of nonDuplicates) {
         await syncPatientToCloud(p);
       }
       setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));

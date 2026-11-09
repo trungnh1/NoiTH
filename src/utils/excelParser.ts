@@ -170,6 +170,140 @@ export function extractCleanRoomNumber(roomRaw?: string): string {
 }
 
 /**
+ * Trích xuất phần ngày chuẩn (YYYY-MM-DD) từ bất kỳ chuỗi ngày nào
+ */
+export function extractDateOnly(dateStr?: string): string {
+  if (!dateStr) return '';
+  const clean = String(dateStr).trim();
+  // 1. Dạng YYYY-MM-DD hoặc YYYY/MM/DD
+  const ymdMatch = clean.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (ymdMatch) {
+    return `${ymdMatch[1]}-${ymdMatch[2].padStart(2, '0')}-${ymdMatch[3].padStart(2, '0')}`;
+  }
+  // 2. Dạng DD/MM/YYYY hoặc DD-MM-YYYY
+  const dmyMatch = clean.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  if (dmyMatch) {
+    return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
+  }
+  // 3. Chuỗi có kèm giờ: HH:mm DD/MM/YYYY hoặc HHhMM DD/MM/YYYY
+  const timeDmyMatch = clean.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (timeDmyMatch) {
+    return `${timeDmyMatch[3]}-${timeDmyMatch[2].padStart(2, '0')}-${timeDmyMatch[1].padStart(2, '0')}`;
+  }
+  // 4. Fallback Date parse
+  const d = new Date(clean);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  return '';
+}
+
+/**
+ * Kiểm tra xem 1 hàng bệnh nhân từ Excel có trùng với bệnh nhân đã có trong danh sách khoa không.
+ * Tiêu chí đối soát (theo yêu cầu của bác sĩ):
+ * - Trùng Mã bệnh nhân (nếu có mã ở cả 2 phía)
+ * - HOẶC Trùng Họ tên + Tuổi + Ngày nhập viện (bỏ qua không nhập để tránh trùng)
+ * - HOẶC Trùng Họ tên + Ngày nhập viện
+ * - HOẶC Trùng Họ tên + Tuổi + Phòng bệnh
+ * - HOẶC Trùng Họ tên + Phòng bệnh
+ */
+export function isPatientDuplicateWithExisting(
+  row: ExcelPatientRow,
+  existingPatient: Patient
+): { isDuplicate: boolean; reason?: string } {
+  const excelCode = (row.patientCode || '').trim().toLowerCase();
+  const pCode = (existingPatient.patientCode || existingPatient.medicalRecordNumber || existingPatient.id || '').trim().toLowerCase();
+
+  // 1. Khớp theo mã bệnh nhân (nếu cả 2 đều có mã rõ ràng)
+  if (excelCode && pCode) {
+    if (
+      pCode === excelCode ||
+      (excelCode.length >= 4 && pCode.length >= 4 && (pCode.includes(excelCode) || excelCode.includes(pCode)))
+    ) {
+      return { isDuplicate: true, reason: `Trùng mã bệnh nhân (${excelCode})` };
+    }
+  }
+
+  const excelNameNorm = normalizeVietnameseString(row.patientName);
+  const pNameNorm = normalizeVietnameseString(existingPatient.fullName);
+
+  if (!excelNameNorm || !pNameNorm || excelNameNorm !== pNameNorm) {
+    return { isDuplicate: false };
+  }
+
+  // Cùng họ tên -> kiểm tra tiếp Tuổi, Ngày vào viện, Số phòng
+  const excelAge = parseAgeNumber(row.patientAge);
+  const pAge = parseAgeNumber(existingPatient.age);
+  const isSameAge = excelAge > 0 && pAge > 0 && Math.abs(excelAge - pAge) <= 1;
+
+  const excelDate = extractDateOnly(row.admissionDate || row.admissionDateRaw);
+  const pDate = extractDateOnly(existingPatient.admissionDate);
+  const isSameAdmissionDate = Boolean(excelDate && pDate && excelDate === pDate);
+
+  const excelRoomNorm = extractCleanRoomNumber(row.patientRoom);
+  const pRoomNorm = extractCleanRoomNumber(existingPatient.roomNumber);
+  const isSameRoom = Boolean(excelRoomNorm && pRoomNorm && excelRoomNorm === pRoomNorm);
+
+  // YÊU CẦU ĐẶC BIỆT: "nếu trùng họ tên, tuổi, ngày nhập viện thì bỏ qua không nhập vào để tránh trùng bệnh nhân"
+  if (isSameAge && isSameAdmissionDate) {
+    return { isDuplicate: true, reason: `Trùng Họ tên, Tuổi (${pAge}T) và Ngày nhập viện (${pDate})` };
+  }
+
+  // Nếu cùng họ tên, cùng ngày nhập viện
+  if (isSameAdmissionDate) {
+    return { isDuplicate: true, reason: `Trùng Họ tên và Ngày nhập viện (${pDate})` };
+  }
+
+  // Nếu cùng họ tên, cùng phòng bệnh và cùng tuổi
+  if (isSameRoom && isSameAge) {
+    return { isDuplicate: true, reason: `Trùng Họ tên, Tuổi (${pAge}T) và Phòng bệnh (P.${pRoomNorm})` };
+  }
+
+  // Nếu cùng họ tên và cùng phòng bệnh (khi không rõ ngày vào viện hoặc tuổi)
+  if (isSameRoom && (!row.patientRoom || !existingPatient.roomNumber || excelRoomNorm === pRoomNorm)) {
+    return { isDuplicate: true, reason: `Trùng Họ tên và Phòng bệnh (P.${pRoomNorm})` };
+  }
+
+  return { isDuplicate: false };
+}
+
+/**
+ * Kiểm tra xem 2 hồ sơ bệnh nhân nội trú có cùng là 1 bệnh nhân không (dùng để chặn trùng lặp khi import)
+ */
+export function isSameClinicalPatient(p1: Patient, p2: Patient): boolean {
+  if (p1.id === p2.id) return true;
+
+  const code1 = (p1.patientCode || p1.medicalRecordNumber || '').trim().toLowerCase();
+  const code2 = (p2.patientCode || p2.medicalRecordNumber || '').trim().toLowerCase();
+  if (code1 && code2 && code1 === code2) return true;
+
+  const name1 = normalizeVietnameseString(p1.fullName);
+  const name2 = normalizeVietnameseString(p2.fullName);
+  if (!name1 || !name2 || name1 !== name2) return false;
+
+  const age1 = parseAgeNumber(p1.age);
+  const age2 = parseAgeNumber(p2.age);
+  const isSameAge = age1 > 0 && age2 > 0 && Math.abs(age1 - age2) <= 1;
+
+  const date1 = extractDateOnly(p1.admissionDate);
+  const date2 = extractDateOnly(p2.admissionDate);
+  const isSameDate = Boolean(date1 && date2 && date1 === date2);
+
+  if (isSameAge && isSameDate) return true;
+  if (isSameDate) return true;
+
+  const room1 = extractCleanRoomNumber(p1.roomNumber);
+  const room2 = extractCleanRoomNumber(p2.roomNumber);
+  if (room1 && room2 && room1 === room2 && isSameAge) return true;
+
+  return false;
+}
+
+
+/**
  * Trích xuất chuẩn xác giá trị phòng từ dòng Excel.
  * Ưu tiên tuyệt đối cột có tên/mã 'tenphong' theo dữ liệu HIS BV Hùng Vương Gia Lai.
  * BỎ QUA HOÀN TOÀN các cột mã phòng (maphong, maphongth) vì đó là mã số nội bộ (93, 96, 376...), không phải số phòng.
