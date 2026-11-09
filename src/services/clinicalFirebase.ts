@@ -283,6 +283,9 @@ export async function cleanupOldSatelliteRecords(daysThreshold = 15): Promise<nu
   return deletedCount;
 }
 
+/**
+ * Trích xuất chỉ số sinh hiệu từ chuỗi text sinh hiệu (ví dụ: "HA: 130/80 mmHg, Mạch: 85 l/p, Nhiệt độ: 37°C, SpO2: 98%")
+ */
 export function parseVitalSignsText(vitalText?: string): {
   bpSystolic: number;
   bpDiastolic: number;

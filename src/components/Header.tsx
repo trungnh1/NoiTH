@@ -38,6 +38,7 @@ interface HeaderProps {
   onOpenWatchlist?: () => void;
   onOpenPrintModal?: () => void;
   onManualPushToCloud?: () => void;
+  onCleanupFirestore?: () => void;
   onOpenDutySchedule?: () => void;
   onOpenSatelliteSync?: () => void;
   onOpenSettings?: () => void;
@@ -59,6 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNewPatient,
   onOpenPrintModal,
   onManualPushToCloud,
+  onCleanupFirestore,
   duplicateGroupCount,
   onOpenDuplicateModal,
   onOpenSatelliteSync,
