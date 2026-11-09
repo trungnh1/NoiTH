@@ -7,7 +7,8 @@ import {
   Cloud, 
   CheckCircle2, 
   Printer, 
-  AlertCircle, 
+  AlertCircle,
+  AlertTriangle, 
   LogOut, 
   Database, 
   Settings, 
@@ -40,6 +41,8 @@ interface HeaderProps {
   onOpenSatelliteSync?: () => void;
   onOpenSettings?: () => void;
   onOpenChangePassword?: () => void;
+  duplicateGroupCount?: number;
+  onOpenDuplicateModal?: () => void;
   pendingSatelliteCount?: number;
   syncStatus: SyncStatus;
   isAutoSyncing?: boolean;
@@ -55,6 +58,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNewPatient,
   onOpenPrintModal,
   onManualPushToCloud,
+  duplicateGroupCount,
+  onOpenDuplicateModal,
   onOpenSatelliteSync,
   onOpenSettings,
   onOpenChangePassword,
@@ -129,6 +134,18 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Action Area: Satellite Sync, Push Cloud, Doctor Profile & Logout */}
           <div className="flex items-center gap-2">
+            {Boolean(duplicateGroupCount && duplicateGroupCount > 0) && onOpenDuplicateModal && (
+              <button
+                type="button"
+                onClick={onOpenDuplicateModal}
+                className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-slate-950 font-black text-xs rounded-lg shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 animate-pulse"
+                title="Phát hiện bệnh nhân trùng lặp trong khoa (Họ tên, tuổi, ngày vào viện)"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-slate-950" />
+                <span>Trùng BN ({duplicateGroupCount})</span>
+              </button>
+            )}
+
             {onOpenSatelliteSync && (
               <button
                 type="button"
@@ -241,6 +258,18 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right: Quick Satellite Button + Doctor Menu Trigger */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {Boolean(duplicateGroupCount && duplicateGroupCount > 0) && onOpenDuplicateModal && (
+              <button
+                type="button"
+                onClick={onOpenDuplicateModal}
+                className="px-2 py-1 bg-amber-400 text-slate-950 font-black text-[10.5px] rounded-lg shadow-2xs flex items-center gap-1 animate-pulse"
+                title="Phát hiện bệnh nhân trùng lặp trong khoa"
+              >
+                <AlertTriangle className="w-3 h-3 text-slate-950" />
+                <span>Trùng ({duplicateGroupCount})</span>
+              </button>
+            )}
+
             {onOpenSatelliteSync && (
               <button
                 type="button"

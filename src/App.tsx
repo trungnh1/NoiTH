@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { Trash2, LogOut } from 'lucide-react';
+import { Trash2, LogOut, AlertTriangle } from 'lucide-react';
 import { 
   Patient, 
   Doctor, 
@@ -19,7 +19,7 @@ import { DoctorLoginScreen } from './components/DoctorLoginScreen';
 import { getSavedDoctorSession, saveDoctorSession, clearDoctorSession } from './utils/auth';
 import { loadAppSettings, saveAppSettings, getFontSizeScale, AppSettings, FONT_FAMILY_MAP } from './utils/settings';
 import { isRealAllergy } from './utils/clinicalTextParser';
-import { isSameClinicalPatient } from './utils/excelParser';
+import { isSameClinicalPatient, findDuplicatePatientGroups, DuplicatePatientGroup } from './utils/excelParser';
 import { normalizeSearchText } from './utils/searchUtils';
 import { 
   subscribeToClinicalRecords, 
@@ -64,6 +64,7 @@ const BedTransferModal = React.lazy(() => import('./components/BedTransferModal'
 const ShiftHandoverModal = React.lazy(() => import('./components/ShiftHandoverModal').then(m => ({ default: m.ShiftHandoverModal })));
 const ClinicalWatchlistModal = React.lazy(() => import('./components/ClinicalWatchlistModal').then(m => ({ default: m.ClinicalWatchlistModal })));
 const DutyRosterModal = React.lazy(() => import('./components/DutyRosterModal').then(m => ({ default: m.DutyRosterModal })));
+const DuplicatePatientsModal = React.lazy(() => import('./components/DuplicatePatientsModal').then(m => ({ default: m.DuplicatePatientsModal })));
 
 export default function App() {
   const [patients, setPatients] = useState<Patient[]>(() => loadPatients());
@@ -105,6 +106,56 @@ export default function App() {
   const [appSettings, setAppSettings] = useState<AppSettings>(loadAppSettings);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
+
+  // Đối soát & Phát hiện trùng lặp bệnh nhân hàng ngày
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
+  const [dismissedDuplicatePairs, setDismissedDuplicatePairs] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('HUNG_VUONG_DISMISSED_DUPLICATE_PAIRS');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const handleDismissDuplicatePair = (idA: string, idB: string) => {
+    const pairKey = [idA, idB].sort().join('::');
+    setDismissedDuplicatePairs((prev) => {
+      const next = new Set(prev).add(pairKey);
+      try {
+        localStorage.setItem('HUNG_VUONG_DISMISSED_DUPLICATE_PAIRS', JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  };
+
+  const duplicatePatientGroups = useMemo(() => {
+    return findDuplicatePatientGroups(patients, dismissedDuplicatePairs);
+  }, [patients, dismissedDuplicatePairs]);
+
+  const handleMergePatients = async (primary: Patient, duplicate: Patient) => {
+    const existingEvoIds = new Set((primary.evolutions || []).map((e) => e.id));
+    const newEvolutions = (duplicate.evolutions || []).filter((e) => !existingEvoIds.has(e.id));
+
+    const existingVitalIds = new Set((primary.vitals || []).map((v) => v.id));
+    const newVitals = (duplicate.vitals || []).filter((v) => !existingVitalIds.has(v.id));
+
+    const existingLabIds = new Set((primary.labs || []).map((l) => l.id));
+    const newLabs = (duplicate.labs || []).filter((l) => !existingLabIds.has(l.id));
+
+    const updatedPrimary: Patient = {
+      ...primary,
+      evolutions: [...(primary.evolutions || []), ...newEvolutions],
+      vitals: [...(primary.vitals || []), ...newVitals],
+      labs: [...(primary.labs || []), ...newLabs],
+      primaryDiagnosis: primary.primaryDiagnosis || duplicate.primaryDiagnosis,
+      attendingDoctorId: primary.attendingDoctorId || duplicate.attendingDoctorId,
+      treatmentPlan: primary.treatmentPlan || duplicate.treatmentPlan,
+    };
+
+    await handleUpdatePatient(updatedPrimary);
+    await confirmDeletePatient(duplicate);
+  };
 
   const handleUpdateSettings = (newSettings: AppSettings) => {
     setAppSettings(newSettings);
@@ -864,10 +915,37 @@ export default function App() {
         onOpenSatelliteSync={() => setIsSatelliteSyncOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+        duplicateGroupCount={duplicatePatientGroups.length}
+        onOpenDuplicateModal={() => setIsDuplicateModalOpen(true)}
         pendingSatelliteCount={pendingSatelliteRecords.length}
         isAutoSyncing={isAutoSyncing}
         lastAutoSyncTime={lastAutoSyncTime}
       />
+
+      {/* CẢNH BÁO ĐỐI SOÁT PHÁT HIỆN TRÙNG LẶP HÀNG NGÀY */}
+      {duplicatePatientGroups.length > 0 && !isDuplicateModalOpen && (
+        <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 text-white px-3 sm:px-5 py-2.5 shadow-md flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm animate-in slide-in-from-top duration-200">
+          <div className="flex items-center gap-2 max-w-4xl truncate">
+            <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping shrink-0" />
+            <span className="font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded text-[10.5px]">
+              Đối soát hàng ngày
+            </span>
+            <span className="font-extrabold truncate">
+              Phát hiện {duplicatePatientGroups.length} trường hợp bệnh nhân nghi vấn trùng lặp trong khoa ({duplicatePatientGroups.map(g => g.patientName).slice(0, 3).join(', ')}{duplicatePatientGroups.length > 3 ? ` và ${duplicatePatientGroups.length - 3} ca khác` : ''})!
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsDuplicateModalOpen(true)}
+              className="px-3 py-1 bg-white hover:bg-amber-50 text-slate-950 font-black rounded-xl text-xs shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+              <span>Xem & Chọn Xóa Trùng ({duplicatePatientGroups.reduce((acc, g) => acc + g.patients.length, 0)} ca)</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Manual Push Feedback Banner */}
       {manualPushMessage && (
@@ -1291,6 +1369,22 @@ export default function App() {
             setTimeout(() => setManualPushMessage(null), 4000);
           }}
         />
+      )}
+
+      {/* 11. Duplicate Patients Daily Detection & Resolution Modal */}
+      {isDuplicateModalOpen && (
+        <Suspense fallback={null}>
+          <DuplicatePatientsModal
+            isOpen={isDuplicateModalOpen}
+            duplicateGroups={duplicatePatientGroups}
+            doctors={doctors}
+            onClose={() => setIsDuplicateModalOpen(false)}
+            onDeletePatient={(patient) => confirmDeletePatient(patient)}
+            onMergePatients={handleMergePatients}
+            onDismissPair={handleDismissDuplicatePair}
+            onSelectPatient={(patient) => setSelectedPatient(patient)}
+          />
+        </Suspense>
       )}
 
       {/* Legacy Modals Preserved (Not deleted) */}

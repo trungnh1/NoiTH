@@ -302,6 +302,117 @@ export function isSameClinicalPatient(p1: Patient, p2: Patient): boolean {
   return false;
 }
 
+export interface DuplicatePatientGroup {
+  id: string;
+  patientName: string;
+  reason: string;
+  patients: Patient[];
+}
+
+/**
+ * Kiểm tra đối soát chi tiết xem 2 bệnh nhân có phải là bản ghi trùng lặp không
+ */
+export function areTwoPatientsDuplicate(p1: Patient, p2: Patient): { isDuplicate: boolean; reason?: string } {
+  if (p1.id === p2.id) return { isDuplicate: false };
+
+  // 1. Khớp theo mã bệnh nhân
+  const code1 = (p1.patientCode || p1.medicalRecordNumber || '').trim().toLowerCase();
+  const code2 = (p2.patientCode || p2.medicalRecordNumber || '').trim().toLowerCase();
+  if (code1 && code2 && code1 === code2) {
+    return { isDuplicate: true, reason: `Trùng Mã bệnh nhân (${code1})` };
+  }
+
+  // 2. Họ tên
+  const name1 = normalizeVietnameseString(p1.fullName);
+  const name2 = normalizeVietnameseString(p2.fullName);
+  if (!name1 || !name2 || name1 !== name2) {
+    return { isDuplicate: false };
+  }
+
+  const age1 = parseAgeNumber(p1.age);
+  const age2 = parseAgeNumber(p2.age);
+  const isSameAge = age1 > 0 && age2 > 0 && Math.abs(age1 - age2) <= 1;
+
+  const date1 = extractDateOnly(p1.admissionDate);
+  const date2 = extractDateOnly(p2.admissionDate);
+  const isSameAdmissionDate = Boolean(date1 && date2 && date1 === date2);
+
+  const room1 = extractCleanRoomNumber(p1.roomNumber);
+  const room2 = extractCleanRoomNumber(p2.roomNumber);
+  const isSameRoom = Boolean(room1 && room2 && room1 === room2);
+
+  // Yêu cầu: Trùng họ tên, tuổi, ngày nhập viện
+  if (isSameAge && isSameAdmissionDate) {
+    return { isDuplicate: true, reason: `Trùng Họ tên, Tuổi (${age1}T) và Ngày nhập viện (${date1})` };
+  }
+
+  // Trùng họ tên + ngày nhập viện
+  if (isSameAdmissionDate) {
+    return { isDuplicate: true, reason: `Trùng Họ tên và Ngày nhập viện (${date1})` };
+  }
+
+  // Trùng họ tên + phòng + tuổi
+  if (isSameRoom && isSameAge) {
+    return { isDuplicate: true, reason: `Trùng Họ tên, Tuổi (${age1}T) và Buồng bệnh (P.${room1})` };
+  }
+
+  // Trùng họ tên + phòng
+  if (isSameRoom) {
+    return { isDuplicate: true, reason: `Trùng Họ tên và Buồng bệnh (P.${room1})` };
+  }
+
+  return { isDuplicate: false };
+}
+
+/**
+ * Tự động quét hàng ngày danh sách bệnh nhân nội trú để phát hiện các nhóm bệnh nhân trùng lặp
+ */
+export function findDuplicatePatientGroups(
+  patientList: Patient[],
+  dismissedPairKeys?: Set<string>
+): DuplicatePatientGroup[] {
+  // Chỉ kiểm tra các ca bệnh nhân đang điều trị nội trú (ACTIVE)
+  const activePatients = (patientList || []).filter((p) => p.status === 'ACTIVE');
+  const visited = new Set<string>();
+  const groups: DuplicatePatientGroup[] = [];
+
+  for (let i = 0; i < activePatients.length; i++) {
+    const pA = activePatients[i];
+    if (visited.has(pA.id)) continue;
+
+    const cluster: Patient[] = [pA];
+    let detectedReason = '';
+
+    for (let j = i + 1; j < activePatients.length; j++) {
+      const pB = activePatients[j];
+      if (visited.has(pB.id)) continue;
+
+      const pairKey = [pA.id, pB.id].sort().join('::');
+      if (dismissedPairKeys && dismissedPairKeys.has(pairKey)) continue;
+
+      const check = areTwoPatientsDuplicate(pA, pB);
+      if (check.isDuplicate) {
+        cluster.push(pB);
+        visited.add(pB.id);
+        if (!detectedReason) detectedReason = check.reason || 'Trùng thông tin';
+      }
+    }
+
+    if (cluster.length > 1) {
+      visited.add(pA.id);
+      groups.push({
+        id: `DUP-${groups.length + 1}`,
+        patientName: pA.fullName,
+        reason: detectedReason,
+        patients: cluster,
+      });
+    }
+  }
+
+  return groups;
+}
+
+
 
 /**
  * Trích xuất chuẩn xác giá trị phòng từ dòng Excel.
