@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { Trash2, LogOut, AlertTriangle } from 'lucide-react';
 import { 
   Patient, 
