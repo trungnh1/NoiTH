@@ -16,6 +16,8 @@ import {
 } from 'firebase/firestore';
 import { Patient, SeverityLevel, VitalSign } from '../types/patient';
 import { isRealAllergy } from '../utils/clinicalTextParser';
+import { extractDateOnly } from '../utils/excelParser';
+import { cleanupOldSatelliteRecords } from './clinicalFirebase';
 
 import firebaseAppletConfig from '../../firebase-applet-config.json';
 
@@ -717,5 +719,247 @@ export function subscribeToDismissedSatelliteRecords(
   } catch (err) {
     console.warn('Lỗi khởi tạo lắng nghe department_satellite_dismissed:', err);
     return () => {};
+  }
+}
+
+
+/**
+ * Chuyển đổi an toàn giá trị ngày (Date, Firestore Timestamp, ISO string, DD/MM/YYYY, YYYY-MM-DD) sang epoch timestamp (ms).
+ * Ưu tiên nhận diện đúng định dạng ngày Việt Nam DD/MM/YYYY để tránh bị nhầm lẫn tháng/ngày.
+ */
+export function parseDateToTimestamp(val: any): number | null {
+  if (!val) return null;
+  if (typeof val === 'object' && typeof val.toDate === 'function') {
+    return val.toDate().getTime();
+  }
+  if (typeof val === 'object' && typeof val.seconds === 'number') {
+    return val.seconds * 1000;
+  }
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val.getTime();
+  }
+  if (typeof val === 'number') {
+    return val > 1000000000 ? val : null;
+  }
+  if (typeof val === 'string') {
+    const clean = val.trim();
+    if (!clean) return null;
+
+    // ISO format với T (vd: 2026-11-09T05:03:11Z)
+    if (/^\d{4}-\d{2}-\d{2}T/i.test(clean)) {
+      const parsed = Date.parse(clean);
+      if (!isNaN(parsed)) return parsed;
+    }
+
+    // Định dạng ngày Việt Nam hoặc chuẩn YYYY-MM-DD
+    const dOnly = extractDateOnly(clean);
+    if (dOnly) {
+      const timeMatch = clean.match(/(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
+      if (timeMatch) {
+        const hh = timeMatch[1].padStart(2, '0');
+        const mm = timeMatch[2].padStart(2, '0');
+        const ss = (timeMatch[3] || '00').padStart(2, '0');
+        const dt = new Date(`${dOnly}T${hh}:${mm}:${ss}`);
+        if (!isNaN(dt.getTime())) return dt.getTime();
+      }
+      const dt = new Date(`${dOnly}T00:00:00`);
+      if (!isNaN(dt.getTime())) return dt.getTime();
+    }
+
+    const parsed = Date.parse(clean);
+    if (!isNaN(parsed)) return parsed;
+  }
+  return null;
+}
+
+export interface FirestoreCleanupResult {
+  success: boolean;
+  deletedPatientsCount: number;
+  deletedDismissedCount: number;
+  deletedProbeCount: number;
+  deletedSatelliteCount: number;
+  totalDeleted: number;
+  prunedVitalsCount: number;
+  details?: string;
+  error?: string;
+}
+
+/**
+ * Tự động xóa dữ liệu trên Cloud Firestore nếu dữ liệu cũ quá 15 ngày
+ * (hoặc số ngày tùy chỉnh qua daysThreshold)
+ * Nhằm tránh dầy dữ liệu, tiết kiệm dung lượng Firestore và tối ưu hiệu suất truy vấn.
+ * 
+ * Phạm vi dọn dẹp:
+ * 1. Collection 'department_patients':
+ *    - Bệnh nhân đã ra viện (status === 'DISCHARGED') mà ngày ra viện hoặc hoạt động cuối cũ quá 15 ngày.
+ *    - Bản ghi test probe hoặc bệnh nhân thử nghiệm cũ > 15 ngày.
+ *    - Bệnh nhân không còn trong trạng thái điều trị tích cực và không có hoạt động trong > 15 ngày.
+ *    - Bệnh nhân điều trị dài ngày: Tỉa bớt các chỉ số sinh hiệu quá 15 ngày để giữ document gọn nhẹ, không vượt hạn mức 1MB của Firestore.
+ * 2. Collection 'clinical_records':
+ *    - Các bản ghi probe/test từ hàm testCloudWrite() cũ > 15 ngày.
+ * 3. Collection 'department_satellite_dismissed':
+ *    - Các ID ca vệ tinh đã bấm bỏ qua cũ > 15 ngày.
+ * 4. Collection vệ tinh 'clinical_records' (iron-foundation-kbcxw):
+ *    - Các bản ghi bệnh án vệ tinh cũ > 15 ngày.
+ */
+export async function cleanupOldFirestoreData(daysThreshold = 15): Promise<FirestoreCleanupResult> {
+  const thresholdMs = daysThreshold * 24 * 60 * 60 * 1000;
+  const cutoffTime = Date.now() - thresholdMs;
+
+  let deletedPatientsCount = 0;
+  let deletedDismissedCount = 0;
+  let deletedProbeCount = 0;
+  let deletedSatelliteCount = 0;
+  let prunedVitalsCount = 0;
+
+  try {
+    await executeFirestoreOp(async (db) => {
+      // 1. Dọn dẹp collection 'department_patients'
+      const patientsCol = collection(db, 'department_patients');
+      const patientsSnap = await getDocs(patientsCol);
+
+      for (const docSnap of patientsSnap.docs) {
+        const data = docSnap.data();
+        const docId = docSnap.id;
+
+        const admissionTime = parseDateToTimestamp(data.admissionDate);
+        const updatedTime = parseDateToTimestamp(data.updatedAt) || parseDateToTimestamp(data.cloudSyncedAt);
+        const dischargeTime = parseDateToTimestamp(data.dischargeDate);
+
+        let latestVitalTime: number | null = null;
+        if (Array.isArray(data.vitals) && data.vitals.length > 0) {
+          for (const v of data.vitals) {
+            const vt = parseDateToTimestamp(v.timestamp);
+            if (vt && (!latestVitalTime || vt > latestVitalTime)) latestVitalTime = vt;
+          }
+        }
+
+        let latestEvolutionTime: number | null = null;
+        if (Array.isArray(data.evolutions) && data.evolutions.length > 0) {
+          for (const ev of data.evolutions) {
+            const et = parseDateToTimestamp(ev.timestamp);
+            if (et && (!latestEvolutionTime || et > latestEvolutionTime)) latestEvolutionTime = et;
+          }
+        }
+
+        const latestActivityTime = Math.max(
+          admissionTime || 0,
+          updatedTime || 0,
+          dischargeTime || 0,
+          latestVitalTime || 0,
+          latestEvolutionTime || 0
+        );
+
+        const isDischarged = data.status === 'DISCHARGED' || data.admissionStatus === 'DISCHARGE_TODAY';
+        const isProbeTest = data.testCheck === true || docId.startsWith('PAT-TEST-') || (data.fullName && data.fullName.includes('BN Kiểm Tra'));
+        const isOlderThanLimit = latestActivityTime > 0 && latestActivityTime < cutoffTime;
+
+        // Nếu bệnh nhân đã ra viện và cũ hơn 15 ngày -> XÓA KHỎI FIRESTORE
+        // Nếu là bản ghi probe/test thử nghiệm cũ hơn 15 ngày -> XÓA
+        // Nếu không ở trạng thái ACTIVE và toàn bộ hoạt động cũ hơn 15 ngày -> XÓA
+        // Nếu không có phòng buồng và toàn bộ hoạt động cũ hơn 15 ngày -> XÓA
+        if (
+          (isDischarged && isOlderThanLimit) ||
+          (isProbeTest && isOlderThanLimit) ||
+          (data.status !== 'ACTIVE' && isOlderThanLimit) ||
+          (isOlderThanLimit && (!data.roomNumber || data.roomNumber === '' || data.roomNumber === 'CHƯA PHÂN BUỒNG'))
+        ) {
+          try {
+            await deleteDoc(docSnap.ref);
+            deletedPatientsCount++;
+          } catch (delErr) {
+            console.warn('[Firestore Cleanup] Lỗi xóa department_patients:', docId, delErr);
+          }
+        } else if (data.status === 'ACTIVE' && Array.isArray(data.vitals) && data.vitals.length > 15) {
+          // Bệnh nhân đang nằm viện dài ngày:
+          // Giữ lại sinh hiệu trong vòng 15 ngày, tỉa bớt sinh hiệu cũ hơn 15 ngày để giữ document gọn nhẹ
+          const filteredVitals = data.vitals.filter((v: any) => {
+            const vt = parseDateToTimestamp(v.timestamp);
+            return !vt || vt >= cutoffTime;
+          });
+          if (filteredVitals.length < data.vitals.length) {
+            prunedVitalsCount += (data.vitals.length - filteredVitals.length);
+            try {
+              await setDoc(docSnap.ref, { vitals: filteredVitals }, { merge: true });
+            } catch (pruneErr) {
+              console.warn('[Firestore Cleanup] Lỗi tỉa sinh hiệu cũ:', docId, pruneErr);
+            }
+          }
+        }
+      }
+
+      // 2. Dọn dẹp collection 'clinical_records' (bản ghi test probe)
+      try {
+        const recordsCol = collection(db, 'clinical_records');
+        const recordsSnap = await getDocs(recordsCol);
+        for (const docSnap of recordsSnap.docs) {
+          const data = docSnap.data();
+          const recTime = parseDateToTimestamp(data.createdAt || data.timestamp || data.admissionDate);
+          if (recTime && recTime < cutoffTime) {
+            try {
+              await deleteDoc(docSnap.ref);
+              deletedProbeCount++;
+            } catch (delErr) {
+              console.warn('[Firestore Cleanup] Lỗi xóa clinical_records cũ:', docSnap.id, delErr);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[Firestore Cleanup] Lỗi dọn dẹp clinical_records:', err);
+      }
+
+      // 3. Dọn dẹp collection 'department_satellite_dismissed' (danh sách bỏ qua cũ)
+      try {
+        const dismissedCol = collection(db, 'department_satellite_dismissed');
+        const dismissedSnap = await getDocs(dismissedCol);
+        for (const docSnap of dismissedSnap.docs) {
+          const data = docSnap.data();
+          const dTime = parseDateToTimestamp(data.dismissedAt);
+          if (dTime && dTime < cutoffTime) {
+            try {
+              await deleteDoc(docSnap.ref);
+              deletedDismissedCount++;
+            } catch (delErr) {
+              console.warn('[Firestore Cleanup] Lỗi xóa department_satellite_dismissed cũ:', docSnap.id, delErr);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[Firestore Cleanup] Lỗi dọn dẹp department_satellite_dismissed:', err);
+      }
+    });
+
+    // 4. Dọn dẹp bản ghi vệ tinh cũ (iron-foundation-kbcxw)
+    try {
+      if (typeof cleanupOldSatelliteRecords === 'function') {
+        deletedSatelliteCount = await cleanupOldSatelliteRecords(daysThreshold);
+      }
+    } catch (err) {
+      console.warn('[Firestore Cleanup] Lỗi dọn dẹp vệ tinh:', err);
+    }
+
+    const totalDeleted = deletedPatientsCount + deletedDismissedCount + deletedProbeCount + deletedSatelliteCount;
+    return {
+      success: true,
+      deletedPatientsCount,
+      deletedDismissedCount,
+      deletedProbeCount,
+      deletedSatelliteCount,
+      prunedVitalsCount,
+      totalDeleted,
+      details: `Đã dọn dẹp thành công ${totalDeleted} bản ghi cũ quá ${daysThreshold} ngày trên Cloud Firestore (BN ra viện: ${deletedPatientsCount}, Vệ tinh đã xóa: ${deletedDismissedCount}, Thử nghiệm: ${deletedProbeCount}, Vệ tinh: ${deletedSatelliteCount}).`,
+    };
+  } catch (err: any) {
+    console.error('[Firestore Cleanup] Thất bại:', err);
+    return {
+      success: false,
+      deletedPatientsCount,
+      deletedDismissedCount,
+      deletedProbeCount,
+      deletedSatelliteCount,
+      prunedVitalsCount,
+      totalDeleted: 0,
+      error: err.message || String(err),
+    };
   }
 }

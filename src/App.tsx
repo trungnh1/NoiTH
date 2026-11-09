@@ -43,7 +43,8 @@ import {
   syncAllPatientsToCloud, 
   SyncStatus,
   syncDismissedSatelliteRecordToCloud,
-  subscribeToDismissedSatelliteRecords
+  subscribeToDismissedSatelliteRecords,
+  cleanupOldFirestoreData
 } from './services/firebaseSync';
 
 // Lazy load secondary views and modals to minimize initial bundle size and enable instant load
@@ -181,6 +182,45 @@ export default function App() {
   const [isDutyModalOpen, setIsDutyModalOpen] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isTestingCloud, setIsTestingCloud] = useState(false);
+  const [isCleaningFirestore, setIsCleaningFirestore] = useState(false);
+
+  const handleCleanupOldFirestoreData = async (manual = false) => {
+    setIsCleaningFirestore(true);
+    if (manual) {
+      setManualPushMessage('Đang quét và dọn dẹp các dữ liệu cũ quá 15 ngày trên Cloud Firestore...');
+    }
+    try {
+      const res = await cleanupOldFirestoreData(15);
+      if (res.success) {
+        localStorage.setItem('HVG_LAST_FIRESTORE_CLEANUP_TS', String(Date.now()));
+        if (res.totalDeleted > 0 || res.prunedVitalsCount > 0) {
+          const parts: string[] = [];
+          if (res.deletedPatientsCount > 0) parts.push(`${res.deletedPatientsCount} BN ra viện`);
+          if (res.deletedDismissedCount > 0) parts.push(`${res.deletedDismissedCount} ca vệ tinh đã xử lý`);
+          if (res.deletedProbeCount > 0) parts.push(`${res.deletedProbeCount} dữ liệu thử nghiệm`);
+          if (res.deletedSatelliteCount > 0) parts.push(`${res.deletedSatelliteCount} bệnh án vệ tinh`);
+          if (res.prunedVitalsCount > 0) parts.push(`${res.prunedVitalsCount} chỉ số sinh hiệu cũ`);
+          
+          setManualPushMessage(`🧹 Đã dọn dẹp Firestore: Đã xóa ${res.totalDeleted} bản ghi cũ (> 15 ngày) (${parts.join(', ')}) để tối ưu dung lượng!`);
+          setTimeout(() => setManualPushMessage(null), 8000);
+        } else if (manual) {
+          setManualPushMessage('✨ Cloud Firestore rất gọn gàng: Không phát hiện dữ liệu nào cũ quá 15 ngày cần xóa.');
+          setTimeout(() => setManualPushMessage(null), 5000);
+        }
+      } else if (manual) {
+        setManualPushMessage(`❌ Lỗi dọn dẹp Firestore: ${res.error}`);
+        setTimeout(() => setManualPushMessage(null), 6000);
+      }
+    } catch (err: any) {
+      console.warn('Lỗi dọn dẹp dữ liệu cũ Firestore:', err);
+      if (manual) {
+        setManualPushMessage(`❌ Lỗi dọn dẹp Firestore: ${err.message || String(err)}`);
+        setTimeout(() => setManualPushMessage(null), 6000);
+      }
+    } finally {
+      setIsCleaningFirestore(false);
+    }
+  };
 
   const handleTestCloudConnection = async () => {
     setIsTestingCloud(true);
@@ -255,6 +295,16 @@ export default function App() {
       }
     } catch (e) {
       console.warn('Lỗi khởi tạo subscribeToDismissedSatelliteRecords:', e);
+    }
+
+    // 4. Tự động kiểm tra và dọn dẹp dữ liệu Cloud Firestore cũ quá 15 ngày định kỳ (mỗi 12 - 24 giờ)
+    const lastCleanupTs = Number(localStorage.getItem('HVG_LAST_FIRESTORE_CLEANUP_TS') || '0');
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+    let timerCleanup: any;
+    if (Date.now() - lastCleanupTs > TWELVE_HOURS_MS) {
+      timerCleanup = setTimeout(() => {
+        handleCleanupOldFirestoreData(false);
+      }, 5000);
     }
 
     // 3. Real-time background subscriber to Satellite Cloud Firestore (iron-foundation-kbcxw)
@@ -398,6 +448,7 @@ export default function App() {
     }, 1200);
 
     return () => {
+      if (timerCleanup) clearTimeout(timerCleanup);
       clearTimeout(timerSatellite);
       unsubDept();
       if (typeof unsubSatellite === 'function') unsubSatellite();
@@ -911,6 +962,7 @@ export default function App() {
         currentDoctor={authenticatedDoctor}
         onLogout={handleLogout}
         onManualPushToCloud={handleManualPushCloud}
+        onCleanupFirestore={() => handleCleanupOldFirestoreData(true)}
         onOpenDutySchedule={() => setIsDutyModalOpen(true)}
         onOpenSatelliteSync={() => setIsSatelliteSyncOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -1331,6 +1383,8 @@ export default function App() {
           settings={appSettings}
           onUpdateSettings={handleUpdateSettings}
           onOpenExcelImport={() => setIsExcelImportOpen(true)}
+          onCleanupFirestore={() => handleCleanupOldFirestoreData(true)}
+          isCleaningFirestore={isCleaningFirestore}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}

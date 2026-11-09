@@ -234,6 +234,55 @@ export const subscribeToClinicalRecords = (onUpdate: (records: ClinicalRecord[])
 /**
  * Trích xuất chỉ số sinh hiệu từ chuỗi text sinh hiệu (ví dụ: "HA: 130/80 mmHg, Mạch: 85 l/p, Nhiệt độ: 37°C, SpO2: 98%")
  */
+/**
+ * Tự động xóa các bản ghi bệnh án vệ tinh cũ hơn ngưỡng ngày (mặc định 15 ngày)
+ * Nhằm tránh dầy dữ liệu và tiết kiệm dung lượng Firestore vệ tinh
+ */
+export async function cleanupOldSatelliteRecords(daysThreshold = 15): Promise<number> {
+  const thresholdMs = daysThreshold * 24 * 60 * 60 * 1000;
+  const cutoffTime = Date.now() - thresholdMs;
+  let deletedCount = 0;
+
+  try {
+    const recordsRef = collection(db, CLINICAL_COLLECTION);
+    const snapshot = await getDocs(recordsRef);
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
+      const rawDate = data.createdAt || data.admissionDate || data.updatedAt;
+      if (rawDate) {
+        let ts: number | null = null;
+        if (typeof rawDate === 'object' && typeof rawDate.toDate === 'function') {
+          ts = rawDate.toDate().getTime();
+        } else if (typeof rawDate === 'object' && typeof rawDate.seconds === 'number') {
+          ts = rawDate.seconds * 1000;
+        } else if (typeof rawDate === 'string') {
+          const parsed = Date.parse(rawDate);
+          if (!isNaN(parsed)) {
+            ts = parsed;
+          } else {
+            const dMatch = rawDate.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+            if (dMatch) {
+              const dt = new Date(`${dMatch[1]}-${dMatch[2].padStart(2, '0')}-${dMatch[3].padStart(2, '0')}T00:00:00`);
+              if (!isNaN(dt.getTime())) ts = dt.getTime();
+            }
+          }
+        }
+        if (ts && ts < cutoffTime) {
+          try {
+            await deleteDoc(docSnap.ref);
+            deletedCount++;
+          } catch (e) {
+            console.warn('Lỗi xóa bản ghi vệ tinh cũ:', docSnap.id, e);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Lỗi cleanupOldSatelliteRecords:', err);
+  }
+  return deletedCount;
+}
+
 export function parseVitalSignsText(vitalText?: string): {
   bpSystolic: number;
   bpDiastolic: number;

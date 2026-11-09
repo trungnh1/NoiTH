@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { 
-  X, 
+  X,
+  Cloud,
+  Trash2, 
   Settings, 
   Sun, 
   Moon, 
@@ -29,6 +31,8 @@ interface AppSettingsModalProps {
   settings: AppSettings;
   onUpdateSettings: (newSettings: AppSettings) => void;
   onOpenExcelImport?: () => void;
+  onCleanupFirestore?: () => void;
+  isCleaningFirestore?: boolean;
   onClose: () => void;
 }
 
@@ -36,6 +40,8 @@ export const AppSettingsModal: React.FC<AppSettingsModalProps> = ({
   settings,
   onUpdateSettings,
   onOpenExcelImport,
+  onCleanupFirestore,
+  isCleaningFirestore,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'appearance' | 'clinical' | 'system'>('appearance');
@@ -586,6 +592,35 @@ export const AppSettingsModal: React.FC<AppSettingsModalProps> = ({
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* 5. Dọn Dẹp Dữ Liệu Cloud Firestore Cũ (> 15 Ngày) */}
+              <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase tracking-wider flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                    <Cloud className="w-4 h-4 text-sky-500" />
+                    <span>Dọn Dẹp Dữ Liệu Cloud Firestore</span>
+                  </label>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
+                    Tự động xóa cũ quá 15 ngày
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Để tránh dầy dữ liệu và tiết kiệm hạn mức Cloud Firestore, hệ thống tự động xóa bệnh nhân đã ra viện, dữ liệu thử nghiệm probe và bản ghi vệ tinh cũ hơn 15 ngày. Bạn cũng có thể bấm dọn dẹp chủ động ngay bây giờ.
+                </p>
+                {onCleanupFirestore && (
+                  <button
+                    type="button"
+                    onClick={onCleanupFirestore}
+                    disabled={isCleaningFirestore}
+                    className="w-full p-2.5 bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-700 hover:to-blue-800 disabled:opacity-50 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  >
+                    <Trash2 className="w-4 h-4 text-sky-200" />
+                    <span>
+                      {isCleaningFirestore ? 'Đang kiểm tra và dọn dẹp dữ liệu cũ trên Firestore...' : '🧹 Dọn Dẹp Dữ Liệu Cũ (> 15 Ngày) Ngay'}
+                    </span>
+                  </button>
+                )}
               </div>
 
               {/* 4. Tải file Excel Ghép Nối Dữ Liệu */}
