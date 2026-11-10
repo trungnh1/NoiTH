@@ -932,21 +932,6 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                       <span className="font-bold">{patient.treatmentPlan}</span>
                     </div>
                   )}
-
-                  {/* Cảnh báo xét nghiệm bất thường nguy hiểm (Nằm ngay bên dưới Hướng xử trí/Chẩn đoán) */}
-                  {criticalLabAlerts.length > 0 && (
-                    <div className="mt-2.5 p-3 rounded-xl bg-rose-50 border-2 border-rose-400 text-rose-950 space-y-1.5 animate-in fade-in">
-                      <div className="flex items-center gap-1.5 font-black text-xs text-rose-800 uppercase tracking-wide">
-                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
-                        <span>⚠️ Cảnh báo xét nghiệm bất thường nguy hiểm (Panic Value):</span>
-                      </div>
-                      <ul className="list-disc list-inside space-y-0.5 text-xs font-bold text-rose-900 pl-1">
-                        {criticalLabAlerts.map((alert, idx) => (
-                          <li key={idx}>{alert}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -1253,21 +1238,6 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                         <span className="font-bold text-rose-800">Xử trí: </span>
                         {evo.treatmentAction}
                       </div>
-
-                      {/* Cảnh báo xét nghiệm bất thường nguy hiểm (Hiển thị trực tiếp phía dưới Hướng xử trí) */}
-                      {criticalLabAlerts.length > 0 && (
-                        <div className="p-2.5 rounded-xl bg-rose-50 border-2 border-rose-400 text-rose-950 space-y-1 animate-in fade-in">
-                          <div className="flex items-center gap-1.5 font-black text-xs text-rose-800 uppercase tracking-wide">
-                            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
-                            <span>⚠️ Cảnh báo xét nghiệm bất thường nguy hiểm:</span>
-                          </div>
-                          <ul className="list-disc list-inside space-y-0.5 text-xs font-bold text-rose-900 pl-1">
-                            {criticalLabAlerts.map((alert, idx) => (
-                              <li key={idx}>{alert}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                     </div>
                   );
                 })}

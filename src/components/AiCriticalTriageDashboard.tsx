@@ -558,19 +558,6 @@ export const AiCriticalTriageDashboard: React.FC<AiCriticalTriageDashboardProps>
                       )}
                     </div>
 
-                    {/* Panic Labs Warning */}
-                    {panicLabs.length > 0 && (
-                      <div className="text-[10px] bg-rose-50 border border-rose-200 text-rose-900 rounded-md p-1.5 space-y-0.5">
-                        <span className="font-extrabold flex items-center gap-1 text-[10px] text-rose-700">
-                          <AlertTriangle className="w-3 h-3 text-rose-600" />
-                          Cận lâm sàng báo động:
-                        </span>
-                        <div className="text-slate-800 font-semibold line-clamp-2">
-                          {panicLabs.map((l) => `${l.testName}: ${l.value} ${l.unit}`).join(' • ')}
-                        </div>
-                      </div>
-                    )}
-
                     {/* AI Personalized Insight Block (If generated) */}
                     {aiAnalysis ? (
                       <div className="bg-gradient-to-br from-amber-50 to-rose-50 border border-amber-300 rounded-lg p-2 space-y-1.5">

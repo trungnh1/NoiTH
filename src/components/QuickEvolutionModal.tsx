@@ -728,14 +728,6 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
               <span>{toastMsg}</span>
             </div>
           )}
-
-          {/* Cảnh báo xét nghiệm nguy hiểm nếu có */}
-          {criticalLabAlerts.length > 0 && (
-            <div className="flex items-center gap-1.5 bg-rose-100 border border-rose-300 text-rose-900 px-2.5 py-0.5 rounded-lg text-[11px] font-bold animate-pulse">
-              <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-              <span>Phát hiện {criticalLabAlerts.length} chỉ số cận lâm sàng bất thường nguy hiểm!</span>
-            </div>
-          )}
         </div>
 
         {/* MOBILE SEGMENTED TAB SWITCH: BÁC SĨ CHỌN XEM FORM HOẶC XEM LỊCH SỬ TRÊN ĐIỆN THOẠI */}
@@ -1313,21 +1305,6 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                   placeholder="Nhập y lệnh: Tiếp tục kháng sinh, hạ áp, giảm đau, theo dõi sát SpO2, chỉ định chụp CT sọ não..."
                   className="w-full p-2.5 bg-slate-50/50 border border-slate-300 rounded-lg font-medium text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent leading-relaxed"
                 />
-
-                {/* Cảnh báo cận lâm sàng nguy hiểm ngay dưới y lệnh để bác sĩ lưu ý */}
-                {criticalLabAlerts.length > 0 && (
-                  <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-950 space-y-1 animate-in fade-in">
-                    <div className="flex items-center gap-1.5 font-black text-xs text-rose-800 uppercase tracking-wide">
-                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                      <span>Cảnh báo xét nghiệm bất thường nguy hiểm (Panic Values):</span>
-                    </div>
-                    <ul className="list-disc list-inside space-y-0.5 text-[11px] font-bold text-rose-900 pl-1">
-                      {criticalLabAlerts.map((alert, idx) => (
-                        <li key={idx}>{alert}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
 
               {/* KHỐI 5: BÀN GIAO CA SAU & GHI CHÚ */}

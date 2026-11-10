@@ -127,21 +127,6 @@ export const ClinicalWatchlistModal: React.FC<ClinicalWatchlistModalProps> = ({
                         <span>• ĐD: <b className="text-slate-700">{patient.primaryNurse}</b></span>
                       </div>
 
-                      {/* Panic lab values alert */}
-                      {panicLabs.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {panicLabs.map((l) => (
-                            <span
-                              key={l.id}
-                              className="text-[10px] font-black px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200 flex items-center gap-1"
-                            >
-                              <AlertTriangle className="w-3 h-3 text-rose-600" />
-                              Báo động: {l.testName} = {l.value} {l.unit}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
                       {/* Clinical tags */}
                       <div className="flex flex-wrap gap-1 pt-0.5">
                         {patient.tags.map((tagKey) => {

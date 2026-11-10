@@ -623,9 +623,9 @@ export function getAllEvaluatedLabAlerts(patient: Patient): EvaluatedLabItem[] {
  * Trích xuất các cảnh báo cận lâm sàng bất thường nặng, nguy hiểm (Panic Values)
  * để cảnh báo ngay phía dưới Hướng xử trí / Kế hoạch điều trị.
  */
-export function getCriticalLabAlerts(patient: Patient): string[] {
-  const evaluated = getAllEvaluatedLabAlerts(patient);
-  return evaluated.map((item) => item.badgeLabel);
+export function getCriticalLabAlerts(_patient?: Patient): string[] {
+  // Đã bỏ cảnh báo cận lâm sàng bất thường theo yêu cầu lâm sàng của khoa
+  return [];
 }
 
 export interface ImportantLabItem {

@@ -441,13 +441,7 @@ export function getPatientEarlyWarning(patient: Patient): ClinicalEarlyWarning {
       }
     }
   }
-
-  // Critical Lab Alerts
-  const criticalLabs = getCriticalLabAlerts(patient);
-  if (criticalLabs.length > 0) {
-    isPanic = true;
-    reasons.push(...criticalLabs);
-  }
+  // Critical Lab Alerts (Đã bỏ theo yêu cầu lâm sàng của khoa)
 
   const cleanFirstReason = (reasons[0] || '').replace(/^[🚨⚠️⚡📷🩺]\s*/u, '');
 
@@ -2267,14 +2261,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                           </span>
                                         </span>
                                       ) : null}
-                                    </div>
-                                  )}
-
-                                  {/* Cảnh báo cận lâm sàng nguy hiểm */}
-                                  {criticalAlerts.length > 0 && (
-                                    <div className="p-1 px-1.5 rounded-md bg-rose-50 border border-rose-300 text-rose-900 text-[10px] font-bold flex items-start gap-1">
-                                      <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0 mt-0.5" />
-                                      <span className="line-clamp-2">{criticalAlerts.join(' • ')}</span>
                                     </div>
                                   )}
                                 </div>
