@@ -392,77 +392,8 @@ export interface ClinicalEarlyWarning {
   reasons: string[];
 }
 
-export function getPatientEarlyWarning(patient: Patient): ClinicalEarlyWarning {
-  const latestVital = patient.vitals && patient.vitals.length > 0 
-    ? patient.vitals[patient.vitals.length - 1] 
-    : null;
-
-  const reasons: string[] = [];
-  let isPanic = false;
-  let isWarning = false;
-
-  if (latestVital) {
-    // SpO2
-    if (latestVital.spO2 !== undefined && latestVital.spO2 !== null) {
-      if (latestVital.spO2 < 92) {
-        isPanic = true;
-        reasons.push(`SpO2 ${latestVital.spO2}%`);
-      } else if (latestVital.spO2 < 95) {
-        isWarning = true;
-        reasons.push(`SpO2 ${latestVital.spO2}%`);
-      }
-    }
-
-    // Mạch
-    if (latestVital.heartRate !== undefined && latestVital.heartRate !== null) {
-      if (latestVital.heartRate > 125 || latestVital.heartRate < 48) {
-        isPanic = true;
-        reasons.push(`Mạch ${latestVital.heartRate} l/p`);
-      } else if (latestVital.heartRate > 105 || latestVital.heartRate < 55) {
-        isWarning = true;
-        reasons.push(`Mạch ${latestVital.heartRate} l/p`);
-      }
-    }
-
-    // Huyết áp: Chỉ báo động khi tăng huyết áp cao > 180 (hoặc tụt huyết áp nặng < 85)
-    if (latestVital.bpSystolic !== undefined && latestVital.bpSystolic !== null) {
-      if (latestVital.bpSystolic > 180 || (latestVital.bpSystolic < 85 && latestVital.bpSystolic > 0)) {
-        isPanic = true;
-        reasons.push(`HA ${latestVital.bpSystolic}/${latestVital.bpDiastolic || ''}`);
-      }
-    }
-
-    // Thân nhiệt: Không báo động sốt (theo yêu cầu lâm sàng: sốt không cần báo động)
-    // Chỉ báo động khi hạ thân nhiệt nguy hiểm (< 35.5°C)
-    if (latestVital.temperature !== undefined && latestVital.temperature !== null) {
-      if (latestVital.temperature < 35.5 && latestVital.temperature > 0) {
-        isPanic = true;
-        reasons.push(`Hạ thân nhiệt ${latestVital.temperature}°C`);
-      }
-    }
-  }
-  // Critical Lab Alerts (Đã bỏ theo yêu cầu lâm sàng của khoa)
-
-  const cleanFirstReason = (reasons[0] || '').replace(/^[🚨⚠️⚡📷🩺]\s*/u, '');
-
-  if (isPanic) {
-    return {
-      level: 'PANIC',
-      title: 'BÁO ĐỘNG ĐỎ Y KHOA',
-      badgeText: `🚨 Báo động: ${cleanFirstReason}`,
-      reasons,
-    };
-  }
-
-  if (isWarning) {
-    return {
-      level: 'WARNING',
-      title: 'Cần Theo Dõi Sát',
-      badgeText: `⚠️ Theo dõi: ${cleanFirstReason}`,
-      reasons,
-    };
-  }
-
+export function getPatientEarlyWarning(_patient: Patient): ClinicalEarlyWarning {
+  // Đã bỏ qua tính năng cảnh báo sớm y khoa tự động (⚠️ Theo dõi / 🚨 Báo động) theo yêu cầu lâm sàng
   return {
     level: 'NORMAL',
     title: 'Ổn định',
@@ -2206,18 +2137,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               {/* CỘT 3: THAY ĐỔI LÂM SÀNG & SINH HIỆU */}
                               <td className={`${cellPadClass} align-top`}>
                                 <div className="space-y-1">
-                                  
-                                  {/* Cảnh báo sớm y khoa tự động NEWS2 */}
-                                  {earlyWarning.level !== 'NORMAL' && (
-                                    <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-black shadow-2xs ${
-                                      earlyWarning.level === 'PANIC'
-                                        ? 'bg-rose-600 text-white animate-pulse'
-                                        : 'bg-amber-500 text-white'
-                                    }`} title={earlyWarning.reasons.join(' • ')}>
-                                      {earlyWarning.level === 'PANIC' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
-                                      <span>{earlyWarning.badgeText}</span>
-                                    </div>
-                                  )}
 
                                   {/* Diễn tiến lâm sàng & thay đổi mới nhất */}
                                   <div className="p-1.5 px-2 rounded-lg bg-slate-50 border border-slate-200">
@@ -2834,20 +2753,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 <p className="text-xs font-medium text-slate-800 leading-relaxed whitespace-pre-line" title={handoverNotes}>
                                   {handoverNotes}
                                 </p>
-                              </div>
-                            )}
-
-                            {/* Cảnh báo sớm y khoa tự động trong Card View (Nằm ở dưới cùng, ngay trên phần + Diễn Tiến) */}
-                            {earlyWarningCard.level !== 'NORMAL' && (
-                              <div className="mb-2.5 flex items-center">
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black shadow-xs ${
-                                  earlyWarningCard.level === 'PANIC'
-                                    ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-300'
-                                    : 'bg-amber-500 text-white ring-2 ring-amber-300'
-                                }`} title={earlyWarningCard.reasons.join(' • ')}>
-                                  {earlyWarningCard.level === 'PANIC' && <span className="w-2 h-2 rounded-full bg-white animate-ping shrink-0" />}
-                                  <span>{earlyWarningCard.badgeText}</span>
-                                </span>
                               </div>
                             )}
 
