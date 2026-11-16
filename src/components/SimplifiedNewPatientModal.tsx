@@ -21,6 +21,7 @@ import {
   Building2,
   Calendar,
   Stethoscope,
+  Edit3,
   Sparkles,
   Bot,
   Copy,
@@ -88,6 +89,9 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
     if (isEditing) return patientToEdit?.attendingDoctorId || '';
     return currentUser?.id || doctors[0]?.id || '';
   });
+  // Phần hành chính mặc định thu gọn súc tích khi nhập diễn tiến bệnh nhân cũ (isEditing), có nút sửa để mở rộng
+  const [isEditingAdmin, setIsEditingAdmin] = useState<boolean>(!isEditing);
+  const attendingDoctor = doctors.find((d) => d.id === attendingDoctorId);
 
   // 2. Chẩn đoán, Hướng xử trí, Ghi chú, Bàn giao & Gắn nhãn Mức Độ Tình Trạng
   const [primaryDiagnosis, setPrimaryDiagnosis] = useState(patientToEdit?.primaryDiagnosis || '');
@@ -691,142 +695,204 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
             </div>
           )}
 
-          {/* NỘI DUNG 1: THÔNG TIN BỆNH NHÂN */}
-          <div className="bg-slate-50/90 p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-blue-100 text-[#0b4d8c] flex items-center justify-center font-black text-xs">
-                  1
-                </div>
-                <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">
-                  Thông Tin Bệnh Nhân & Buồng Phòng
-                </h4>
-              </div>
-              {isEditing && patientToEdit?.patientCode && (
-                <span className="text-[11px] font-mono font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                  Mã BN: {patientToEdit.patientCode}
+          {/* NỘI DUNG 1: THÔNG TIN HÀNH CHÍNH & BUỒNG PHÒNG */}
+          {!isEditingAdmin ? (
+            <div className="bg-slate-50/95 p-2.5 sm:p-3 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs">
+                {/* Buồng phòng */}
+                <span className="px-2.5 py-0.5 rounded-lg bg-[#0b4d8c] text-white font-black text-xs shadow-2xs flex items-center gap-1">
+                  <Building2 className="w-3 h-3 text-blue-200" />
+                  <span>P.{roomNumber || '---'}</span>
                 </span>
-              )}
+
+                {/* Họ tên */}
+                <span className="font-black text-slate-900 text-sm tracking-wide uppercase">
+                  {fullName || 'CHƯA NHẬP HỌ TÊN'}
+                </span>
+
+                {/* Tuổi & Giới tính */}
+                <span className="text-slate-600 font-bold bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                  {age} tuổi • <span className={gender === 'Nữ' ? 'text-pink-600' : 'text-blue-700'}>{gender}</span>
+                </span>
+
+                {/* Ngày vào viện */}
+                <span className="text-slate-600 font-medium flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Vào: <strong className="text-slate-800">{admissionDateTime ? admissionDateTime.replace('T', ' ') : '---'}</strong></span>
+                </span>
+
+                {/* Bác sĩ phụ trách */}
+                <span className="text-slate-600 font-medium flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                  <Stethoscope className="w-3.5 h-3.5 text-[#0b4d8c]" />
+                  <span>BS: <strong className="text-slate-800">{attendingDoctor?.name || 'Chưa chỉ định'}</strong></span>
+                </span>
+
+                {patientToEdit?.patientCode && (
+                  <span className="text-[11px] font-mono font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                    Mã: {patientToEdit.patientCode}
+                  </span>
+                )}
+              </div>
+
+              {/* Nút bấm Sửa hành chính */}
+              <button
+                type="button"
+                onClick={() => setIsEditingAdmin(true)}
+                className="py-1 px-2.5 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-xl font-bold text-xs flex items-center gap-1 shadow-2xs transition-all cursor-pointer shrink-0"
+                title="Bấm để chỉnh sửa lại thông tin hành chính (Họ tên, tuổi, buồng phòng, bác sĩ...)"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-[#0b4d8c]" />
+                <span>Sửa hành chính</span>
+              </button>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-              {/* Buồng / Phòng */}
-              <div className="sm:col-span-4">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
-                  <Building2 className="w-3.5 h-3.5 text-[#0b4d8c]" />
-                  <span>Buồng / Phòng <span className="text-rose-500">*</span></span>
-                </label>
-                <input
-                  type="text"
-                  value={roomNumber}
-                  onChange={(e) => {
-                    setRoomNumber(e.target.value);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
-                  placeholder="VD: 703, 717, 735..."
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-black text-sm text-slate-900 focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent"
-                  required
-                />
-              </div>
-
-              {/* Họ và tên */}
-              <div className="sm:col-span-8">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                  Họ và Tên Bệnh Nhân <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => {
-                    setFullName(e.target.value.toUpperCase());
-                    if (errorMsg) setErrorMsg(null);
-                  }}
-                  placeholder="NGUYỄN VĂN A"
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-black text-sm text-slate-900 uppercase tracking-wide focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent"
-                  required
-                />
-              </div>
-
-              {/* Tuổi */}
-              <div className="sm:col-span-3">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                  Tuổi <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  min={0}
-                  max={120}
-                  placeholder="60"
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold text-sm text-slate-900 text-center focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent"
-                  required
-                />
-              </div>
-
-              {/* Giới tính */}
-              <div className="sm:col-span-3">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                  Giới Tính
-                </label>
-                <div className="grid grid-cols-2 gap-1 bg-white p-0.5 rounded-xl border border-slate-300 h-[38px]">
-                  <button
-                    type="button"
-                    onClick={() => setGender('Nam')}
-                    className={`rounded-lg font-black text-xs transition-all flex items-center justify-center cursor-pointer ${
-                      gender === 'Nam' ? 'bg-[#0b4d8c] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Nam
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGender('Nữ')}
-                    className={`rounded-lg font-black text-xs transition-all flex items-center justify-center cursor-pointer ${
-                      gender === 'Nữ' ? 'bg-pink-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Nữ
-                  </button>
+          ) : (
+            <div className="bg-slate-50/90 p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-blue-100 text-[#0b4d8c] flex items-center justify-center font-black text-xs">
+                    1
+                  </div>
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">
+                    Thông Tin Hành Chính & Buồng Phòng
+                  </h4>
+                </div>
+                <div className="flex items-center gap-2">
+                  {patientToEdit?.patientCode && (
+                    <span className="text-[11px] font-mono font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      Mã BN: {patientToEdit.patientCode}
+                    </span>
+                  )}
+                  {isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingAdmin(false)}
+                      className="text-xs text-slate-600 hover:text-slate-900 font-bold px-2 py-0.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                      Thu gọn
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Ngày giờ vào viện */}
-              <div className="sm:col-span-3">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Ngày Giờ Vào Viện</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={admissionDateTime}
-                  onChange={(e) => setAdmissionDateTime(e.target.value)}
-                  className="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl font-medium text-xs text-slate-900 focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                {/* Buồng / Phòng */}
+                <div className="sm:col-span-4">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
+                    <Building2 className="w-3.5 h-3.5 text-[#0b4d8c]" />
+                    <span>Buồng / Phòng <span className="text-rose-500">*</span></span>
+                  </label>
+                  <input
+                    type="text"
+                    value={roomNumber}
+                    onChange={(e) => {
+                      setRoomNumber(e.target.value);
+                      if (errorMsg) setErrorMsg(null);
+                    }}
+                    placeholder="VD: 703, 717, 735..."
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-black text-sm text-slate-900 focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent"
+                    required
+                  />
+                </div>
 
-              {/* Bác sĩ điều trị */}
-              <div className="sm:col-span-3">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
-                  <Stethoscope className="w-3.5 h-3.5 text-[#0b4d8c]" />
-                  <span>Bác Sĩ Phụ Trách</span>
-                </label>
-                <select
-                  value={attendingDoctorId}
-                  onChange={(e) => setAttendingDoctorId(e.target.value)}
-                  className="w-full px-2 py-2 bg-white border border-slate-300 rounded-xl font-bold text-xs text-slate-900 focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent truncate cursor-pointer"
-                >
-                  <option value="">-- Chưa chỉ định --</option>
-                  {doctors.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name} {d.title ? `(${d.title})` : ''}
-                    </option>
-                  ))}
-                </select>
+                {/* Họ và tên */}
+                <div className="sm:col-span-8">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                    Họ và Tên Bệnh Nhân <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value.toUpperCase());
+                      if (errorMsg) setErrorMsg(null);
+                    }}
+                    placeholder="NGUYỄN VĂN A"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-black text-sm text-slate-900 uppercase tracking-wide focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                {/* Tuổi */}
+                <div className="sm:col-span-3">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                    Tuổi <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    min={0}
+                    max={120}
+                    placeholder="60"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold text-sm text-slate-900 text-center focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                {/* Giới tính */}
+                <div className="sm:col-span-3">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                    Giới Tính
+                  </label>
+                  <div className="grid grid-cols-2 gap-1 bg-white p-0.5 rounded-xl border border-slate-300 h-[38px]">
+                    <button
+                      type="button"
+                      onClick={() => setGender('Nam')}
+                      className={`rounded-lg font-black text-xs transition-all flex items-center justify-center cursor-pointer ${
+                        gender === 'Nam' ? 'bg-[#0b4d8c] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Nam
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGender('Nữ')}
+                      className={`rounded-lg font-black text-xs transition-all flex items-center justify-center cursor-pointer ${
+                        gender === 'Nữ' ? 'bg-pink-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Nữ
+                    </button>
+                  </div>
+                </div>
+
+                {/* Ngày giờ vào viện */}
+                <div className="sm:col-span-3">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Ngày Giờ Vào Viện</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={admissionDateTime}
+                    onChange={(e) => setAdmissionDateTime(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl font-medium text-xs text-slate-900 focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent"
+                  />
+                </div>
+
+                {/* Bác sĩ điều trị */}
+                <div className="sm:col-span-3">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
+                    <Stethoscope className="w-3.5 h-3.5 text-[#0b4d8c]" />
+                    <span>Bác Sĩ Phụ Trách</span>
+                  </label>
+                  <select
+                    value={attendingDoctorId}
+                    onChange={(e) => setAttendingDoctorId(e.target.value)}
+                    className="w-full px-2 py-2 bg-white border border-slate-300 rounded-xl font-bold text-xs text-slate-900 focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent truncate cursor-pointer"
+                  >
+                    <option value="">-- Chưa chỉ định --</option>
+                    {doctors.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} {d.title ? `(${d.title})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* NỘI DUNG 2: CHẨN ĐOÁN, HƯỚNG XỬ TRÍ, GHI CHÚ, BÀN GIAO & MỨC ĐỘ */}
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
