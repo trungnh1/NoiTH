@@ -940,6 +940,21 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                 />
               </div>
 
+              {/* Tóm tắt diễn tiến hôm nay (Ở giữa chẩn đoán và hướng xử trí) */}
+              <div>
+                <label className="block text-[11px] font-bold text-cyan-900 uppercase mb-1 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-cyan-700" />
+                  <span>Tóm Tắt Diễn Tiến Hôm Nay</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={admissionClinicalNote}
+                  onChange={(e) => setAdmissionClinicalNote(e.target.value)}
+                  placeholder="Nhập tóm tắt diễn biến lâm sàng trong ngày (VD: Bệnh tỉnh, tiếp xúc tốt, giảm ho khan, phổi ran ẩm giảm, bụng mềm, HA 125/80 mmHg...)"
+                  className="w-full p-2.5 bg-cyan-50/30 border border-cyan-300/80 rounded-xl font-medium text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-cyan-600 focus:border-transparent leading-relaxed"
+                />
+              </div>
+
               {/* Hướng xử trí / Kế hoạch điều trị */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
@@ -1097,7 +1112,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
             </div>
           </div>
 
-          {/* NỘI DUNG 3: NÚT MỞ RỘNG ĐỂ NHẬP CẬN LÂM SÀNG HOẶC DIỄN TIẾN */}
+          {/* NỘI DUNG 3: NÚT MỞ RỘNG ĐỂ NHẬP CẬN LÂM SÀNG */}
           <div className="rounded-xl sm:rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-2xs transition-all">
             <button
               type="button"
@@ -1108,8 +1123,8 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                 <div className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
                   <FolderPlus className="w-3.5 h-3.5" />
                 </div>
-                <span>Mở Rộng: Nhập Cận Lâm Sàng & Diễn Tiến</span>
-                {(initialLabsText.trim() || admissionClinicalNote.trim()) && (
+                <span>Mở Rộng: Kết Quả Cận Lâm Sàng & Xét Nghiệm (HIS)</span>
+                {initialLabsText.trim() && (
                   <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">
                     Có dữ liệu
                   </span>
@@ -1135,21 +1150,6 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                     onChange={(e) => setInitialLabsText(e.target.value)}
                     placeholder="Dán hoặc nhập kết quả xét nghiệm máu (CTM, Sinh hóa), X-Quang phổi, CT Scanner, Siêu âm, ECG từ HIS..."
                     className="w-full p-3 bg-slate-50/60 border border-slate-300 rounded-xl font-mono text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent leading-relaxed"
-                  />
-                </div>
-
-                {/* Diễn tiến lâm sàng */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>Diễn Tiến Lâm Sàng & Thăm Khám</span>
-                  </label>
-                  <textarea
-                    rows={7}
-                    value={admissionClinicalNote}
-                    onChange={(e) => setAdmissionClinicalNote(e.target.value)}
-                    placeholder="Nhập diễn biến lâm sàng, triệu chứng cơ năng, thăm khám thực thể lúc tiếp nhận / hiện tại..."
-                    className="w-full p-3 bg-slate-50/60 border border-slate-300 rounded-xl font-medium text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:border-transparent leading-relaxed"
                   />
                 </div>
               </div>

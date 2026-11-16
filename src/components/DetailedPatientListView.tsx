@@ -2529,9 +2529,13 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                       // Chẩn đoán cập nhật mới nhất
                       const latestDiagnosis = getLatestDiagnosis(patient);
 
+                      // Diễn tiến lâm sàng mới nhất / hôm nay
+                      const latestEvo = patient.evolutions?.[0];
+                      const todayEvolutionNote = latestEvo?.clinicalNote?.split(/\[Sinh hiệu:.*?\]/i)[0]?.trim() || '';
+
                       // Kế hoạch điều trị
                       const currentPlan = patient.treatmentPlan || 
-                        patient.evolutions?.[0]?.treatmentAction || 
+                        latestEvo?.treatmentAction || 
                         patient.initialMedicationsText || 
                         '';
 
@@ -2737,7 +2741,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                             </div>
 
                             {/* 4. Chẩn đoán (Icon và nội dung cùng 1 hàng) */}
-                            <div className="py-2">
+                            <div className="py-1">
                               <div className="p-2.5 sm:p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 shadow-2xs flex items-start gap-2.5">
                                 <Activity className="w-4 h-4 text-[#0b4d8c] shrink-0 mt-0.5" />
                                 <p className={`font-bold text-xs sm:text-sm leading-snug flex-1 ${!patient.primaryDiagnosis || patient.primaryDiagnosis === 'Nhập chẩn đoán' || latestDiagnosis === 'Nhập chẩn đoán' ? 'text-amber-700 italic font-medium' : 'text-slate-900'}`} title={latestDiagnosis}>
@@ -2745,6 +2749,16 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 </p>
                               </div>
                             </div>
+
+                            {/* Tóm tắt diễn tiến hôm nay (Ở giữa chẩn đoán và hướng xử trí) */}
+                            {todayEvolutionNote && (
+                              <div className="p-2.5 sm:p-3 rounded-xl bg-cyan-50/60 border border-cyan-200/80 mb-2 shadow-2xs flex items-start gap-2.5">
+                                <FileText className="w-4 h-4 text-cyan-700 shrink-0 mt-0.5" />
+                                <p className="text-xs sm:text-sm font-medium text-slate-800 leading-snug whitespace-pre-line flex-1 line-clamp-3" title={todayEvolutionNote}>
+                                  {todayEvolutionNote}
+                                </p>
+                              </div>
+                            )}
 
                             {/* 5. Hướng xử trí & Kế hoạch điều trị (Icon và nội dung cùng 1 hàng) */}
                             <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 mb-2 shadow-2xs flex items-start gap-2.5">
