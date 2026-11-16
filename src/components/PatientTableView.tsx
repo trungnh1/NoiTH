@@ -461,17 +461,17 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                               }}
                               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer shadow-xs active:scale-95 border hover:brightness-105 ${
                                 isCritical
-                                  ? 'bg-rose-600 text-white border-rose-700'
+                                  ? 'bg-rose-600 text-white border-rose-700 uppercase tracking-wider'
                                   : isModerate
-                                  ? 'bg-amber-500 text-white border-amber-600'
+                                  ? 'bg-amber-500 text-white border-amber-600 uppercase tracking-wider'
                                   : patient.severity === 'UNCLASSIFIED' || !patient.severity
-                                  ? 'bg-slate-200 text-slate-800 border border-slate-300'
-                                  : 'bg-emerald-600 text-white border-emerald-700'
+                                  ? 'bg-slate-200 text-slate-800 border border-slate-300 normal-case'
+                                  : 'bg-emerald-600 text-white border-emerald-700 uppercase tracking-wider'
                               }`}
                               title="Bấm để đổi phân loại: Nặng / Trung bình / Nhẹ"
                             >
                               {isCritical && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
-                              <span>{isCritical ? 'NẶNG' : isModerate ? 'TRUNG BÌNH' : patient.severity === 'UNCLASSIFIED' || !patient.severity ? 'CHƯA PHÂN LOẠI' : 'NHẸ'}</span>
+                              <span>{isCritical ? 'NẶNG' : isModerate ? 'TRUNG BÌNH' : patient.severity === 'UNCLASSIFIED' || !patient.severity ? 'Chưa phân loại' : 'NHẸ'}</span>
                               <ChevronDown className="w-2.5 h-2.5 opacity-80" />
                             </button>
 

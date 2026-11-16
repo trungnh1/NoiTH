@@ -700,7 +700,7 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
 
                         {/* Text hiển thị khi in */}
                         <span className="hidden print:inline-block text-[9.5px] font-black uppercase text-slate-700">
-                          [{isCritical ? 'NẶNG' : isModerate ? 'VỪA' : isStable ? 'NHẸ' : 'CHƯA PL'}]
+                          [{isCritical ? 'NẶNG' : isModerate ? 'VỪA' : isStable ? 'NHẸ' : 'Chưa PL'}]
                         </span>
                       </div>
                     </td>

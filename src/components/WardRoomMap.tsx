@@ -779,11 +779,11 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                   ? 'bg-slate-600 border-slate-400 text-white ring-2 ring-slate-400'
                   : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-300'
               }`}
-              title="Xem danh sách bệnh nhân CHƯA PHÂN LOẠI"
+              title="Xem danh sách bệnh nhân Chưa phân loại"
             >
               <div className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
               <div className="text-left">
-                <div className="text-[9.5px] text-slate-400 font-extrabold uppercase tracking-wider">CHƯA PL</div>
+                <div className="text-[9.5px] text-slate-400 font-extrabold normal-case">Chưa PL</div>
                 <div className="text-base font-black text-slate-200 leading-tight font-mono">{stats.unclassified} <span className="text-[9px] font-normal opacity-75">BN</span></div>
               </div>
             </button>

@@ -542,7 +542,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                                 isStable ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
                                 'bg-slate-100 text-slate-700 border border-slate-300'
                               }`}>
-                                {isCritical ? '🚨 NẶNG' : isModerate ? '⚠️ VỪA' : isStable ? '🟢 NHẸ' : '⚪ CHƯA PL'}
+                                {isCritical ? '🚨 NẶNG' : isModerate ? '⚠️ VỪA' : isStable ? '🟢 NHẸ' : '⚪ Chưa PL'}
                               </span>
                             </div>
                           </td>

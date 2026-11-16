@@ -1331,7 +1331,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           { id: 'CRITICAL', type: 'status', label: '🔴 Ca Bệnh Nặng', count: criticalCount, color: 'text-rose-700 font-black' },
                           { id: 'MODERATE', type: 'status', label: '🟡 Ca Bệnh Vừa', count: moderateCount, color: 'text-amber-700 font-bold' },
                           { id: 'STABLE', type: 'status', label: '🟢 Ca Bệnh Ổn Định', count: stableCount, color: 'text-emerald-700 font-bold' },
-                          { id: 'UNCLASSIFIED', type: 'status', label: '⚪ Chưa Phân Loại', count: unclassifiedCount, color: 'text-slate-600 font-semibold' },
+                          { id: 'UNCLASSIFIED', type: 'status', label: '⚪ Chưa phân loại', count: unclassifiedCount, color: 'text-slate-600 font-semibold' },
                           { id: 'NEW', type: 'tag', label: '✨ Bệnh Nhân Mới (24h)', count: newCount, color: 'text-rose-600 font-bold' },
                           { id: 'ALLERGY', type: 'tag', label: '⚠️ Bệnh Nhân Dị Ứng', count: allergyCount, color: 'text-amber-800 font-bold' },
                           ...(activePendingSatelliteRecords.length > 0 ? [
@@ -2018,14 +2018,14 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                             openSeverityMenuPatientId === patient.id ? null : patient.id
                                           );
                                         }}
-                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs border ${
+                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer shadow-2xs border ${
                                           isCritical
-                                            ? 'bg-rose-600 text-white border-rose-700'
+                                            ? 'bg-rose-600 text-white border-rose-700 uppercase tracking-wider'
                                             : isModerate
-                                            ? 'bg-amber-500 text-white border-amber-600'
+                                            ? 'bg-amber-500 text-white border-amber-600 uppercase tracking-wider'
                                             : isStable
-                                            ? 'bg-emerald-600 text-white border-emerald-700'
-                                            : 'bg-slate-200 text-slate-700 border-slate-300'
+                                            ? 'bg-emerald-600 text-white border-emerald-700 uppercase tracking-wider'
+                                            : 'bg-slate-200 text-slate-700 border-slate-300 normal-case'
                                         }`}
                                         title="Bấm để sửa nhanh phân loại bệnh nhân: Nặng / Trung bình / Nhẹ"
                                       >
@@ -2572,14 +2572,14 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                       openSeverityMenuPatientId === patient.id ? null : patient.id
                                     );
                                   }}
-                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs active:scale-95 border hover:brightness-105 ${
+                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95 border hover:brightness-105 ${
                                     isCritical
-                                      ? 'bg-rose-600 text-white border-rose-700 shadow-rose-200'
+                                      ? 'bg-rose-600 text-white border-rose-700 shadow-rose-200 uppercase tracking-wider'
                                       : isModerate
-                                      ? 'bg-amber-500 text-white border-amber-600 shadow-amber-200'
+                                      ? 'bg-amber-500 text-white border-amber-600 shadow-amber-200 uppercase tracking-wider'
                                       : isStable
-                                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-emerald-200'
-                                      : 'bg-slate-200 text-slate-700 border-slate-300'
+                                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-emerald-200 uppercase tracking-wider'
+                                      : 'bg-slate-200 text-slate-700 border-slate-300 normal-case'
                                   }`}
                                   title="Bấm để sửa nhanh phân loại bệnh nhân: Nặng / Trung bình / Nhẹ"
                                 >
