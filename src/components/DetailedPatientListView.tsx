@@ -2349,7 +2349,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     title="Xem chi tiết hồ sơ bệnh nhân"
                                   >
                                     <Eye className="w-3 h-3 text-slate-500" />
-                                    <span>Chi tiết</span>
+                                    <span className="hidden sm:inline">Chi tiết</span>
                                   </button>
 
                                   {onTransferPatient && (
@@ -2812,7 +2812,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               title="Xem chi tiết hồ sơ bệnh nhân"
                             >
                               <Eye className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                              <span>Chi tiết</span>
+                              <span className="hidden sm:inline">Chi tiết</span>
                             </button>
 
                             <button
@@ -2825,7 +2825,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               title="Chuyển bệnh nhân sang buồng phòng khác"
                             >
                               <ArrowRightLeft className="w-3 h-3 text-indigo-600 shrink-0" />
-                              <span>Chuyển</span>
+                              <span className="hidden sm:inline">Chuyển</span>
                             </button>
 
                             <button
@@ -2838,7 +2838,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               title="Bấm đã ra viện (rời khỏi buồng phòng)"
                             >
                               <LogOut className="w-3 h-3 text-emerald-600 shrink-0" />
-                              <span>Ra viện</span>
+                              <span className="hidden sm:inline">Ra viện</span>
                             </button>
 
                             <button
@@ -2851,7 +2851,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               title="Xóa bệnh nhân khỏi hệ thống"
                             >
                               <Trash2 className="w-3 h-3 text-rose-500 shrink-0" />
-                              <span>Xóa</span>
+                              <span className="hidden sm:inline">Xóa</span>
                             </button>
                           </div>
 
