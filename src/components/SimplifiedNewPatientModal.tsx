@@ -119,10 +119,16 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const [initialLabsText, setInitialLabsText] = useState(patientToEdit?.initialLabsText || '');
   const [admissionClinicalNote, setAdmissionClinicalNote] = useState(() => {
+    if (patientToEdit?.todayProgressSummary) {
+      return patientToEdit.todayProgressSummary;
+    }
     if (patientToEdit?.evolutions && patientToEdit.evolutions.length > 0) {
       return patientToEdit.evolutions[0].clinicalNote || '';
     }
     return '';
+  });
+  const [detailedClinicalEvolution, setDetailedClinicalEvolution] = useState(() => {
+    return patientToEdit?.detailedClinicalEvolution || '';
   });
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -234,7 +240,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
     const initialEvolution = {
       id: `EVO-${Date.now()}`,
       date: formattedAdmissionDate,
-      clinicalNote: admissionClinicalNote.trim() || 'Tiếp nhận bệnh nhân vào khoa, toàn trạng ổn định, tiếp tục theo dõi và điều trị theo phác đồ.',
+      clinicalNote: admissionClinicalNote.trim() || detailedClinicalEvolution.trim() || 'Tiếp nhận bệnh nhân vào khoa, toàn trạng ổn định, tiếp tục theo dõi và điều trị theo phác đồ.',
       treatmentAction: treatmentPlan.trim() || 'Nhập hướng điều trị',
       doctorName,
       shift: currentShift,
@@ -257,6 +263,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
       const statusText = [severityText, dischargeText].filter(Boolean).join(' + ');
 
       const autoClinicalNote = admissionClinicalNote.trim() || 
+        detailedClinicalEvolution.trim() ||
         `Tình trạng: ${statusText}. Chẩn đoán hiện tại: ${primaryDiagnosis.trim()}.${importantNotes.trim() ? ` Lưu ý: ${importantNotes.trim()}` : ''}${handoverNotes.trim() ? ` Bàn giao: ${handoverNotes.trim()}` : ''}`;
 
       const newEditEvolution = {
@@ -290,6 +297,8 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
         treatmentPlan: treatmentPlan.trim() || 'Nhập hướng điều trị',
         importantNotes: importantNotes.trim() || undefined,
         handoverNotes: handoverNotes.trim() || undefined,
+        todayProgressSummary: admissionClinicalNote.trim() || undefined,
+        detailedClinicalEvolution: detailedClinicalEvolution.trim() || undefined,
         initialLabsText: initialLabsText.trim() || undefined,
         evolutions: updatedEvolutions,
       };
@@ -325,10 +334,12 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
       treatmentPlan: treatmentPlan.trim() || 'Nhập hướng điều trị',
       importantNotes: importantNotes.trim() || undefined,
       handoverNotes: handoverNotes.trim() || undefined,
+      todayProgressSummary: admissionClinicalNote.trim() || undefined,
+      detailedClinicalEvolution: detailedClinicalEvolution.trim() || undefined,
       initialLabsText: initialLabsText.trim() || undefined,
       status: 'ACTIVE',
       vitals: [],
-      evolutions: admissionClinicalNote.trim() ? [initialEvolution] : [],
+      evolutions: admissionClinicalNote.trim() || detailedClinicalEvolution.trim() ? [initialEvolution] : [],
       labs: [],
       medications: [],
     };
@@ -1112,7 +1123,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
             </div>
           </div>
 
-          {/* NỘI DUNG 3: NÚT MỞ RỘNG ĐỂ NHẬP CẬN LÂM SÀNG */}
+          {/* NỘI DUNG 3: NÚT MỞ RỘNG: KẾT QUẢ CẬN LÂM SÀNG & XÉT NGHIỆM (HIS) VÀ DIỄN TIẾN LÂM SÀNG CHI TIẾT */}
           <div className="rounded-xl sm:rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-2xs transition-all">
             <button
               type="button"
@@ -1124,7 +1135,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                   <FolderPlus className="w-3.5 h-3.5" />
                 </div>
                 <span>Mở Rộng: Kết Quả Cận Lâm Sàng & Xét Nghiệm (HIS)</span>
-                {initialLabsText.trim() && (
+                {(initialLabsText.trim() || detailedClinicalEvolution.trim()) && (
                   <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">
                     Có dữ liệu
                   </span>
@@ -1137,19 +1148,34 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
             </button>
 
             {isExpanded && (
-              <div className="p-2.5 sm:p-4 space-y-2.5 sm:space-y-3.5 border-t border-slate-200 bg-white animate-in fade-in duration-150">
-                {/* Cận lâm sàng */}
+              <div className="p-2.5 sm:p-4 space-y-3 sm:space-y-4 border-t border-slate-200 bg-white animate-in fade-in duration-150">
+                {/* 1. Diễn tiến lâm sàng chi tiết */}
+                <div>
+                  <label className="block text-[11px] font-bold text-indigo-900 uppercase mb-1 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-indigo-700" />
+                    <span>Diễn Tiến Lâm Sàng Chi Tiết (Khám bệnh, triệu chứng cơ năng & thực thể...)</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={detailedClinicalEvolution}
+                    onChange={(e) => setDetailedClinicalEvolution(e.target.value)}
+                    placeholder="Nhập chi tiết quá trình diễn biến bệnh, triệu chứng cơ năng, khám thực thể các cơ quan (tuần hoàn, hô hấp, tiêu hóa, thần kinh...), tiền sử & ghi nhận chuyên sâu..."
+                    className="w-full p-2.5 sm:p-3 bg-indigo-50/20 border border-indigo-200/90 rounded-xl font-medium text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-600 focus:border-transparent leading-relaxed"
+                  />
+                </div>
+
+                {/* 2. Cận lâm sàng & Xét nghiệm (HIS) */}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1.5">
                     <Activity className="w-3.5 h-3.5 text-[#0b4d8c]" />
                     <span>Kết Quả Cận Lâm Sàng & Xét Nghiệm (HIS / Bệnh Án)</span>
                   </label>
                   <textarea
-                    rows={5}
+                    rows={4}
                     value={initialLabsText}
                     onChange={(e) => setInitialLabsText(e.target.value)}
                     placeholder="Dán hoặc nhập kết quả xét nghiệm máu (CTM, Sinh hóa), X-Quang phổi, CT Scanner, Siêu âm, ECG từ HIS..."
-                    className="w-full p-3 bg-slate-50/60 border border-slate-300 rounded-xl font-mono text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent leading-relaxed"
+                    className="w-full p-2.5 sm:p-3 bg-slate-50/60 border border-slate-300 rounded-xl font-mono text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent leading-relaxed"
                   />
                 </div>
               </div>

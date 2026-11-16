@@ -324,6 +324,8 @@ export interface Patient {
   dischargeDate?: string;
   dischargeTomorrowSetDate?: string;
   handoverNotes?: string;
+  todayProgressSummary?: string; // Tóm tắt diễn tiến hôm nay
+  detailedClinicalEvolution?: string; // Diễn tiến lâm sàng chi tiết
   initialLabsText?: string; // Dán trực tiếp kết quả cận lâm sàng ban đầu
   initialMedicationsText?: string; // Dán trực tiếp y lệnh thuốc ban đầu
 }

@@ -907,6 +907,26 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                       <span className="font-bold">{patient.treatmentPlan}</span>
                     </div>
                   )}
+
+                  {(patient.todayProgressSummary || patient.evolutions?.[0]?.clinicalNote) && (
+                    <div className="mt-2 pt-2 border-t border-slate-200 text-xs text-cyan-950 flex items-start gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-cyan-700 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-extrabold uppercase text-cyan-900">Tóm tắt diễn tiến: </span>
+                        <span className="font-medium whitespace-pre-line">{patient.todayProgressSummary || patient.evolutions[0].clinicalNote.split(/\[Sinh hiệu:.*?\]/i)[0].trim()}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {patient.detailedClinicalEvolution && (
+                    <div className="mt-2 pt-2 border-t border-slate-200 text-xs text-indigo-950 flex items-start gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-indigo-700 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-extrabold uppercase text-indigo-900">Diễn tiến lâm sàng chi tiết: </span>
+                        <span className="font-medium whitespace-pre-line">{patient.detailedClinicalEvolution}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -1914,7 +1914,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                           // Diễn tiến lâm sàng & thay đổi mới nhất
                           const latestEvolution = patient.evolutions && patient.evolutions.length > 0 ? patient.evolutions[0] : null;
-                          const rawClinicalNote = latestEvolution?.clinicalNote || 'Tình trạng bệnh tỉnh táo, tiếp xúc tốt, tiếp tục điều trị theo phác đồ.';
+                          const rawClinicalNote = patient.todayProgressSummary?.trim() || latestEvolution?.clinicalNote || '';
                           const clinicalNote = rawClinicalNote.split(/\[Sinh hiệu:.*?\]/i)[0].trim();
 
                           // Sinh hiệu gần nhất
@@ -2160,9 +2160,13 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 <div className="space-y-1">
 
                                   {/* Diễn tiến lâm sàng & thay đổi mới nhất */}
-                                  <div className="p-1.5 px-2 rounded-lg bg-slate-50 border border-slate-200">
-                                    <p className="text-[11.5px] text-slate-800 font-medium leading-snug line-clamp-3" title={clinicalNote}>
-                                      {clinicalNote}
+                                  <div className="p-1.5 px-2 rounded-lg bg-cyan-50/40 border border-cyan-200/80">
+                                    <div className="flex items-center gap-1 text-[10px] font-black text-cyan-800 uppercase mb-0.5">
+                                      <FileText className="w-3 h-3 text-cyan-700 shrink-0" />
+                                      <span>Tóm tắt diễn tiến</span>
+                                    </div>
+                                    <p className={`text-[11.5px] leading-snug line-clamp-3 ${!clinicalNote || clinicalNote === 'Nhập tóm tắt diễn tiến' ? 'text-cyan-800/70 italic font-medium' : 'text-slate-800 font-medium'}`} title={clinicalNote || 'Nhập tóm tắt diễn tiến'}>
+                                      {clinicalNote || 'Nhập tóm tắt diễn tiến'}
                                     </p>
                                   </div>
 
@@ -2532,7 +2536,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                       // Diễn tiến lâm sàng mới nhất / hôm nay
                       const latestEvo = patient.evolutions?.[0];
-                      const todayEvolutionNote = latestEvo?.clinicalNote?.split(/\[Sinh hiệu:.*?\]/i)[0]?.trim() || '';
+                      const todayEvolutionNote = patient.todayProgressSummary?.trim() || 
+                        latestEvo?.clinicalNote?.split(/\[Sinh hiệu:.*?\]/i)[0]?.trim() || 
+                        '';
 
                       // Kế hoạch điều trị
                       const currentPlan = patient.treatmentPlan || 
@@ -2751,15 +2757,13 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </div>
                             </div>
 
-                            {/* Tóm tắt diễn tiến hôm nay (Ở giữa chẩn đoán và hướng xử trí) */}
-                            {todayEvolutionNote && (
-                              <div className="p-2.5 sm:p-3 rounded-xl bg-cyan-50/60 border border-cyan-200/80 mb-2 shadow-2xs flex items-start gap-2.5">
-                                <FileText className="w-4 h-4 text-cyan-700 shrink-0 mt-0.5" />
-                                <p className="text-xs sm:text-sm font-medium text-slate-800 leading-snug whitespace-pre-line flex-1 line-clamp-3" title={todayEvolutionNote}>
-                                  {todayEvolutionNote}
-                                </p>
-                              </div>
-                            )}
+                            {/* Tóm tắt diễn tiến hôm nay (Ở giữa chẩn đoán và hướng xử trí) - Luôn hiển thị trên màn hình */}
+                            <div className="p-2.5 sm:p-3 rounded-xl bg-cyan-50/60 border border-cyan-200/80 mb-2 shadow-2xs flex items-start gap-2.5">
+                              <FileText className="w-4 h-4 text-cyan-700 shrink-0 mt-0.5" />
+                              <p className={`text-xs sm:text-sm leading-snug whitespace-pre-line flex-1 line-clamp-3 ${!todayEvolutionNote || todayEvolutionNote === 'Nhập tóm tắt diễn tiến' ? 'text-cyan-800/70 italic font-medium' : 'font-medium text-slate-800'}`} title={todayEvolutionNote || 'Nhập tóm tắt diễn tiến'}>
+                                {todayEvolutionNote || 'Nhập tóm tắt diễn tiến'}
+                              </p>
+                            </div>
 
                             {/* 5. Hướng xử trí & Kế hoạch điều trị (Icon và nội dung cùng 1 hàng) */}
                             <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 mb-2 shadow-2xs flex items-start gap-2.5">
