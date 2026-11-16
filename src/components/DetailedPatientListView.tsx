@@ -808,7 +808,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     if (newSeverity === 'DISCHARGE_TOMORROW') {
-      if (patient.admissionStatus === 'DISCHARGE_TOMORROW') {
+      if (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY') {
         updated = {
           ...patient,
           admissionStatus: 'STABLE_INPATIENT',
@@ -820,22 +820,17 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
           ...patient,
           admissionStatus: 'DISCHARGE_TOMORROW',
           dischargeTomorrowSetDate: todayStr,
-          severity: 'STABLE',
         };
         setNotification(`Đã gắn nhãn BN "${formatPatientDisplayName(patient.fullName)}": RV ngày mai`);
       }
     } else {
-      if (patient.severity === newSeverity && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY') {
+      if (patient.severity === newSeverity) {
         setOpenSeverityMenuPatientId(null);
         return;
       }
       updated = {
         ...patient,
         severity: newSeverity,
-        admissionStatus: (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY')
-          ? 'STABLE_INPATIENT'
-          : patient.admissionStatus,
-        dischargeTomorrowSetDate: undefined,
       };
       const severityLabels: Record<SeverityLevel, string> = {
         CRITICAL: 'Nặng',
@@ -2107,22 +2102,22 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                               </button>
 
                                               <button
-                                                  type="button"
-                                                  onClick={() => handleQuickUpdateSeverity(patient, 'DISCHARGE_TOMORROW')}
-                                                  className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                                                    patient.admissionStatus === 'DISCHARGE_TOMORROW'
-                                                      ? 'bg-blue-600 text-white shadow-xs'
-                                                      : 'text-blue-700 hover:bg-blue-50'
-                                                  }`}
-                                                >
-                                                  <span className="flex items-center gap-1.5">
-                                                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                                                    <span>RV ngày mai</span>
-                                                  </span>
-                                                  {patient.admissionStatus === 'DISCHARGE_TOMORROW' && <Check className="w-3.5 h-3.5" />}
-                                                </button>
+                                                type="button"
+                                                onClick={() => handleQuickUpdateSeverity(patient, 'DISCHARGE_TOMORROW')}
+                                                className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                                                  patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY'
+                                                    ? 'bg-blue-600 text-white shadow-xs'
+                                                    : 'text-blue-700 hover:bg-blue-50'
+                                                }`}
+                                              >
+                                                <span className="flex items-center gap-1.5">
+                                                  <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                                                  <span>{patient.admissionStatus === 'DISCHARGE_TODAY' ? 'Ra viện' : 'RV ngày mai'}</span>
+                                                </span>
+                                                {(patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY') && <Check className="w-3.5 h-3.5" />}
+                                              </button>
 
-                                                <button
+                                              <button
                                                 type="button"
                                                 onClick={() => handleQuickUpdateSeverity(patient, 'UNCLASSIFIED')}
                                                 className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
@@ -2661,22 +2656,22 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                         </button>
 
                                         <button
-                                            type="button"
-                                            onClick={() => handleQuickUpdateSeverity(patient, 'DISCHARGE_TOMORROW')}
-                                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                                              patient.admissionStatus === 'DISCHARGE_TOMORROW'
-                                                ? 'bg-blue-600 text-white shadow-xs'
-                                                : 'text-blue-700 hover:bg-blue-50'
-                                            }`}
-                                          >
-                                            <span className="flex items-center gap-1.5">
-                                              <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                                              <span>RV ngày mai</span>
-                                            </span>
-                                            {patient.admissionStatus === 'DISCHARGE_TOMORROW' && <Check className="w-3.5 h-3.5" />}
-                                          </button>
+                                          type="button"
+                                          onClick={() => handleQuickUpdateSeverity(patient, 'DISCHARGE_TOMORROW')}
+                                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                            patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY'
+                                              ? 'bg-blue-600 text-white shadow-xs'
+                                              : 'text-blue-700 hover:bg-blue-50'
+                                          }`}
+                                        >
+                                          <span className="flex items-center gap-1.5">
+                                            <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                                            <span>{patient.admissionStatus === 'DISCHARGE_TODAY' ? 'Ra viện' : 'RV ngày mai'}</span>
+                                          </span>
+                                          {(patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY') && <Check className="w-3.5 h-3.5" />}
+                                        </button>
 
-                                          <button
+                                        <button
                                           type="button"
                                           onClick={() => handleQuickUpdateSeverity(patient, 'UNCLASSIFIED')}
                                           className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${

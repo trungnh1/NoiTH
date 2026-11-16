@@ -500,8 +500,8 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                                       { id: 'UNCLASSIFIED', label: 'Chưa phân loại', color: 'text-slate-600 hover:bg-slate-100', activeColor: 'bg-slate-700 text-white', dot: 'bg-slate-300' },
                                     ].map((opt) => {
                                       const isOptionActive = opt.id === 'DISCHARGE_TOMORROW' 
-                                        ? patient.admissionStatus === 'DISCHARGE_TOMORROW'
-                                        : (patient.severity || 'UNCLASSIFIED') === opt.id && patient.admissionStatus !== 'DISCHARGE_TOMORROW';
+                                        ? (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY')
+                                        : (patient.severity || 'UNCLASSIFIED') === opt.id;
                                       return (
                                         <button
                                           key={opt.id}
@@ -511,20 +511,23 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                                               if (opt.id === 'DISCHARGE_TOMORROW') {
                                                 const now = new Date();
                                                 const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                                                onUpdatePatient({
-                                                  ...patient,
-                                                  admissionStatus: 'DISCHARGE_TOMORROW',
-                                                  dischargeTomorrowSetDate: todayStr,
-                                                  severity: 'STABLE',
-                                                });
+                                                if (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY') {
+                                                  onUpdatePatient({
+                                                    ...patient,
+                                                    admissionStatus: 'STABLE_INPATIENT',
+                                                    dischargeTomorrowSetDate: undefined,
+                                                  });
+                                                } else {
+                                                  onUpdatePatient({
+                                                    ...patient,
+                                                    admissionStatus: 'DISCHARGE_TOMORROW',
+                                                    dischargeTomorrowSetDate: todayStr,
+                                                  });
+                                                }
                                               } else {
                                                 onUpdatePatient({
                                                   ...patient,
                                                   severity: opt.id as any,
-                                                  admissionStatus: (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY')
-                                                    ? 'STABLE_INPATIENT'
-                                                    : patient.admissionStatus,
-                                                  dischargeTomorrowSetDate: undefined,
                                                 });
                                               }
                                             }

@@ -741,20 +741,16 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                         onUpdatePatient({
                           ...patient,
                           severity: 'STABLE',
-                          admissionStatus: (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY')
-                            ? 'STABLE_INPATIENT'
-                            : patient.admissionStatus,
-                          dischargeTomorrowSetDate: undefined,
                         });
                       }}
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                        patient.severity === 'STABLE' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY'
+                        patient.severity === 'STABLE'
                           ? 'bg-emerald-600 text-white shadow-2xs font-black ring-2 ring-emerald-300'
                           : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
                       }`}
                     >
                       <span>Ổn định</span>
-                      {patient.severity === 'STABLE' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY' && (
+                      {patient.severity === 'STABLE' && (
                         <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />
                       )}
                     </button>
@@ -765,20 +761,16 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                         onUpdatePatient({
                           ...patient,
                           severity: 'MODERATE',
-                          admissionStatus: (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY')
-                            ? 'STABLE_INPATIENT'
-                            : patient.admissionStatus,
-                          dischargeTomorrowSetDate: undefined,
                         });
                       }}
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                        patient.severity === 'MODERATE' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY'
+                        patient.severity === 'MODERATE'
                           ? 'bg-amber-500 text-white shadow-2xs font-black ring-2 ring-amber-300'
                           : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
                       }`}
                     >
                       <span>Cần theo dõi</span>
-                      {patient.severity === 'MODERATE' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY' && (
+                      {patient.severity === 'MODERATE' && (
                         <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />
                       )}
                     </button>
@@ -789,21 +781,17 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                         onUpdatePatient({
                           ...patient,
                           severity: 'CRITICAL',
-                          admissionStatus: (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY')
-                            ? 'STABLE_INPATIENT'
-                            : patient.admissionStatus,
-                          dischargeTomorrowSetDate: undefined,
                         });
                       }}
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                        patient.severity === 'CRITICAL' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY'
+                        patient.severity === 'CRITICAL'
                           ? 'bg-rose-600 text-white shadow-2xs font-black ring-2 ring-rose-300'
                           : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
                       }`}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
                       <span>Nặng</span>
-                      {patient.severity === 'CRITICAL' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY' && (
+                      {patient.severity === 'CRITICAL' && (
                         <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />
                       )}
                     </button>
@@ -813,7 +801,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                       onClick={() => {
                         const now = new Date();
                         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                        if (patient.admissionStatus === 'DISCHARGE_TOMORROW') {
+                        if (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY') {
                           onUpdatePatient({
                             ...patient,
                             admissionStatus: 'STABLE_INPATIENT',
@@ -824,7 +812,6 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                             ...patient,
                             admissionStatus: 'DISCHARGE_TOMORROW',
                             dischargeTomorrowSetDate: todayStr,
-                            severity: 'STABLE',
                           });
                         }
                       }}
@@ -835,7 +822,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                           ? 'bg-purple-600 text-white shadow-2xs font-black ring-2 ring-purple-300'
                           : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
                       }`}
-                      title="Gắn nhãn: Dự kiến ra viện ngày mai (hôm sau tự chuyển thành Ra viện)"
+                      title="Gắn nhãn: Dự kiến ra viện ngày mai (hôm sau tự chuyển thành Ra viện, có thể dùng kèm Ổn định, Cần theo dõi hoặc Nặng)"
                     >
                       <span>{patient.admissionStatus === 'DISCHARGE_TODAY' ? '🟣 Ra viện' : '🔵 RV ngày mai'}</span>
                       {(patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY') && (

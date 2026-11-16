@@ -831,7 +831,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                         setSeverity('STABLE');
                       }}
                       className={`py-1.5 px-2 rounded-lg font-black text-xs border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                        severity === 'STABLE' && admissionStatus !== 'DISCHARGE_TOMORROW'
+                        severity === 'STABLE'
                           ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                           : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-emerald-50'
                       }`}
@@ -844,7 +844,6 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                       type="button"
                       onClick={() => {
                         setSeverity('MODERATE');
-                        setAdmissionStatus('STABLE_INPATIENT');
                       }}
                       className={`py-1.5 px-2 rounded-lg font-black text-xs border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                         severity === 'MODERATE'
@@ -860,7 +859,6 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                       type="button"
                       onClick={() => {
                         setSeverity('CRITICAL');
-                        setAdmissionStatus('STABLE_INPATIENT');
                       }}
                       className={`py-1.5 px-2 rounded-lg font-black text-xs border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                         severity === 'CRITICAL'
@@ -875,19 +873,18 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        if (admissionStatus === 'DISCHARGE_TOMORROW') {
+                        if (admissionStatus === 'DISCHARGE_TOMORROW' || admissionStatus === 'DISCHARGE_TODAY') {
                           setAdmissionStatus('STABLE_INPATIENT');
                         } else {
                           setAdmissionStatus('DISCHARGE_TOMORROW');
-                          setSeverity('STABLE');
                         }
                       }}
                       className={`py-1.5 px-2 rounded-lg font-black text-xs border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                        admissionStatus === 'DISCHARGE_TOMORROW'
+                        admissionStatus === 'DISCHARGE_TOMORROW' || admissionStatus === 'DISCHARGE_TODAY'
                           ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                           : 'bg-blue-50/70 text-blue-800 border-blue-200 hover:bg-blue-100'
                       }`}
-                      title="Đánh dấu bệnh nhân dự kiến ra viện vào ngày mai"
+                      title="Đánh dấu bệnh nhân dự kiến ra viện vào ngày mai (dùng kèm với Ổn định, Cần theo dõi hoặc Nặng)"
                     >
                       <span className="w-2 h-2 rounded-full bg-blue-300 inline-block"></span>
                       RV ngày mai
