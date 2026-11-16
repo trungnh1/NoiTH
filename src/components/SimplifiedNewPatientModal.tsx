@@ -20,8 +20,18 @@ import {
   FolderPlus,
   Building2,
   Calendar,
-  Stethoscope
+  Stethoscope,
+  Sparkles,
+  Bot,
+  Copy,
+  CheckCircle2,
+  TrendingUp,
+  TrendingDown,
+  Wand2,
+  ListPlus,
+  RefreshCw
 } from 'lucide-react';
+import { analyzeFullClinicalNote, AIAnalysisOutput } from '../utils/aiClinicalAssistant';
 
 export interface SimplifiedNewPatientModalProps {
   rooms: DepartmentRoom[];
@@ -108,6 +118,78 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   });
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // 4. Trợ lý AI Bóc Tách Bệnh Án & Biểu Dẫn Cận Lâm Sàng
+  const [showAiPanel, setShowAiPanel] = useState<boolean>(false);
+  const [aiInputText, setAiInputText] = useState<string>('');
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [aiResult, setAiResult] = useState<AIAnalysisOutput | null>(null);
+  const [aiSuccessMsg, setAiSuccessMsg] = useState<string | null>(null);
+  const [copiedSummary, setCopiedSummary] = useState<boolean>(false);
+  const [insertedLabSuccess, setInsertedLabSuccess] = useState<boolean>(false);
+
+  const handleRunAiAnalysis = async () => {
+    if (!aiInputText.trim()) {
+      setErrorMsg('Vui lòng dán nội dung bệnh án hoặc kết quả xét nghiệm để AI phân tích.');
+      return;
+    }
+    setIsAnalyzing(true);
+    setErrorMsg(null);
+    setAiSuccessMsg(null);
+    try {
+      const output = await analyzeFullClinicalNote(aiInputText, patientToEdit);
+      setAiResult(output);
+
+      // Tự động điền đúng mục các trường dữ liệu vào form
+      if (output.fullName) setFullName(output.fullName);
+      if (output.age) setAge(output.age);
+      if (output.gender) setGender(output.gender);
+      if (output.roomNumber) setRoomNumber(output.roomNumber);
+      if (output.primaryDiagnosis) setPrimaryDiagnosis(output.primaryDiagnosis);
+      if (output.treatmentPlan) setTreatmentPlan(output.treatmentPlan);
+      if (output.importantNotes) setImportantNotes(output.importantNotes);
+      if (output.handoverNotes) setHandoverNotes(output.handoverNotes);
+      if (output.severity) setSeverity(output.severity);
+      if (output.admissionStatus) {
+        setAdmissionStatus(output.admissionStatus);
+        if (output.admissionStatus === 'DISCHARGE_TOMORROW') {
+          const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          setDischargeTomorrowSetDate(todayDateStr);
+        }
+      }
+      if (output.clinicalNote) {
+        setAdmissionClinicalNote(output.clinicalNote);
+        setIsExpanded(true);
+      }
+      if (output.labsText) {
+        setInitialLabsText((prev) => prev ? `${prev}\n${output.labsText}` : output.labsText!);
+        setIsExpanded(true);
+      }
+
+      setAiSuccessMsg('AI đã phân tích thành công và tự động điền các trường vào hồ sơ bệnh nhân!');
+      setTimeout(() => setAiSuccessMsg(null), 6000);
+    } catch (err: any) {
+      console.error('Lỗi phân tích AI:', err);
+      setErrorMsg('Không thể phân tích dữ liệu AI: ' + (err?.message || 'Vui lòng thử lại'));
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handlePasteSample = () => {
+    const sample = `Bệnh nhân: NGUYỄN VĂN AN, Nam 68 tuổi, Phòng 705
+Chẩn đoán: Viêm phổi thùy phải / Đái tháo đường typ 2, Tăng huyết áp độ 2
+Diễn tiến hiện tại: Bệnh nhân tỉnh táo, ho khan ít đờm, còn tức ngực nhẹ, phổi ran nổ đáy phải giảm, SpO2 96% khí trời, huyết áp 130/80 mmHg, không sốt.
+Cận lâm sàng:
+• Ngày 14/11: WBC 16.5 G/L, NEU 85%, CRP 95 mg/L, Glucose 12.5 mmol/L, Creatinine 125 µmol/L
+• Ngày 16/11: WBC 7.8 G/L, NEU 65%, CRP 14 mg/L, Glucose 7.2 mmol/L, Creatinine 92 µmol/L
+Kế hoạch điều trị:
+Tiếp tục kháng sinh Ceftriaxone 2g/ngày tĩnh mạch, kiểm soát đường huyết theo dõi đường mao mạch, hạ áp Amlodipine 5mg.
+Bàn giao ca trực: Theo dõi sinh hiệu ca đêm, nếu sốt lại cấy máu và báo bác sĩ trực.
+Lưu ý: Tiền sử tăng huyết áp lâu năm, không ghi nhận dị ứng thuốc.
+Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
+    setAiInputText(sample);
+  };
 
   useEffect(() => {
     if (nameInputRef.current) {
@@ -280,14 +362,26 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-            title="Đóng cửa sổ"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAiPanel((prev) => !prev)}
+              className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-xs shadow-md border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              title="Mở trình bóc tách và phân tích bệnh án bằng AI"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" style={{ animationDuration: '4s' }} />
+              <span>{showAiPanel ? 'Đóng AI' : 'Nhập bằng AI'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              title="Đóng cửa sổ"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Thông báo lỗi nếu có */}
@@ -310,6 +404,293 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
         {/* Form Body - Cuộn mượt mà */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           
+          {/* Quick AI Trigger Banner when collapsed */}
+          {!showAiPanel && (
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-violet-600/10 via-indigo-600/10 to-blue-600/10 border border-indigo-200/80 flex items-center justify-between gap-2 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                </div>
+                <div>
+                  <span className="text-xs font-black text-indigo-950 block">
+                    Nhập Nhanh Hồ Sơ & Diễn Tiến Bằng AI
+                  </span>
+                  <span className="text-[11px] text-slate-600 block">
+                    Dán tóm tắt bệnh án, diễn biến hoặc CLS để AI tự động điền đúng mục & phân tích thay đổi
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAiPanel(true)}
+                className="py-1.5 px-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 active:scale-95"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Nhập bằng AI</span>
+              </button>
+            </div>
+          )}
+
+          {/* BẢNG TRỢ LÝ AI: PHÂN TÍCH BỆNH ÁN & BIỂU DẪN CẬN LÂM SÀNG */}
+          {showAiPanel && (
+            <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 text-white p-4 sm:p-5 rounded-2xl border-2 border-indigo-400/50 shadow-2xl space-y-4 animate-in slide-in-from-top-3 duration-200">
+              <div className="flex items-center justify-between border-b border-indigo-800/60 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-amber-300 shadow-inner">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-2">
+                      <span>Trợ Lý Lâm Sàng AI • Bóc Tách Bệnh Án & Biểu Dẫn Cận Lâm Sàng</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 font-mono">
+                        Thông minh
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-indigo-200/80">
+                      Dán toàn bộ văn bản bệnh án, diễn biến, kết quả xét nghiệm... AI sẽ tự động phân tích, điền đúng mục, tóm tắt bệnh án và biểu dẫn thay đổi CLS.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAiPanel(false)}
+                  className="text-xs text-indigo-300 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  Đóng AI
+                </button>
+              </div>
+
+              {/* Textarea nhập liệu */}
+              <div className="space-y-2">
+                <textarea
+                  rows={4}
+                  value={aiInputText}
+                  onChange={(e) => setAiInputText(e.target.value)}
+                  placeholder="Dán toàn bộ nội dung bệnh án, diễn tiến, kết quả xét nghiệm tại đây (VD: Bệnh nhân Nguyễn Văn A 65 tuổi phòng 703, chẩn đoán Viêm phổi / ĐTĐ, CLS: WBC 15 -> 7.8, CRP 85 -> 12, kế hoạch điều trị...)"
+                  className="w-full p-3 bg-slate-900/90 border border-indigo-500/40 rounded-xl text-white font-medium text-xs sm:text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent leading-relaxed"
+                />
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleRunAiAnalysis}
+                      disabled={isAnalyzing || !aiInputText.trim()}
+                      className="px-4 py-2 bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-indigo-900/40 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
+                          <span>Đang phân tích & bóc tách...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-4 h-4 text-amber-300" />
+                          <span>⚡ Phân Tích & Tự Động Điền</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handlePasteSample}
+                      className="px-3 py-2 bg-indigo-900/50 hover:bg-indigo-800/60 border border-indigo-700/60 text-indigo-200 hover:text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                      title="Dán mẫu văn bản bệnh án lâm sàng mẫu để thử nghiệm nhanh"
+                    >
+                      📋 Dán mẫu thử
+                    </button>
+                  </div>
+
+                  {aiInputText && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAiInputText('');
+                        setAiResult(null);
+                      }}
+                      className="text-xs text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
+                    >
+                      Xóa nội dung
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Thông báo thành công */}
+              {aiSuccessMsg && (
+                <div className="p-2.5 bg-emerald-950/80 border border-emerald-500/50 rounded-xl text-emerald-200 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{aiSuccessMsg}</span>
+                </div>
+              )}
+
+              {/* KẾT QUẢ AI PHÂN TÍCH: TÓM TẮT BỆNH ÁN & BIỂU DẪN CẬN LÂM SÀNG */}
+              {aiResult && (
+                <div className="space-y-3 pt-2 border-t border-indigo-800/60 animate-in fade-in">
+                  
+                  {/* PHẦN A: TÓM TẮT BỆNH ÁN */}
+                  <div className="p-3.5 bg-slate-900/80 rounded-xl border border-indigo-500/30 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-amber-300 uppercase tracking-wide">
+                        <FileText className="w-4 h-4 text-amber-400" />
+                        <span>Tóm Tắt Bệnh Án Lâm Sàng</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiResult.caseSummary);
+                            setCopiedSummary(true);
+                            setTimeout(() => setCopiedSummary(false), 2500);
+                          }}
+                          className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                          title="Sao chép toàn bộ tóm tắt bệnh án"
+                        >
+                          {copiedSummary ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedSummary ? 'Đã chép' : 'Sao chép'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImportantNotes((prev) => prev ? `${prev}\n\n${aiResult.caseSummary}` : aiResult.caseSummary);
+                            setAiSuccessMsg('Đã chèn tóm tắt bệnh án vào ô Ghi chú của Bác sĩ');
+                            setTimeout(() => setAiSuccessMsg(null), 3000);
+                          }}
+                          className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                          title="Thêm tóm tắt này vào mục Ghi chú của Bác sĩ"
+                        >
+                          <span>+ Đưa vào Ghi chú</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdmissionClinicalNote((prev) => prev ? `${prev}\n\n${aiResult.caseSummary}` : aiResult.caseSummary);
+                            setIsExpanded(true);
+                            setAiSuccessMsg('Đã chèn tóm tắt bệnh án vào ô Diễn tiến lâm sàng');
+                            setTimeout(() => setAiSuccessMsg(null), 3000);
+                          }}
+                          className="px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                          title="Thêm tóm tắt này vào mục Diễn tiến lâm sàng"
+                        >
+                          <span>+ Đưa vào Diễn tiến</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-2.5 bg-black/40 rounded-lg text-[11.5px] font-mono text-slate-200 whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto border border-white/5">
+                      {aiResult.caseSummary}
+                    </div>
+                  </div>
+
+                  {/* PHẦN B: BIỂU DẪN THAY ĐỔI CẬN LÂM SÀNG */}
+                  {aiResult.labTrends && aiResult.labTrends.length > 0 && (
+                    <div className="p-3.5 bg-slate-900/80 rounded-xl border border-indigo-500/30 space-y-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-xs font-black text-cyan-300 uppercase tracking-wide">
+                          <Activity className="w-4 h-4 text-cyan-400" />
+                          <span>Biểu Dẫn Thay Đổi Cận Lâm Sàng & Đánh Giá Xu Hướng</span>
+                          <span className="text-[10px] px-2 py-0.2 rounded-full bg-cyan-500/20 text-cyan-200 border border-cyan-400/30">
+                            {aiResult.labTrends.length} chỉ số
+                          </span>
+                        </div>
+
+                        {aiResult.labSummaryText && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const appendText = `\n[Biểu dẫn Cận Lâm Sàng]:\n${aiResult.labSummaryText}`;
+                              setAdmissionClinicalNote((prev) => prev ? `${prev}\n${appendText}` : appendText.trim());
+                              setIsExpanded(true);
+                              setInsertedLabSuccess(true);
+                              setTimeout(() => setInsertedLabSuccess(false), 2500);
+                            }}
+                            className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                            title="Chèn nội dung biểu dẫn thay đổi CLS này vào ô Diễn tiến lâm sàng"
+                          >
+                            {insertedLabSuccess ? <Check className="w-3 h-3 text-emerald-300" /> : <ListPlus className="w-3 h-3" />}
+                            <span>{insertedLabSuccess ? 'Đã chèn vào Diễn tiến' : '+ Chèn vào Diễn tiến'}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Bảng biểu dẫn */}
+                      <div className="overflow-x-auto rounded-xl border border-white/10 max-h-60 overflow-y-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-white/10 text-slate-300 font-black text-[10.5px] uppercase border-b border-white/10 sticky top-0">
+                            <tr>
+                              <th className="py-2 px-2.5">Chỉ Số Xét Nghiệm</th>
+                              <th className="py-2 px-2.5">Giá Trị Cũ ➔ Mới</th>
+                              <th className="py-2 px-2.5 text-center">Xu Hướng</th>
+                              <th className="py-2 px-2.5">Nhận Định Lâm Sàng</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5 font-medium text-[11px]">
+                            {aiResult.labTrends.map((lab) => {
+                              const isCritical = lab.status === 'CRITICAL';
+                              const isWarning = lab.status === 'WARNING';
+                              const isUp = lab.trend === 'UP';
+                              const isDown = lab.trend === 'DOWN';
+
+                              return (
+                                <tr key={lab.id} className="hover:bg-white/5 transition-colors">
+                                  <td className="py-2 px-2.5">
+                                    <div className="font-bold text-white flex items-center gap-1.5">
+                                      {isCritical && <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />}
+                                      <span>{lab.name}</span>
+                                    </div>
+                                    <span className="text-[10px] text-slate-400">
+                                      Chuẩn: {lab.normalRange} {lab.unit}
+                                    </span>
+                                  </td>
+
+                                  <td className="py-2 px-2.5 whitespace-nowrap">
+                                    {lab.prevValue !== undefined ? (
+                                      <div className="flex items-center gap-1.5 font-mono">
+                                        <span className="text-slate-400">{lab.prevValue}</span>
+                                        <span className="text-slate-500">➔</span>
+                                        <span className={`font-black ${isCritical ? 'text-rose-400 font-bold' : isWarning ? 'text-amber-300' : 'text-emerald-400'}`}>
+                                          {lab.currentValue} {lab.unit}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className={`font-mono font-black ${isCritical ? 'text-rose-400' : isWarning ? 'text-amber-300' : 'text-emerald-400'}`}>
+                                        {lab.currentValue} {lab.unit}
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  <td className="py-2 px-2.5 text-center whitespace-nowrap">
+                                    <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                      isUp 
+                                        ? (lab.name.includes('Bạch cầu') || lab.name.includes('CRP') || lab.name.includes('Creatinine') ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30')
+                                        : isDown 
+                                        ? (lab.name.includes('Bạch cầu') || lab.name.includes('CRP') || lab.name.includes('Creatinine') ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30')
+                                        : 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                                    }`}>
+                                      {lab.trendLabel}
+                                    </span>
+                                  </td>
+
+                                  <td className="py-2 px-2.5 text-slate-300">
+                                    <p className="line-clamp-2 leading-relaxed text-[11px]" title={lab.clinicalInterpretation}>
+                                      {lab.clinicalInterpretation}
+                                    </p>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              )}
+            </div>
+          )}
+
           {/* NỘI DUNG 1: THÔNG TIN BỆNH NHÂN */}
           <div className="bg-slate-50/90 p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
