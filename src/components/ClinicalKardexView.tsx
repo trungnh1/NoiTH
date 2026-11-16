@@ -765,7 +765,7 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                               title="Sửa thông tin bệnh nhân & cập nhật diễn tiến"
                             >
                               <FileEdit className="w-3 h-3 text-cyan-700" />
-                              <span>Sửa bệnh nhân</span>
+                              <span>Nhập diễn tiến</span>
                             </button>
                           </div>
                         )}

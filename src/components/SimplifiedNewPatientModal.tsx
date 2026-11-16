@@ -267,7 +267,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-2">
-                <span>{isEditing ? 'Chỉnh Sửa Hồ Sơ Bệnh Nhân' : 'Tiếp Nhận Bệnh Nhân Mới'}</span>
+                <span>{isEditing ? 'Nhập Diễn Tiến Bệnh Nhân' : 'Tiếp Nhận Bệnh Nhân Mới'}</span>
                 {isEditing && patientToEdit?.roomNumber && (
                   <span className="text-xs px-2 py-0.5 rounded-md bg-white/20 text-white font-bold">
                     P.{patientToEdit.roomNumber}
@@ -275,7 +275,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
                 )}
               </h3>
               <p className="text-[11px] text-blue-100/80 font-medium">
-                {isEditing ? 'Cập nhật thông tin bệnh nhân, chẩn đoán, hướng xử trí & bàn giao' : 'Khoa Nội Tổng Hợp • Bệnh Viện Hùng Vương Gia Lai'}
+                {isEditing ? 'Cập nhật chẩn đoán, hướng xử trí, ghi chú & tự động ghi nhận diễn tiến mới' : 'Khoa Nội Tổng Hợp • Bệnh Viện Hùng Vương Gia Lai'}
               </p>
             </div>
           </div>
@@ -710,7 +710,7 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
               className="flex-1 sm:flex-initial px-6 py-2.5 min-h-[42px] bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
             >
               <Check className="w-4 h-4 stroke-[3]" />
-              <span>{isEditing ? 'Lưu Thay Đổi' : 'Thêm Vào Khoa'}</span>
+              <span>{isEditing ? 'Lưu Diễn Tiến' : 'Thêm Vào Khoa'}</span>
             </button>
           </div>
         </form>

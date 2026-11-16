@@ -2331,10 +2331,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                       else onSelectPatient(patient);
                                     }}
                                     className="w-full py-1 px-1.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-md font-black text-[11px] shadow-xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
-                                    title="Sửa thông tin bệnh nhân & cập nhật diễn tiến"
+                                    title="Nhập diễn tiến & cập nhật thông tin bệnh nhân"
                                   >
                                     <FileEdit className="w-3 h-3 text-amber-300" />
-                                    <span>Sửa</span>
+                                    <span>Nhập diễn tiến</span>
                                   </button>
 
                                   <button
@@ -2771,7 +2771,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               title="Sửa thông tin bệnh nhân & cập nhật diễn tiến điều trị"
                             >
                               <FileEdit className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
-                              <span>Sửa Bệnh Nhân</span>
+                              <span>Nhập diễn tiến</span>
                             </button>
 
                             <div className="flex items-center gap-1 flex-wrap shrink-0">
