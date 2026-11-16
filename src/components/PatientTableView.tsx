@@ -538,50 +538,7 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                               {patient.admissionStatus === 'DISCHARGE_TOMORROW' && '🔵 Ra viện mai'}
                             </span>
                           )}
-                        </div>
-
-                        {/* Special Badges: Thở Oxy, Vận mạch, Theo dõi sát */}
-                        <div className="flex flex-wrap gap-1">
-                          {patient.tags.includes('O2') && (
-                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-cyan-600 text-white flex items-center gap-0.5 shadow-2xs">
-                              <Wind className="w-2.5 h-2.5" />
-                              <span>Thở Oxy</span>
-                            </span>
-                          )}
-
-                          {patient.tags.includes('VASOPRESSOR') && (
-                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-rose-600 text-white flex items-center gap-0.5 shadow-2xs animate-pulse">
-                              <HeartPulse className="w-2.5 h-2.5" />
-                              <span>Vận mạch</span>
-                            </span>
-                          )}
-
-                          {patient.tags.includes('CLOSE_MONITORING') && (
-                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500 text-white flex items-center gap-0.5 shadow-2xs">
-                              <Eye className="w-2.5 h-2.5" />
-                              <span>Theo dõi sát</span>
-                            </span>
-                          )}
-
-                          {/* Secondary badges */}
-                          {patient.tags
-                            .filter((t) => t !== 'O2' && t !== 'VASOPRESSOR' && t !== 'CLOSE_MONITORING')
-                            .slice(0, 2)
-                            .map((tagKey) => {
-                              const meta = CLINICAL_TAGS_META[tagKey];
-                              if (!meta) return null;
-                              return (
-                                <span
-                                  key={tagKey}
-                                  className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${meta.color}`}
-                                >
-                                  {meta.shortLabel}
-                                </span>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    </td>
+                        </div></td>
 
                     {/* Attending Doctor (With fast in-row re-assign dropdown!) */}
                     <td className="py-3.5 px-4 whitespace-nowrap">

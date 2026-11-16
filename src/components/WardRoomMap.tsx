@@ -645,21 +645,6 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
                         </div>
 
                         <div className="flex items-center gap-0.5 shrink-0 flex-wrap">
-                          {(patient.tags.includes('O2_CANULA') || patient.tags.includes('O2')) && (
-                            <span className="px-1 rounded text-[7.5px] font-black bg-cyan-600 text-white" title="Thở Canula">Canula</span>
-                          )}
-                          {patient.tags.includes('O2_MASK') && (
-                            <span className="px-1 rounded text-[7.5px] font-black bg-blue-600 text-white" title="Thở Mask">Mask</span>
-                          )}
-                          {patient.tags.includes('FLUID_BALANCE') && (
-                            <span className="px-1 rounded text-[7.5px] font-black bg-indigo-600 text-white" title="TD dịch nhập/xuất">TD Dịch</span>
-                          )}
-                          {patient.tags.includes('VASOPRESSOR') && (
-                            <span className="px-1 rounded text-[7.5px] font-black bg-rose-600 text-white animate-pulse" title="Vận mạch">VM</span>
-                          )}
-                          {patient.tags.includes('CLOSE_MONITORING') && (
-                            <span className="px-1 rounded text-[7.5px] font-black bg-amber-500 text-white" title="Theo dõi sát">TDS</span>
-                          )}
                         </div>
                       </div>
                     </div>
