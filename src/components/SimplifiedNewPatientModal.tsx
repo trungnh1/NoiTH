@@ -340,17 +340,17 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-0 sm:p-3 md:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
       <div 
         onClick={onClose} 
         className="fixed inset-0 cursor-pointer" 
         title="Bấm bên ngoài để đóng" 
       />
 
-      <div className={`relative w-full ${isMaximized ? 'max-w-[98vw] h-[96vh]' : 'max-w-6xl max-h-[95vh]'} bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 flex flex-col transition-all duration-200 animate-in zoom-in-95`}>
+      <div className={`relative w-full ${isMaximized ? 'max-w-[100vw] sm:max-w-[98vw] h-[100dvh] sm:h-[96vh]' : 'max-w-full sm:max-w-6xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[95vh]'} bg-white rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 overflow-hidden z-10 flex flex-col transition-all duration-200 animate-in zoom-in-95`}>
         
         {/* Header Modal */}
-        <div className="px-4 sm:px-6 py-3.5 bg-gradient-to-r from-[#0b4d8c] via-[#083a69] to-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs">
+        <div className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 bg-gradient-to-r from-[#0b4d8c] via-[#083a69] to-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shadow-inner">
               {isEditing ? <FileEdit className="w-5 h-5 text-amber-300" /> : <UserPlus className="w-5 h-5 text-emerald-300" />}
@@ -419,7 +419,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
         )}
 
         {/* Form Body - Cuộn mượt mà */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-2.5 sm:p-5 md:p-6 space-y-2.5 sm:space-y-4">
           
           {/* Quick AI Trigger Banner when collapsed */}
           {!showAiPanel && (
@@ -450,7 +450,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
 
           {/* BẢNG TRỢ LÝ AI: PHÂN TÍCH BỆNH ÁN & BIỂU DẪN CẬN LÂM SÀNG */}
           {showAiPanel && (
-            <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 text-white p-4 sm:p-5 rounded-2xl border-2 border-indigo-400/50 shadow-2xl space-y-4 animate-in slide-in-from-top-3 duration-200">
+            <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 text-white p-3 sm:p-5 rounded-xl sm:rounded-2xl border-2 border-indigo-400/50 shadow-2xl space-y-3 sm:space-y-4 animate-in slide-in-from-top-3 duration-200">
               <div className="flex items-center justify-between border-b border-indigo-800/60 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-amber-300 shadow-inner">
@@ -908,7 +908,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
           )}
 
           {/* NỘI DUNG 2: CHẨN ĐOÁN, HƯỚNG XỬ TRÍ, GHI CHÚ, BÀN GIAO & MỨC ĐỘ */}
-          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+          <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs space-y-2.5 sm:space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-xs">
@@ -1098,11 +1098,11 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
           </div>
 
           {/* NỘI DUNG 3: NÚT MỞ RỘNG ĐỂ NHẬP CẬN LÂM SÀNG HOẶC DIỄN TIẾN */}
-          <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-2xs transition-all">
+          <div className="rounded-xl sm:rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-2xs transition-all">
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="w-full p-3 sm:p-3.5 bg-slate-50 hover:bg-slate-100 text-slate-800 font-black text-xs sm:text-sm flex items-center justify-between transition-colors cursor-pointer"
+              className="w-full p-2.5 sm:p-3.5 bg-slate-50 hover:bg-slate-100 text-slate-800 font-black text-xs sm:text-sm flex items-center justify-between transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
@@ -1122,7 +1122,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
             </button>
 
             {isExpanded && (
-              <div className="p-3.5 sm:p-4 space-y-3.5 border-t border-slate-200 bg-white animate-in fade-in duration-150">
+              <div className="p-2.5 sm:p-4 space-y-2.5 sm:space-y-3.5 border-t border-slate-200 bg-white animate-in fade-in duration-150">
                 {/* Cận lâm sàng */}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1.5">

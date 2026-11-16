@@ -1061,7 +1061,7 @@ export default function App() {
       )}
 
       {/* Main Content Area - Dynamic View Based on Tab */}
-      <main className="flex-1 w-full px-2 sm:px-4 py-3">
+      <main className="flex-1 w-full px-1 sm:px-4 py-2 sm:py-3">
         {activeView === 'detailed_list' && (
           <DetailedPatientListView
             patients={patients}
