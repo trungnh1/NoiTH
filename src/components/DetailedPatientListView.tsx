@@ -16,6 +16,7 @@ import {
   Search, 
   UserPlus, 
   FileEdit, 
+  FileText,
   Eye, 
   Calendar, 
   AlertCircle, 
