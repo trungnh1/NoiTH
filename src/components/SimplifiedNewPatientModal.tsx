@@ -30,7 +30,9 @@ import {
   TrendingDown,
   Wand2,
   ListPlus,
-  RefreshCw
+  RefreshCw,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { analyzeFullClinicalNote, AIAnalysisOutput } from '../utils/aiClinicalAssistant';
 
@@ -110,13 +112,11 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
     patientToEdit?.dischargeTomorrowSetDate
   );
 
-  // 3. Mở rộng: Cận lâm sàng & Diễn tiến
-  const [isExpanded, setIsExpanded] = useState<boolean>(() => {
-    return Boolean(
-      (patientToEdit?.initialLabsText && patientToEdit.initialLabsText.trim()) ||
-      (patientToEdit?.evolutions && patientToEdit.evolutions.length > 0 && patientToEdit.evolutions[0].clinicalNote)
-    );
-  });
+  // Chế độ phóng to toàn màn hình
+  const [isMaximized, setIsMaximized] = useState<boolean>(false);
+
+  // 3. Mở rộng: Cận lâm sàng & Diễn tiến - Mặc định mở rộng để nhập diễn tiến nhanh chóng
+  const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const [initialLabsText, setInitialLabsText] = useState(patientToEdit?.initialLabsText || '');
   const [admissionClinicalNote, setAdmissionClinicalNote] = useState(() => {
     if (patientToEdit?.evolutions && patientToEdit.evolutions.length > 0) {
@@ -347,7 +347,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
         title="Bấm bên ngoài để đóng" 
       />
 
-      <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 flex flex-col max-h-[94vh] animate-in zoom-in-95 duration-150">
+      <div className={`relative w-full ${isMaximized ? 'max-w-[98vw] h-[96vh]' : 'max-w-6xl max-h-[95vh]'} bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 flex flex-col transition-all duration-200 animate-in zoom-in-95`}>
         
         {/* Header Modal */}
         <div className="px-4 sm:px-6 py-3.5 bg-gradient-to-r from-[#0b4d8c] via-[#083a69] to-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs">
@@ -379,6 +379,15 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" style={{ animationDuration: '4s' }} />
               <span>{showAiPanel ? 'Đóng AI' : 'Nhập bằng AI'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsMaximized((prev) => !prev)}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              title={isMaximized ? "Thu nhỏ kích thước" : "Mở rộng toàn màn hình"}
+            >
+              {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
 
             <button
@@ -471,11 +480,11 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
               {/* Textarea nhập liệu */}
               <div className="space-y-2">
                 <textarea
-                  rows={4}
+                  rows={6}
                   value={aiInputText}
                   onChange={(e) => setAiInputText(e.target.value)}
                   placeholder="Dán toàn bộ nội dung bệnh án, diễn tiến, kết quả xét nghiệm tại đây (VD: Bệnh nhân Nguyễn Văn A 65 tuổi phòng 703, chẩn đoán Viêm phổi / ĐTĐ, CLS: WBC 15 -> 7.8, CRP 85 -> 12, kế hoạch điều trị...)"
-                  className="w-full p-3 bg-slate-900/90 border border-indigo-500/40 rounded-xl text-white font-medium text-xs sm:text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent leading-relaxed"
+                  className="w-full p-3.5 bg-slate-900/90 border border-indigo-500/40 rounded-xl text-white font-medium text-xs sm:text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent leading-relaxed"
                 />
 
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
@@ -1121,11 +1130,11 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                     <span>Kết Quả Cận Lâm Sàng & Xét Nghiệm (HIS / Bệnh Án)</span>
                   </label>
                   <textarea
-                    rows={4}
+                    rows={5}
                     value={initialLabsText}
                     onChange={(e) => setInitialLabsText(e.target.value)}
                     placeholder="Dán hoặc nhập kết quả xét nghiệm máu (CTM, Sinh hóa), X-Quang phổi, CT Scanner, Siêu âm, ECG từ HIS..."
-                    className="w-full p-2.5 bg-slate-50/60 border border-slate-300 rounded-xl font-mono text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent leading-relaxed"
+                    className="w-full p-3 bg-slate-50/60 border border-slate-300 rounded-xl font-mono text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent leading-relaxed"
                   />
                 </div>
 
@@ -1136,11 +1145,11 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                     <span>Diễn Tiến Lâm Sàng & Thăm Khám</span>
                   </label>
                   <textarea
-                    rows={5}
+                    rows={7}
                     value={admissionClinicalNote}
                     onChange={(e) => setAdmissionClinicalNote(e.target.value)}
                     placeholder="Nhập diễn biến lâm sàng, triệu chứng cơ năng, thăm khám thực thể lúc tiếp nhận / hiện tại..."
-                    className="w-full p-2.5 bg-slate-50/60 border border-slate-300 rounded-xl font-medium text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:border-transparent leading-relaxed"
+                    className="w-full p-3 bg-slate-50/60 border border-slate-300 rounded-xl font-medium text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:border-transparent leading-relaxed"
                   />
                 </div>
               </div>
