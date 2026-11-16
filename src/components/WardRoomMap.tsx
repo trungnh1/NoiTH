@@ -312,10 +312,10 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
       return (
         <span 
           className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1 py-0.5 rounded bg-purple-600 text-white shrink-0 shadow-2xs leading-none" 
-          title="RV hôm nay"
+          title="Ra viện"
         >
           <LogOut className="w-2.5 h-2.5 shrink-0" />
-          <span>RV hôm nay</span>
+          <span>Ra viện</span>
         </span>
       );
     }
@@ -324,10 +324,10 @@ export const WardRoomMap: React.FC<WardRoomMapProps> = ({
       return (
         <span 
           className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1 py-0.5 rounded bg-blue-600 text-white shrink-0 shadow-2xs leading-none" 
-          title="Dự kiến RV mai"
+          title="RV ngày mai"
         >
           <CalendarDays className="w-2.5 h-2.5 shrink-0" />
-          <span>Dự kiến RV mai</span>
+          <span>RV ngày mai</span>
         </span>
       );
     }

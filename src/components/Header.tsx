@@ -507,7 +507,7 @@ export const Header: React.FC<HeaderProps> = ({
             {dischargeTomorrowCount > 0 && (
               <div className="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-1 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                <span>Dự RV mai:</span>
+                <span>RV ngày mai:</span>
                 <span className="text-blue-800 text-sm font-black">{dischargeTomorrowCount}</span>
               </div>
             )}

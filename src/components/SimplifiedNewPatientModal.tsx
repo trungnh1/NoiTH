@@ -4,7 +4,8 @@ import {
   Patient, 
   Doctor, 
   DepartmentRoom, 
-  SeverityLevel 
+  SeverityLevel,
+  AdmissionDischargeStatus 
 } from '../types/patient';
 import { 
   X, 
@@ -84,6 +85,12 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   const [importantNotes, setImportantNotes] = useState(patientToEdit?.importantNotes || '');
   const [handoverNotes, setHandoverNotes] = useState(patientToEdit?.handoverNotes || '');
   const [severity, setSeverity] = useState<SeverityLevel>(patientToEdit?.severity || 'STABLE');
+  const [admissionStatus, setAdmissionStatus] = useState<AdmissionDischargeStatus>(
+    patientToEdit?.admissionStatus || 'STABLE_INPATIENT'
+  );
+  const [dischargeTomorrowSetDate, setDischargeTomorrowSetDate] = useState<string | undefined>(
+    patientToEdit?.dischargeTomorrowSetDate
+  );
 
   // 3. Mở rộng: Cận lâm sàng & Diễn tiến
   const [isExpanded, setIsExpanded] = useState<boolean>(() => {
@@ -153,6 +160,8 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
         }
       }
 
+      const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
       const updatedPatient: Patient = {
         ...patientToEdit,
         fullName: formatPatientDisplayName(fullName.trim()),
@@ -164,6 +173,10 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
         attendingDoctorId,
         primaryDiagnosis: primaryDiagnosis.trim(),
         severity,
+        admissionStatus,
+        dischargeTomorrowSetDate: admissionStatus === 'DISCHARGE_TOMORROW' 
+          ? (dischargeTomorrowSetDate || todayDateStr) 
+          : undefined,
         treatmentPlan: treatmentPlan.trim() || patientToEdit.treatmentPlan,
         importantNotes: importantNotes.trim() || undefined,
         handoverNotes: handoverNotes.trim() || undefined,
@@ -177,6 +190,8 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
       onClose();
       return;
     }
+
+    const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     // Tạo bệnh nhân mới
     const newPatient: Patient = {
@@ -194,7 +209,8 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
       primaryNurse: 'ĐD. Tua trực tiếp nhận',
       primaryDiagnosis: primaryDiagnosis.trim(),
       severity,
-      admissionStatus: 'ADMITTED_TODAY',
+      admissionStatus: admissionStatus || 'ADMITTED_TODAY',
+      dischargeTomorrowSetDate: admissionStatus === 'DISCHARGE_TOMORROW' ? todayDateStr : undefined,
       tags: [],
       treatmentPlan: treatmentPlan.trim() || 'Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa.',
       importantNotes: importantNotes.trim() || undefined,
@@ -492,52 +508,117 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
                 </div>
               </div>
 
-              {/* Gắn nhãn: Mức Độ Tình Trạng */}
+              {/* Gắn nhãn: Mức Độ Tình Trạng & Ra Viện */}
               <div className="pt-2 border-t border-slate-100">
-                <label className="block text-[11px] font-black text-slate-700 uppercase mb-1.5">
-                  Gắn Nhãn: Mức Độ Tình Trạng
-                </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] font-black text-slate-700 uppercase">
+                    Gắn Nhãn: Mức Độ Tình Trạng
+                  </label>
+                  {admissionStatus === 'DISCHARGE_TODAY' && (
+                    <span className="text-[10.5px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                      🟣 Ra viện
+                    </span>
+                  )}
+                  {admissionStatus === 'DISCHARGE_TOMORROW' && (
+                    <span className="text-[10.5px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                      🔵 RV ngày mai
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <button
                     type="button"
-                    onClick={() => setSeverity('STABLE')}
+                    onClick={() => {
+                      setSeverity('STABLE');
+                      if (admissionStatus === 'DISCHARGE_TOMORROW' || admissionStatus === 'DISCHARGE_TODAY') {
+                        setAdmissionStatus('STABLE_INPATIENT');
+                        setDischargeTomorrowSetDate(undefined);
+                      }
+                    }}
                     className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      severity === 'STABLE'
+                      severity === 'STABLE' && admissionStatus !== 'DISCHARGE_TOMORROW' && admissionStatus !== 'DISCHARGE_TODAY'
                         ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-2 ring-emerald-300'
                         : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
                     }`}
                   >
                     <span>🟢</span>
-                    <span>Ổn Định</span>
-                    {severity === 'STABLE' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    <span>Ổn định</span>
+                    {severity === 'STABLE' && admissionStatus !== 'DISCHARGE_TOMORROW' && admissionStatus !== 'DISCHARGE_TODAY' && (
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    )}
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setSeverity('MODERATE')}
+                    onClick={() => {
+                      setSeverity('MODERATE');
+                      if (admissionStatus === 'DISCHARGE_TOMORROW' || admissionStatus === 'DISCHARGE_TODAY') {
+                        setAdmissionStatus('STABLE_INPATIENT');
+                        setDischargeTomorrowSetDate(undefined);
+                      }
+                    }}
                     className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      severity === 'MODERATE'
+                      severity === 'MODERATE' && admissionStatus !== 'DISCHARGE_TOMORROW' && admissionStatus !== 'DISCHARGE_TODAY'
                         ? 'bg-amber-500 text-white border-amber-500 shadow-xs ring-2 ring-amber-300'
                         : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
                     }`}
                   >
                     <span>🟡</span>
-                    <span>Cần Theo Dõi</span>
-                    {severity === 'MODERATE' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    <span>Cần theo dõi</span>
+                    {severity === 'MODERATE' && admissionStatus !== 'DISCHARGE_TOMORROW' && admissionStatus !== 'DISCHARGE_TODAY' && (
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    )}
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setSeverity('CRITICAL')}
+                    onClick={() => {
+                      setSeverity('CRITICAL');
+                      if (admissionStatus === 'DISCHARGE_TOMORROW' || admissionStatus === 'DISCHARGE_TODAY') {
+                        setAdmissionStatus('STABLE_INPATIENT');
+                        setDischargeTomorrowSetDate(undefined);
+                      }
+                    }}
                     className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      severity === 'CRITICAL'
+                      severity === 'CRITICAL' && admissionStatus !== 'DISCHARGE_TOMORROW' && admissionStatus !== 'DISCHARGE_TODAY'
                         ? 'bg-rose-600 text-white border-rose-600 shadow-xs ring-2 ring-rose-300 animate-pulse'
                         : 'bg-rose-50 text-rose-900 border-rose-200 hover:bg-rose-100'
                     }`}
                   >
                     <span>🔴</span>
-                    <span>Nặng / Nguy Kịch</span>
-                    {severity === 'CRITICAL' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    <span>Nặng</span>
+                    {severity === 'CRITICAL' && admissionStatus !== 'DISCHARGE_TOMORROW' && admissionStatus !== 'DISCHARGE_TODAY' && (
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                      if (admissionStatus === 'DISCHARGE_TOMORROW') {
+                        setAdmissionStatus('STABLE_INPATIENT');
+                        setDischargeTomorrowSetDate(undefined);
+                      } else {
+                        setAdmissionStatus('DISCHARGE_TOMORROW');
+                        setDischargeTomorrowSetDate(todayDateStr);
+                        setSeverity('STABLE');
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      admissionStatus === 'DISCHARGE_TOMORROW'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-300'
+                        : admissionStatus === 'DISCHARGE_TODAY'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-xs ring-2 ring-purple-300'
+                        : 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100'
+                    }`}
+                    title="Bấm để gắn nhãn RV ngày mai (ngày mai sẽ tự nhảy thành nhãn Ra viện)"
+                  >
+                    <span>{admissionStatus === 'DISCHARGE_TODAY' ? '🟣' : '🔵'}</span>
+                    <span>{admissionStatus === 'DISCHARGE_TODAY' ? 'Ra viện' : 'RV ngày mai'}</span>
+                    {(admissionStatus === 'DISCHARGE_TOMORROW' || admissionStatus === 'DISCHARGE_TODAY') && (
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    )}
                   </button>
                 </div>
               </div>

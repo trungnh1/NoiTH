@@ -703,7 +703,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                           : 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100'
                       }`}
                     >
-                      🟣 RV hôm nay
+                      🟣 Ra viện
                     </button>
                     <button
                       type="button"
@@ -714,7 +714,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                           : 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100'
                       }`}
                     >
-                      🔵 Dự kiến RV mai
+                      🔵 RV ngày mai
                     </button>
                   </div>
                 </div>

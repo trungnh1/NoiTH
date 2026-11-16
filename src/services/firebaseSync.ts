@@ -150,6 +150,17 @@ export function mapFirestoreRecordToPatient(docId: string, record: DocumentData)
   
   // If record already has Patient structure from department_patients:
   if (record.fullName && record.roomNumber && record.severity) {
+    let admStatus: AdmissionDischargeStatus = record.admissionStatus || 'STABLE_INPATIENT';
+    let dsSetDate: string | undefined = record.dischargeTomorrowSetDate;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    if (admStatus === 'DISCHARGE_TOMORROW') {
+      if (dsSetDate && dsSetDate < todayStr) {
+        admStatus = 'DISCHARGE_TODAY';
+        dsSetDate = undefined;
+      }
+    }
+
     return {
       id: record.id || docId,
       patientCode: record.patientCode || `BN-${docId.substring(0, 6)}`,
@@ -172,7 +183,8 @@ export function mapFirestoreRecordToPatient(docId: string, record: DocumentData)
       allergies: isRealAllergy(record.allergies) ? record.allergies : undefined,
       medicalHistory: record.medicalHistory || 'Chưa ghi nhận bệnh lý nền đặc biệt',
       severity: record.severity as SeverityLevel,
-      admissionStatus: record.admissionStatus || 'ADMITTED_TODAY',
+      admissionStatus: admStatus,
+      dischargeTomorrowSetDate: dsSetDate,
       tags: record.tags || [],
       importantNotes: record.importantNotes || '',
       handoverNotes: record.handoverNotes || '',

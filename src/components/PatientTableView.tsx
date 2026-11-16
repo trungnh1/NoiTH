@@ -494,30 +494,54 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                                   <div className="py-1 space-y-0.5">
                                     {[
                                       { id: 'CRITICAL', label: 'Nặng', color: 'text-rose-700 hover:bg-rose-50', activeColor: 'bg-rose-600 text-white', dot: 'bg-rose-500' },
-                                      { id: 'MODERATE', label: 'Trung bình', color: 'text-amber-800 hover:bg-amber-50', activeColor: 'bg-amber-500 text-white', dot: 'bg-amber-400' },
-                                      { id: 'STABLE', label: 'Nhẹ (Ổn định)', color: 'text-emerald-700 hover:bg-emerald-50', activeColor: 'bg-emerald-600 text-white', dot: 'bg-emerald-500' },
+                                      { id: 'MODERATE', label: 'Cần theo dõi', color: 'text-amber-800 hover:bg-amber-50', activeColor: 'bg-amber-500 text-white', dot: 'bg-amber-400' },
+                                      { id: 'STABLE', label: 'Ổn định', color: 'text-emerald-700 hover:bg-emerald-50', activeColor: 'bg-emerald-600 text-white', dot: 'bg-emerald-500' },
+                                      { id: 'DISCHARGE_TOMORROW', label: 'RV ngày mai', color: 'text-blue-700 hover:bg-blue-50', activeColor: 'bg-blue-600 text-white', dot: 'bg-blue-400' },
                                       { id: 'UNCLASSIFIED', label: 'Chưa phân loại', color: 'text-slate-600 hover:bg-slate-100', activeColor: 'bg-slate-700 text-white', dot: 'bg-slate-300' },
-                                    ].map((opt) => (
-                                      <button
-                                        key={opt.id}
-                                        type="button"
-                                        onClick={() => {
-                                          if (onUpdatePatient && patient.severity !== opt.id) {
-                                            onUpdatePatient({ ...patient, severity: opt.id as any });
-                                          }
-                                          setOpenSeverityMenuId(null);
-                                        }}
-                                        className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                                          (patient.severity || 'UNCLASSIFIED') === opt.id ? opt.activeColor : opt.color
-                                        }`}
-                                      >
-                                        <span className="flex items-center gap-1.5">
-                                          <span className={`w-2 h-2 rounded-full ${opt.dot}`} />
-                                          <span>{opt.label}</span>
-                                        </span>
-                                        {(patient.severity || 'UNCLASSIFIED') === opt.id && <Check className="w-3 h-3" />}
-                                      </button>
-                                    ))}
+                                    ].map((opt) => {
+                                      const isOptionActive = opt.id === 'DISCHARGE_TOMORROW' 
+                                        ? patient.admissionStatus === 'DISCHARGE_TOMORROW'
+                                        : (patient.severity || 'UNCLASSIFIED') === opt.id && patient.admissionStatus !== 'DISCHARGE_TOMORROW';
+                                      return (
+                                        <button
+                                          key={opt.id}
+                                          type="button"
+                                          onClick={() => {
+                                            if (onUpdatePatient) {
+                                              if (opt.id === 'DISCHARGE_TOMORROW') {
+                                                const now = new Date();
+                                                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                                                onUpdatePatient({
+                                                  ...patient,
+                                                  admissionStatus: 'DISCHARGE_TOMORROW',
+                                                  dischargeTomorrowSetDate: todayStr,
+                                                  severity: 'STABLE',
+                                                });
+                                              } else {
+                                                onUpdatePatient({
+                                                  ...patient,
+                                                  severity: opt.id as any,
+                                                  admissionStatus: (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY')
+                                                    ? 'STABLE_INPATIENT'
+                                                    : patient.admissionStatus,
+                                                  dischargeTomorrowSetDate: undefined,
+                                                });
+                                              }
+                                            }
+                                            setOpenSeverityMenuId(null);
+                                          }}
+                                          className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                                            isOptionActive ? opt.activeColor : opt.color
+                                          }`}
+                                        >
+                                          <span className="flex items-center gap-1.5">
+                                            <span className={`w-2 h-2 rounded-full ${opt.dot}`} />
+                                            <span>{opt.label}</span>
+                                          </span>
+                                          {isOptionActive && <Check className="w-3 h-3" />}
+                                        </button>
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               </>
@@ -534,8 +558,8 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                             }`}>
                               {patient.admissionStatus === 'ADMITTED_TODAY' && '🟢 Nhập hôm nay'}
                               {patient.admissionStatus === 'ADMITTED_YESTERDAY' && '🟡 Nhập hôm qua'}
-                              {patient.admissionStatus === 'DISCHARGE_TODAY' && '🟣 Ra viện hôm nay'}
-                              {patient.admissionStatus === 'DISCHARGE_TOMORROW' && '🔵 Ra viện mai'}
+                              {patient.admissionStatus === 'DISCHARGE_TODAY' && '🟣 Ra viện'}
+                              {patient.admissionStatus === 'DISCHARGE_TOMORROW' && '🔵 RV ngày mai'}
                             </span>
                           )}
                         </div>

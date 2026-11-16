@@ -78,10 +78,11 @@ export function loadPatients(): Patient[] {
 
       let admStatus: AdmissionDischargeStatus = p.admissionStatus || 'STABLE_INPATIENT';
       let dsSetDate = p.dischargeTomorrowSetDate;
-      const todayStr = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
       if (admStatus === 'DISCHARGE_TOMORROW') {
-        if (!dsSetDate || dsSetDate !== todayStr) {
+        if (!dsSetDate || dsSetDate < todayStr) {
           admStatus = 'DISCHARGE_TODAY';
           dsSetDate = undefined;
         }

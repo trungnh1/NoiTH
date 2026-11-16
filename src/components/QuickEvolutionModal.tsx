@@ -526,6 +526,9 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
       allergies: selectedTags.includes('ALLERGY') ? (isRealAllergy(patient.allergies) ? patient.allergies : 'Có dị ứng thuốc/thức ăn') : undefined,
       severity,
       admissionStatus,
+      dischargeTomorrowSetDate: admissionStatus === 'DISCHARGE_TOMORROW'
+        ? (patient.dischargeTomorrowSetDate || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`)
+        : undefined,
       treatmentPlan: treatmentAction.trim() || patient.treatmentPlan,
       importantNotes: handoverNotes.trim() || patient.importantNotes,
       handoverNotes: handoverNotes.trim() || patient.handoverNotes,
@@ -850,7 +853,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                       }`}
                     >
                       <span className="w-2 h-2 rounded-full bg-amber-300 inline-block"></span>
-                      Trung bình
+                      Cần theo dõi
                     </button>
 
                     <button
@@ -887,7 +890,7 @@ export const QuickEvolutionModal: React.FC<QuickEvolutionModalProps> = ({
                       title="Đánh dấu bệnh nhân dự kiến ra viện vào ngày mai"
                     >
                       <span className="w-2 h-2 rounded-full bg-blue-300 inline-block"></span>
-                      Dự RV mai
+                      RV ngày mai
                     </button>
                   </div>
                 </div>

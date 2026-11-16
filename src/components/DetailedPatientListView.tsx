@@ -800,26 +800,54 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     }
   };
 
-  // Thay đổi nhanh phân loại bệnh nhân (Nặng / Trung bình / Nhẹ) trực tiếp 1 chạm từ màn hình chính
-  const handleQuickUpdateSeverity = (patient: Patient, newSeverity: SeverityLevel) => {
-    if (patient.severity === newSeverity) {
-      setOpenSeverityMenuPatientId(null);
-      return;
+  // Thay đổi nhanh phân loại bệnh nhân (Nặng / Cần theo dõi / Ổn định / RV ngày mai) trực tiếp 1 chạm từ màn hình chính
+  const handleQuickUpdateSeverity = (patient: Patient, newSeverity: SeverityLevel | 'DISCHARGE_TOMORROW') => {
+    let updated: Patient;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    if (newSeverity === 'DISCHARGE_TOMORROW') {
+      if (patient.admissionStatus === 'DISCHARGE_TOMORROW') {
+        updated = {
+          ...patient,
+          admissionStatus: 'STABLE_INPATIENT',
+          dischargeTomorrowSetDate: undefined,
+        };
+        setNotification(`Đã bỏ nhãn RV ngày mai cho BN "${formatPatientDisplayName(patient.fullName)}"`);
+      } else {
+        updated = {
+          ...patient,
+          admissionStatus: 'DISCHARGE_TOMORROW',
+          dischargeTomorrowSetDate: todayStr,
+          severity: 'STABLE',
+        };
+        setNotification(`Đã gắn nhãn BN "${formatPatientDisplayName(patient.fullName)}": RV ngày mai`);
+      }
+    } else {
+      if (patient.severity === newSeverity && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY') {
+        setOpenSeverityMenuPatientId(null);
+        return;
+      }
+      updated = {
+        ...patient,
+        severity: newSeverity,
+        admissionStatus: (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY')
+          ? 'STABLE_INPATIENT'
+          : patient.admissionStatus,
+        dischargeTomorrowSetDate: undefined,
+      };
+      const severityLabels: Record<SeverityLevel, string> = {
+        CRITICAL: 'Nặng',
+        MODERATE: 'Cần theo dõi',
+        STABLE: 'Ổn định',
+        UNCLASSIFIED: 'Chưa phân loại',
+      };
+      setNotification(`Đã chuyển phân loại BN "${formatPatientDisplayName(patient.fullName)}" sang: ${severityLabels[newSeverity]}`);
     }
-    const updated: Patient = {
-      ...patient,
-      severity: newSeverity,
-    };
+
     if (onUpdatePatient) {
       onUpdatePatient(updated);
     }
-    const severityLabels: Record<SeverityLevel, string> = {
-      CRITICAL: 'Nặng',
-      MODERATE: 'Trung bình',
-      STABLE: 'Nhẹ',
-      UNCLASSIFIED: 'Chưa phân loại',
-    };
-    setNotification(`Đã chuyển phân loại BN "${formatPatientDisplayName(patient.fullName)}" sang: ${severityLabels[newSeverity]}`);
     setOpenSeverityMenuPatientId(null);
     setTimeout(() => setNotification(null), 3500);
   };
@@ -2057,7 +2085,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                               >
                                                 <span className="flex items-center gap-1.5">
                                                   <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                                                  <span>Trung bình</span>
+                                                  <span>Cần theo dõi</span>
                                                 </span>
                                                 {patient.severity === 'MODERATE' && <Check className="w-3.5 h-3.5" />}
                                               </button>
@@ -2073,12 +2101,28 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                               >
                                                 <span className="flex items-center gap-1.5">
                                                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                                                  <span>Nhẹ (Ổn định)</span>
+                                                  <span>Ổn định</span>
                                                 </span>
                                                 {patient.severity === 'STABLE' && <Check className="w-3.5 h-3.5" />}
                                               </button>
 
                                               <button
+                                                  type="button"
+                                                  onClick={() => handleQuickUpdateSeverity(patient, 'DISCHARGE_TOMORROW')}
+                                                  className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                                                    patient.admissionStatus === 'DISCHARGE_TOMORROW'
+                                                      ? 'bg-blue-600 text-white shadow-xs'
+                                                      : 'text-blue-700 hover:bg-blue-50'
+                                                  }`}
+                                                >
+                                                  <span className="flex items-center gap-1.5">
+                                                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                                                    <span>RV ngày mai</span>
+                                                  </span>
+                                                  {patient.admissionStatus === 'DISCHARGE_TOMORROW' && <Check className="w-3.5 h-3.5" />}
+                                                </button>
+
+                                                <button
                                                 type="button"
                                                 onClick={() => handleQuickUpdateSeverity(patient, 'UNCLASSIFIED')}
                                                 className={`w-full flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
@@ -2103,12 +2147,12 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                                     {isDischargeToday && (
                                       <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase bg-purple-600 text-white shadow-2xs">
-                                        RV hôm nay
+                                        Ra viện
                                       </span>
                                     )}
                                     {isDischargeTomorrow && (
                                       <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase bg-blue-600 text-white shadow-2xs">
-                                        Dự RV mai
+                                        RV ngày mai
                                       </span>
                                     )}
                                   </div>
@@ -2603,7 +2647,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                         >
                                           <span className="flex items-center gap-1.5">
                                             <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                                            <span>Trung bình</span>
+                                            <span>Cần theo dõi</span>
                                           </span>
                                           {patient.severity === 'MODERATE' && <Check className="w-3.5 h-3.5" />}
                                         </button>
@@ -2619,12 +2663,28 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                         >
                                           <span className="flex items-center gap-1.5">
                                             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                                            <span>Nhẹ (Ổn định)</span>
+                                            <span>Ổn định</span>
                                           </span>
                                           {patient.severity === 'STABLE' && <Check className="w-3.5 h-3.5" />}
                                         </button>
 
                                         <button
+                                            type="button"
+                                            onClick={() => handleQuickUpdateSeverity(patient, 'DISCHARGE_TOMORROW')}
+                                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                              patient.admissionStatus === 'DISCHARGE_TOMORROW'
+                                                ? 'bg-blue-600 text-white shadow-xs'
+                                                : 'text-blue-700 hover:bg-blue-50'
+                                            }`}
+                                          >
+                                            <span className="flex items-center gap-1.5">
+                                              <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                                              <span>RV ngày mai</span>
+                                            </span>
+                                            {patient.admissionStatus === 'DISCHARGE_TOMORROW' && <Check className="w-3.5 h-3.5" />}
+                                          </button>
+
+                                          <button
                                           type="button"
                                           onClick={() => handleQuickUpdateSeverity(patient, 'UNCLASSIFIED')}
                                           className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -2649,12 +2709,12 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 {/* Trạng thái ra viện nếu có */}
                                 {isDischargeToday && (
                                   <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-2xs">
-                                    RV hôm nay
+                                    Ra viện
                                   </span>
                                 )}
                                 {isDischargeTomorrow && (
                                   <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-2xs">
-                                    Dự RV mai
+                                    RV ngày mai
                                   </span>
                                 )}
                               </div>

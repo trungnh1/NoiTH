@@ -719,48 +719,128 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
 
                 {/* 1. Mức độ tình trạng bệnh nhân (Severity Pills) */}
                 <div>
-                  <span className="text-[10.5px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">
-                    Tình trạng bệnh nhân:
-                  </span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wide">
+                      Tình trạng & Nhãn người bệnh:
+                    </span>
+                    {patient.admissionStatus === 'DISCHARGE_TODAY' && (
+                      <span className="text-[10px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                        🟣 Ra viện
+                      </span>
+                    )}
+                    {patient.admissionStatus === 'DISCHARGE_TOMORROW' && (
+                      <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                        🔵 RV ngày mai
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => handleChangeSeverity('CRITICAL')}
+                      onClick={() => {
+                        onUpdatePatient({
+                          ...patient,
+                          severity: 'STABLE',
+                          admissionStatus: (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY')
+                            ? 'STABLE_INPATIENT'
+                            : patient.admissionStatus,
+                          dischargeTomorrowSetDate: undefined,
+                        });
+                      }}
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                        patient.severity === 'CRITICAL'
-                          ? 'bg-rose-600 text-white shadow-2xs font-black ring-2 ring-rose-300'
-                          : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
-                      }`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
-                      <span>Nặng (Đỏ)</span>
-                      {patient.severity === 'CRITICAL' && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleChangeSeverity('MODERATE')}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                        patient.severity === 'MODERATE'
-                          ? 'bg-amber-500 text-white shadow-2xs font-black ring-2 ring-amber-300'
-                          : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
-                      }`}
-                    >
-                      <span>Vừa</span>
-                      {patient.severity === 'MODERATE' && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleChangeSeverity('STABLE')}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                        patient.severity === 'STABLE'
+                        patient.severity === 'STABLE' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY'
                           ? 'bg-emerald-600 text-white shadow-2xs font-black ring-2 ring-emerald-300'
                           : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
                       }`}
                     >
                       <span>Ổn định</span>
-                      {patient.severity === 'STABLE' && <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />}
+                      {patient.severity === 'STABLE' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY' && (
+                        <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onUpdatePatient({
+                          ...patient,
+                          severity: 'MODERATE',
+                          admissionStatus: (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY')
+                            ? 'STABLE_INPATIENT'
+                            : patient.admissionStatus,
+                          dischargeTomorrowSetDate: undefined,
+                        });
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        patient.severity === 'MODERATE' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY'
+                          ? 'bg-amber-500 text-white shadow-2xs font-black ring-2 ring-amber-300'
+                          : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                      }`}
+                    >
+                      <span>Cần theo dõi</span>
+                      {patient.severity === 'MODERATE' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY' && (
+                        <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onUpdatePatient({
+                          ...patient,
+                          severity: 'CRITICAL',
+                          admissionStatus: (patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY')
+                            ? 'STABLE_INPATIENT'
+                            : patient.admissionStatus,
+                          dischargeTomorrowSetDate: undefined,
+                        });
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        patient.severity === 'CRITICAL' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY'
+                          ? 'bg-rose-600 text-white shadow-2xs font-black ring-2 ring-rose-300'
+                          : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                      <span>Nặng</span>
+                      {patient.severity === 'CRITICAL' && patient.admissionStatus !== 'DISCHARGE_TOMORROW' && patient.admissionStatus !== 'DISCHARGE_TODAY' && (
+                        <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const now = new Date();
+                        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                        if (patient.admissionStatus === 'DISCHARGE_TOMORROW') {
+                          onUpdatePatient({
+                            ...patient,
+                            admissionStatus: 'STABLE_INPATIENT',
+                            dischargeTomorrowSetDate: undefined,
+                          });
+                        } else {
+                          onUpdatePatient({
+                            ...patient,
+                            admissionStatus: 'DISCHARGE_TOMORROW',
+                            dischargeTomorrowSetDate: todayStr,
+                            severity: 'STABLE',
+                          });
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        patient.admissionStatus === 'DISCHARGE_TOMORROW'
+                          ? 'bg-blue-600 text-white shadow-2xs font-black ring-2 ring-blue-300'
+                          : patient.admissionStatus === 'DISCHARGE_TODAY'
+                          ? 'bg-purple-600 text-white shadow-2xs font-black ring-2 ring-purple-300'
+                          : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
+                      }`}
+                      title="Gắn nhãn: Dự kiến ra viện ngày mai (hôm sau tự chuyển thành Ra viện)"
+                    >
+                      <span>{patient.admissionStatus === 'DISCHARGE_TODAY' ? '🟣 Ra viện' : '🔵 RV ngày mai'}</span>
+                      {(patient.admissionStatus === 'DISCHARGE_TOMORROW' || patient.admissionStatus === 'DISCHARGE_TODAY') && (
+                        <CheckCircle2 className="w-3 h-3 ml-0.5 shrink-0" />
+                      )}
                     </button>
 
                     <button

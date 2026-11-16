@@ -243,8 +243,28 @@ export default function App() {
     // 1. Automatic continuous 2-way sync for Inpatients in Khoa Nội Tổng Hợp
     const unsubDept = subscribeToDepartmentPatients(
       (cloudPatients) => {
-        setPatients(cloudPatients || []);
-        savePatients(cloudPatients || []);
+        if (!cloudPatients) {
+          setPatients([]);
+          return;
+        }
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        
+        const normalized = cloudPatients.map((p) => {
+          if (p.admissionStatus === 'DISCHARGE_TOMORROW' && p.dischargeTomorrowSetDate && p.dischargeTomorrowSetDate < todayStr) {
+            const updated: Patient = {
+              ...p,
+              admissionStatus: 'DISCHARGE_TODAY',
+              dischargeTomorrowSetDate: undefined,
+            };
+            syncPatientToCloud(updated).catch(() => {});
+            return updated;
+          }
+          return p;
+        });
+
+        setPatients(normalized);
+        savePatients(normalized);
         setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
       },
       (status) => {
