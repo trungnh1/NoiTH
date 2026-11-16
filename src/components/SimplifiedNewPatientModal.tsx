@@ -1195,10 +1195,35 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
 
                 {/* 2. Cận lâm sàng & Xét nghiệm (HIS) */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 text-[#0b4d8c]" />
-                    <span>Kết Quả Cận Lâm Sàng & Xét Nghiệm (HIS / Bệnh Án)</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5 text-[#0b4d8c]" />
+                      <span>Kết Quả Cận Lâm Sàng & Xét Nghiệm (HIS / Bệnh Án)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          if (navigator.clipboard?.readText) {
+                            const clipText = await navigator.clipboard.readText();
+                            if (clipText && clipText.trim()) {
+                              const now = new Date();
+                              const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+                              const header = `\n\n--- [Cận Lâm Sàng Mới: ${timeStr}] ---\n`;
+                              setInitialLabsText((prev) => prev.trim() ? `${prev.trim()}${header}${clipText.trim()}` : clipText.trim());
+                            }
+                          }
+                        } catch (e) {
+                          console.warn(e);
+                        }
+                      }}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-lg border border-emerald-200 transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
+                      title="Đọc từ Clipboard và nối tiếp xuống dưới kèm mốc thời gian"
+                    >
+                      <Sparkles className="w-3 h-3 text-emerald-600" />
+                      <span>📋 Dán Nối Tiếp Xuống Dưới</span>
+                    </button>
+                  </div>
                   <textarea
                     rows={4}
                     value={initialLabsText}

@@ -43,7 +43,9 @@ import {
   CreditCard,
   ShieldAlert,
   Loader2,
-  Copy
+  Copy,
+  Check,
+  ClipboardCheck
 } from 'lucide-react';
 
 interface PatientDetailModalProps {
@@ -127,6 +129,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   const [isEditingLabText, setIsEditingLabText] = useState(false);
   const [isQuickAppendingLab, setIsQuickAppendingLab] = useState(false);
   const [newAppendLabText, setNewAppendLabText] = useState('');
+  const [appendSuccessAlert, setAppendSuccessAlert] = useState<string | null>(null);
   const [labCategoryFilter, setLabCategoryFilter] = useState<string>('ALL');
 
   useEffect(() => {
@@ -188,8 +191,9 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   };
 
   // Tự động thêm mốc thời gian, sắp xếp văn bản nối tiếp xuống dưới và tự động phân tích chỉ số mới
-  const handleAutoAppendAndParseNewLabs = () => {
-    if (!newAppendLabText.trim()) return;
+  const handleAutoAppendAndParseNewLabs = (rawTextToAppend?: string) => {
+    const textToProcess = (typeof rawTextToAppend === 'string' ? rawTextToAppend : newAppendLabText).trim();
+    if (!textToProcess) return;
 
     const now = new Date();
     const timeDisplay = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
@@ -197,11 +201,11 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
     // 1. Tự động thêm mốc thời gian và sắp xếp văn bản nối tiếp xuống dưới
     const appendHeader = `\n\n--- [Cận Lâm Sàng Mới: ${timeDisplay}] ---\n`;
     const fullText = initialLabsText.trim()
-      ? `${initialLabsText.trim()}${appendHeader}${newAppendLabText.trim()}`
-      : newAppendLabText.trim();
+      ? `${initialLabsText.trim()}${appendHeader}${textToProcess}`
+      : textToProcess;
 
     // 2. Tự động bóc tách và phân tích các chỉ số mới
-    const newParsedLabs = parseRawLabsText(newAppendLabText, timeDisplay);
+    const newParsedLabs = parseRawLabsText(textToProcess, timeDisplay);
 
     // 3. Tự động sắp xếp các chỉ số xét nghiệm xuống dưới bảng kết quả
     const existingLabs = patient.labs || [];
@@ -217,6 +221,30 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
     setInitialLabsText(fullText);
     setNewAppendLabText('');
     setIsQuickAppendingLab(false);
+
+    // Thông báo phản hồi tức thì cho bác sĩ
+    const count = newParsedLabs.length;
+    setAppendSuccessAlert(`✓ Đã tự động phân tích và đưa ${count > 0 ? `${count} chỉ số mới` : 'kết quả CLS'} nối tiếp xuống dưới!`);
+    setTimeout(() => {
+      setAppendSuccessAlert(null);
+    }, 4500);
+  };
+
+  // Đọc trực tiếp từ Clipboard và tự động phân tích & đưa nối tiếp xuống dưới với 1 chạm
+  const handleDirectClipboardAppend = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          handleAutoAppendAndParseNewLabs(text.trim());
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Clipboard read error or not permitted:', err);
+    }
+    // Mở hộp dán nếu clipboard trống hoặc chưa được cấp quyền đọc tự động
+    setIsQuickAppendingLab(true);
   };
 
   const displayedLabs = useMemo(() => {
@@ -1277,12 +1305,23 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                   </div>
                   
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* NÚT 1 CHẠM: DÁN TỪ CLIPBOARD & ĐƯA XUỐNG DƯỚI NGAY */}
+                    <button
+                      type="button"
+                      onClick={handleDirectClipboardAppend}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-[11px] font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+                      title="Đọc kết quả CLS từ clipboard, tự động phân tích và đưa nối tiếp xuống dưới ngay lập tức"
+                    >
+                      <ClipboardCheck className="w-3.5 h-3.5 text-emerald-200" />
+                      <span>📋 Dán & Đưa Xuống Dưới Ngay</span>
+                    </button>
+
                     {/* NÚT THÊM CLS MỚI NỐI TIẾP XUỐNG DƯỚI */}
                     <button
                       type="button"
                       onClick={() => setIsQuickAppendingLab(!isQuickAppendingLab)}
                       className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-[11px] font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1"
-                      title="Dán kết quả CLS mới từ HIS, hệ thống sẽ tự động thêm mốc thời gian, nối tiếp xuống dưới và phân tích"
+                      title="Mở ô dán kết quả CLS mới từ HIS, tự động phân tích ngay khi dán (Ctrl+V)"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-200" />
                       <span>+ Nối Tiếp CLS Mới Xuống Dưới</span>
@@ -1311,50 +1350,85 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                   </div>
                 </div>
 
+                {/* THÔNG BÁO TỰ ĐỘNG PHÂN TÍCH & ĐƯA XUỐNG DƯỚI THÀNH CÔNG */}
+                {appendSuccessAlert && (
+                  <div className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-1">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 stroke-[3] text-emerald-200" />
+                      <span>{appendSuccessAlert}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAppendSuccessAlert(null)}
+                      className="text-emerald-100 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-emerald-700 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
                 {/* HỘP DÁN NHANH CẬN LÂM SÀNG MỚI ĐỂ NỐI TIẾP XUỐNG DƯỚI */}
                 {isQuickAppendingLab && (
-                  <div className="bg-white p-3 rounded-xl border-2 border-emerald-400 space-y-2.5 shadow-sm animate-in fade-in">
-                    <div className="flex items-center justify-between text-xs font-bold text-emerald-950">
-                      <span className="flex items-center gap-1.5">
+                  <div className="bg-white p-3 rounded-xl border-2 border-emerald-500 space-y-2.5 shadow-sm animate-in fade-in">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-1 pb-1 border-b border-emerald-100">
+                      <span className="flex items-center gap-1.5 font-bold text-emerald-950">
                         <Sparkles className="w-4 h-4 text-emerald-600" />
                         <span>Dán Kết Quả Cận Lâm Sàng Mới (HIS):</span>
                       </span>
-                      <span className="text-[10.5px] text-slate-500 font-medium">
-                        Hệ thống tự động thêm mốc thời gian & nối xuống dưới
+                      <span className="text-[10.5px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        ⚡ Tự động phân tích & đưa xuống dưới ngay khi dán (Ctrl+V)
                       </span>
                     </div>
                     <textarea
                       rows={3}
                       value={newAppendLabText}
                       onChange={(e) => setNewAppendLabText(e.target.value)}
-                      placeholder="Dán nhanh kết quả xét nghiệm mới từ HIS tại đây (e.g. CTM: WBC 14.2, HGB 110, Sinh hóa: K+ 3.2, Troponin hs 45, ECG: Nhịp xoang đều...)"
-                      className="w-full p-2.5 bg-slate-50 border border-emerald-300 rounded-lg text-xs font-mono font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500"
+                      onPaste={(e) => {
+                        const pasted = e.clipboardData?.getData('text');
+                        if (pasted && pasted.trim()) {
+                          e.preventDefault();
+                          handleAutoAppendAndParseNewLabs(pasted.trim());
+                        }
+                      }}
+                      placeholder="Dán (Ctrl+V) kết quả xét nghiệm mới tại đây: Hệ thống sẽ TỰ ĐỘNG PHÂN TÍCH và ĐƯA NỐI TIẾP XUỐNG DƯỚI ngay khi dán..."
+                      className="w-full p-2.5 bg-emerald-50/30 border border-emerald-300 rounded-lg text-xs font-mono font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-400"
                       autoFocus
                     />
-                    <div className="flex items-center justify-end gap-2 text-xs">
+                    <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
                       <button
                         type="button"
-                        onClick={() => {
-                          setIsQuickAppendingLab(false);
-                          setNewAppendLabText('');
-                        }}
-                        className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold cursor-pointer"
+                        onClick={handleDirectClipboardAppend}
+                        className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Đọc từ Clipboard và đưa xuống dưới ngay lập tức"
                       >
-                        Hủy
+                        <ClipboardCheck className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>📋 Dán từ Clipboard</span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleAutoAppendAndParseNewLabs}
-                        disabled={!newAppendLabText.trim()}
-                        className={`px-3.5 py-1.5 rounded-lg font-black text-white shadow-xs flex items-center gap-1.5 transition-all ${
-                          newAppendLabText.trim()
-                            ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 cursor-pointer'
-                            : 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                        }`}
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-                        <span>⚡ Tự Động Phân Tích & Thêm Xuống Dưới</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsQuickAppendingLab(false);
+                            setNewAppendLabText('');
+                          }}
+                          className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold cursor-pointer"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAutoAppendAndParseNewLabs()}
+                          disabled={!newAppendLabText.trim()}
+                          className={`px-3.5 py-1.5 rounded-lg font-black text-white shadow-xs flex items-center gap-1.5 transition-all ${
+                            newAppendLabText.trim()
+                              ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 cursor-pointer'
+                              : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                          }`}
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                          <span>⚡ Tự Động Phân Tích & Thêm Xuống Dưới</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
