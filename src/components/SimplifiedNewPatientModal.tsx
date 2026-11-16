@@ -122,13 +122,42 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
     if (patientToEdit?.todayProgressSummary) {
       return patientToEdit.todayProgressSummary;
     }
+    // Nếu là bệnh nhân từ vệ tinh hoặc có diễn tiến chi tiết: KHÔNG đưa vào ô Tóm tắt diễn tiến hôm nay!
+    const firstEvo = patientToEdit?.evolutions?.[0];
+    if (
+      patientToEdit?.detailedClinicalEvolution || 
+      patientToEdit?.id?.startsWith('SAT-') || 
+      patientToEdit?.id?.startsWith('EXCEL-SAT-') || 
+      firstEvo?.isSatellite || 
+      firstEvo?.id?.startsWith('EV-SAT-') || 
+      firstEvo?.id?.startsWith('EVO-SAT-')
+    ) {
+      return '';
+    }
     if (patientToEdit?.evolutions && patientToEdit.evolutions.length > 0) {
-      return patientToEdit.evolutions[0].clinicalNote || '';
+      const note = patientToEdit.evolutions[0].clinicalNote || '';
+      if (!note.includes('Tiếp nhận bệnh nhân vào khoa') && !note.includes('Tình trạng:')) {
+        return note;
+      }
     }
     return '';
   });
   const [detailedClinicalEvolution, setDetailedClinicalEvolution] = useState(() => {
-    return patientToEdit?.detailedClinicalEvolution || '';
+    if (patientToEdit?.detailedClinicalEvolution) {
+      return patientToEdit.detailedClinicalEvolution;
+    }
+    // Nếu bệnh nhân từ vệ tinh có evolution
+    const firstEvo = patientToEdit?.evolutions?.[0];
+    if (
+      firstEvo?.isSatellite || 
+      firstEvo?.id?.startsWith('EV-SAT-') || 
+      firstEvo?.id?.startsWith('EVO-SAT-') || 
+      patientToEdit?.id?.startsWith('SAT-') || 
+      patientToEdit?.id?.startsWith('EXCEL-SAT-')
+    ) {
+      return firstEvo?.clinicalNote?.split(/\[Sinh hiệu:.*?\]/i)[0]?.trim() || '';
+    }
+    return '';
   });
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);

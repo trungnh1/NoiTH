@@ -727,6 +727,7 @@ export function mapClinicalRecordToPatient(
     clinicalNote: combinedEvoNote,
     treatmentAction: treatmentPlan || '',
     orders: initialLabsText ? `CLS: ${initialLabsText.slice(0, 120)}...` : undefined,
+    isSatellite: true,
   }];
 
   // Mức độ
@@ -757,6 +758,8 @@ export function mapClinicalRecordToPatient(
     tags: parsedVitals.spO2 < 95 ? ['O2_CANULA'] : [],
     treatmentPlan: treatmentPlan || undefined,
     importantNotes: '',
+    todayProgressSummary: undefined, // Bệnh nhân mới nhập từ bệnh án vệ tinh KHÔNG có tóm tắt diễn tiến ở màn hình chính
+    detailedClinicalEvolution: clinicalCourseText || undefined, // Diễn tiến ở bệnh nhân khi mới được nhập từ bệnh án vệ tinh sẽ là diễn tiến chi tiết
     initialLabsText: initialLabsText || undefined,
     vitals: vitalsList,
     evolutions: evolutionsList,

@@ -1103,6 +1103,8 @@ export function mergeExcelAndSatellitePatient(
     allergies: undefined,
     tags: (basePatient.tags || []).filter(t => t !== 'ALLERGY'),
     importantNotes: basePatient.importantNotes || '',
+    detailedClinicalEvolution: basePatient.detailedClinicalEvolution,
+    todayProgressSummary: undefined,
   };
 }
 
@@ -1152,6 +1154,7 @@ export function enrichPatientWithSatelliteData(
   // 3. Khám lâm sàng & Diễn tiến: thêm vào dòng thời gian diễn tiến
   const clinicalCourse = extractFullClinicalCourse(satelliteRecord);
   if (clinicalCourse || satelliteRecord.vitalSigns) {
+    updated.detailedClinicalEvolution = clinicalCourse || updated.detailedClinicalEvolution;
     const note = [clinicalCourse, satelliteRecord.vitalSigns ? `[Sinh hiệu: ${satelliteRecord.vitalSigns}]` : ''].filter(Boolean).join('\n\n');
     const newEvo: ClinicalEvolution = {
       id: `EV-SAT-${Date.now()}`,
@@ -1160,6 +1163,7 @@ export function enrichPatientWithSatelliteData(
       shift: 'Sáng',
       clinicalNote: note || 'Tiếp nhận thông tin lâm sàng từ Bệnh án Vệ tinh',
       treatmentAction: cleanSatelliteTreatmentPlan(satelliteRecord.treatmentPlan || ''),
+      isSatellite: true,
     };
     updated.evolutions = [newEvo, ...(updated.evolutions || [])];
   }

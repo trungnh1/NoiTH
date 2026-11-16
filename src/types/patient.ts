@@ -233,14 +233,16 @@ export interface VitalSign {
 
 export interface ClinicalEvolution {
   id: string;
-  timestamp: string;
+  timestamp?: string;
+  date?: string;
   doctorName: string;
-  shift: 'Sáng' | 'Chiều' | 'Đêm / Trực';
+  shift: 'Sáng' | 'Chiều' | 'Đêm / Trực' | string;
   clinicalNote: string;
   vitalSummary?: string;
   treatmentAction: string;
   orders?: string;
   notes?: string;
+  isSatellite?: boolean;
 }
 
 export interface LabResult {

@@ -272,6 +272,26 @@ export function getLatestDiagnosis(patient: Patient): string {
 }
 
 /**
+ * Kiểm tra xem một diễn tiến có phải là diễn tiến chi tiết từ bệnh án vệ tinh hoặc mẫu tiếp nhận mặc định không.
+ * Các diễn tiến này chỉ xem trong mục chi tiết, KHÔNG hiển thị ở ô tóm tắt trên màn hình chính.
+ */
+export function isSatelliteOrDetailedEvolution(evo?: ClinicalEvolution | null, patient?: Patient | null): boolean {
+  if (!evo && !patient) return false;
+  if (evo?.isSatellite) return true;
+  if (evo?.id?.startsWith('EV-SAT-') || evo?.id?.startsWith('EVO-SAT-')) return true;
+  if (patient?.id?.startsWith('SAT-') || patient?.id?.startsWith('EXCEL-SAT-')) {
+    // Nếu bệnh nhân từ vệ tinh và chưa có tóm tắt diễn tiến riêng
+    if (!patient.todayProgressSummary) return true;
+  }
+  if (patient?.detailedClinicalEvolution && !patient.todayProgressSummary) return true;
+  const note = (evo?.clinicalNote || '').toLowerCase();
+  if (note.includes('bệnh án vệ tinh') || note.includes('tiếp nhận thông tin lâm sàng từ bệnh án vệ tinh')) return true;
+  if (note.includes('tiếp nhận bệnh nhân vào khoa, toàn trạng ổn định')) return true;
+  if (note.includes('tình trạng bệnh tỉnh táo, tiếp xúc tốt, tiếp tục điều trị theo phác đồ')) return true;
+  return false;
+}
+
+/**
  * Định dạng ngày nhập viện hiển thị rõ ràng: DD/MM/YYYY
  */
 export function formatAdmissionDateDisplay(dateStr: string): string {
@@ -1914,7 +1934,10 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                           // Diễn tiến lâm sàng & thay đổi mới nhất
                           const latestEvolution = patient.evolutions && patient.evolutions.length > 0 ? patient.evolutions[0] : null;
-                          const rawClinicalNote = patient.todayProgressSummary?.trim() || latestEvolution?.clinicalNote || '';
+                          const isSatTableEvo = isSatelliteOrDetailedEvolution(latestEvolution, patient);
+                          const rawClinicalNote = patient.todayProgressSummary?.trim() || 
+                            (!isSatTableEvo ? latestEvolution?.clinicalNote : '') || 
+                            '';
                           const clinicalNote = rawClinicalNote.split(/\[Sinh hiệu:.*?\]/i)[0].trim();
 
                           // Sinh hiệu gần nhất
@@ -2536,8 +2559,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                       // Diễn tiến lâm sàng mới nhất / hôm nay
                       const latestEvo = patient.evolutions?.[0];
+                      const isSatCardEvo = isSatelliteOrDetailedEvolution(latestEvo, patient);
                       const todayEvolutionNote = patient.todayProgressSummary?.trim() || 
-                        latestEvo?.clinicalNote?.split(/\[Sinh hiệu:.*?\]/i)[0]?.trim() || 
+                        (!isSatCardEvo ? latestEvo?.clinicalNote?.split(/\[Sinh hiệu:.*?\]/i)[0]?.trim() : '') || 
                         '';
 
                       // Kế hoạch điều trị
