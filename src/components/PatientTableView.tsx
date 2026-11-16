@@ -538,7 +538,9 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                               {patient.admissionStatus === 'DISCHARGE_TOMORROW' && '🔵 Ra viện mai'}
                             </span>
                           )}
-                        </div></td>
+                        </div>
+                      </div>
+                    </td>
 
                     {/* Attending Doctor (With fast in-row re-assign dropdown!) */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
