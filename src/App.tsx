@@ -1080,7 +1080,7 @@ export default function App() {
               setPrefilledBed(undefined);
               setIsSimplifiedNewPatientOpen(true);
             }}
-            onOpenEvolution={(patient) => setEvolutionPatient(patient)}
+            onOpenEvolution={(patient) => setEditingPatient(patient)}
             onSelectPatient={(patient) => setSelectedPatient(patient)}
             onEditPatient={(patient) => setEditingPatient(patient)}
             onTransferPatient={(patient) => setTransferringPatient(patient)}
@@ -1143,7 +1143,7 @@ export default function App() {
               doctors={doctors}
               roomDoctorAssignments={roomDoctorAssignments}
               onSelectPatient={(p) => setSelectedPatient(p)}
-              onOpenEvolution={(p) => setEvolutionPatient(p)}
+              onOpenEvolution={(p) => setEditingPatient(p)}
               onTransferPatient={(p) => setTransferringPatient(p)}
               onUpdatePatient={handleUpdatePatient}
             />

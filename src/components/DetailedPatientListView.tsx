@@ -16,6 +16,7 @@ import {
   Search, 
   UserPlus, 
   FileEdit, 
+  Eye, 
   Calendar, 
   AlertCircle, 
   Stethoscope, 
@@ -2003,13 +2004,12 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               {/* CỘT 2: CHẨN ĐOÁN MỚI NHẤT */}
                               <td className={`${cellPadClass} align-top`}>
                                 <div className="space-y-1">
-                                  {/* Khối chẩn đoán */}
-                                  <div className="p-1.5 px-2 rounded-lg bg-blue-50/70 border border-blue-200/80 shadow-2xs">
-                                    
-                                    <p className="font-bold text-[11.5px] text-slate-900 leading-snug" title={latestDiagnosis}>
+                                  {/* Khối chẩn đoán (Icon & nội dung cùng 1 hàng) */}
+                                  <div className="p-1.5 px-2 rounded-lg bg-blue-50/70 border border-blue-200/80 shadow-2xs flex items-start gap-1.5">
+                                    <Activity className="w-3.5 h-3.5 text-[#0b4d8c] shrink-0 mt-0.5" />
+                                    <p className="font-bold text-[11.5px] text-slate-900 leading-snug flex-1" title={latestDiagnosis}>
                                       {latestDiagnosis}
                                     </p>
-                                    
                                   </div>
 
                                   {/* Sửa phân loại Nặng / TB / Nhẹ 1-chạm & Dự ra viện */}
@@ -2214,9 +2214,9 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               <td className={`${cellPadClass} align-top`}>
                                 <div className="space-y-1">
                                   {currentPlan ? (
-                                    <div className="p-1.5 px-2 rounded-lg bg-emerald-50/70 border border-emerald-200/90 shadow-2xs">
-                                      
-                                      <p className="text-[11.5px] text-emerald-950 font-medium leading-snug whitespace-pre-line line-clamp-4" title={currentPlan}>
+                                    <div className="p-1.5 px-2 rounded-lg bg-emerald-50/70 border border-emerald-200/90 shadow-2xs flex items-start gap-1.5">
+                                      <Stethoscope className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
+                                      <p className="text-[11.5px] text-emerald-950 font-medium leading-snug whitespace-pre-line line-clamp-4 flex-1" title={currentPlan}>
                                         {currentPlan}
                                       </p>
                                     </div>
@@ -2331,12 +2331,15 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 <div className="flex flex-col items-end gap-1 shrink-0">
                                   <button
                                     type="button"
-                                    onClick={() => onOpenEvolution(patient)}
+                                    onClick={() => {
+                                      if (onEditPatient) onEditPatient(patient);
+                                      else onSelectPatient(patient);
+                                    }}
                                     className="w-full py-1 px-1.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-md font-black text-[11px] shadow-xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
-                                    title="Nhập diễn tiến và y lệnh điều trị mới"
+                                    title="Sửa thông tin bệnh nhân & cập nhật diễn tiến"
                                   >
-                                    <Activity className="w-3 h-3 text-white" />
-                                    <span>+ Diễn Tiến</span>
+                                    <FileEdit className="w-3 h-3 text-amber-300" />
+                                    <span>Sửa</span>
                                   </button>
 
                                   <button
@@ -2345,7 +2348,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                     className="w-full py-0.5 px-1.5 bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0b4d8c] border border-slate-200 hover:border-blue-300 rounded-md font-bold text-[10.5px] transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap"
                                     title="Xem chi tiết hồ sơ bệnh nhân"
                                   >
-                                    <FileEdit className="w-3 h-3" />
+                                    <Eye className="w-3 h-3 text-slate-500" />
                                     <span>Chi tiết</span>
                                   </button>
 
@@ -2369,17 +2372,6 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                         title="Lập phiếu ra viện / chuyển viện"
                                       >
                                         <LogOut className="w-3 h-3" />
-                                      </button>
-                                    )}
-
-                                    {onEditPatient && (
-                                      <button
-                                        type="button"
-                                        onClick={() => onEditPatient(patient)}
-                                        className="p-1 rounded-md text-slate-500 hover:text-blue-700 hover:bg-blue-50 border border-slate-200 transition-colors cursor-pointer"
-                                        title="Chỉnh sửa thông tin bệnh nhân"
-                                      >
-                                        <FileEdit className="w-3 h-3" />
                                       </button>
                                     )}
                                   </div>
@@ -2732,47 +2724,39 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               </div>
                             </div>
 
-                            {/* 4. Chẩn đoán (hiển thị bằng Icon) */}
-                            <div className="py-2.5">
-                              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 shadow-2xs">
-                                <div className="flex items-center gap-1.5 text-[#0b4d8c] mb-1" title="Chẩn đoán">
-                                  <Activity className="w-4 h-4 text-[#0b4d8c] shrink-0" />
-                                </div>
-                                <p className="font-bold text-xs sm:text-sm text-slate-900 leading-relaxed" title={latestDiagnosis}>
+                            {/* 4. Chẩn đoán (Icon và nội dung cùng 1 hàng) */}
+                            <div className="py-2">
+                              <div className="p-2.5 sm:p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 shadow-2xs flex items-start gap-2.5">
+                                <Activity className="w-4 h-4 text-[#0b4d8c] shrink-0 mt-0.5" />
+                                <p className="font-bold text-xs sm:text-sm text-slate-900 leading-snug flex-1" title={latestDiagnosis}>
                                   {latestDiagnosis}
                                 </p>
                               </div>
                             </div>
 
-                            {/* 5. Hướng xử trí & Kế hoạch điều trị (hiển thị bằng Icon) */}
-                            <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 mb-2.5 shadow-2xs">
-                              <div className="flex items-center gap-1.5 text-emerald-800 mb-1" title="Hướng xử trí & Kế hoạch điều trị">
-                                <Stethoscope className="w-4 h-4 text-emerald-700 shrink-0" />
-                              </div>
-                              <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-line" title={currentPlan || 'Theo dõi diễn tiến'}>
+                            {/* 5. Hướng xử trí & Kế hoạch điều trị (Icon và nội dung cùng 1 hàng) */}
+                            <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 mb-2 shadow-2xs flex items-start gap-2.5">
+                              <Stethoscope className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                              <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug whitespace-pre-line flex-1" title={currentPlan || 'Theo dõi diễn tiến'}>
                                 {currentPlan || 'Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa'}
                               </p>
                             </div>
 
-                            {/* 7. Ghi chú của bs (hiển thị bằng Icon) */}
+                            {/* 7. Ghi chú của bs (Icon và nội dung cùng 1 hàng) */}
                             {doctorNotes && (
-                              <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/80 mb-2.5 shadow-2xs">
-                                <div className="flex items-center gap-1.5 text-amber-900 mb-1" title="Ghi chú lâm sàng của bác sĩ">
-                                  <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
-                                </div>
-                                <p className="text-xs font-medium text-slate-800 leading-relaxed whitespace-pre-line" title={doctorNotes}>
+                              <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/80 mb-2 shadow-2xs flex items-start gap-2.5">
+                                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                                <p className="text-xs font-medium text-slate-800 leading-snug whitespace-pre-line flex-1" title={doctorNotes}>
                                   {doctorNotes}
                                 </p>
                               </div>
                             )}
 
-                            {/* 8. Bàn giao bệnh (hiển thị bằng Icon) */}
+                            {/* 8. Bàn giao bệnh (Icon và nội dung cùng 1 hàng) */}
                             {handoverNotes && (
-                              <div className="p-2.5 rounded-xl bg-indigo-50/60 border border-indigo-200/80 mb-2.5 shadow-2xs">
-                                <div className="flex items-center gap-1.5 text-indigo-900 mb-1" title="Nội dung bàn giao bệnh">
-                                  <ArrowRightLeft className="w-4 h-4 text-indigo-700 shrink-0" />
-                                </div>
-                                <p className="text-xs font-medium text-slate-800 leading-relaxed whitespace-pre-line" title={handoverNotes}>
+                              <div className="p-2.5 rounded-xl bg-indigo-50/60 border border-indigo-200/80 mb-2 shadow-2xs flex items-start gap-2.5">
+                                <ArrowRightLeft className="w-4 h-4 text-indigo-700 shrink-0 mt-0.5" />
+                                <p className="text-xs font-medium text-slate-800 leading-snug whitespace-pre-line flex-1" title={handoverNotes}>
                                   {handoverNotes}
                                 </p>
                               </div>
@@ -2780,16 +2764,19 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                           </div>
 
-                          {/* Bottom Action Buttons: + Diễn Tiến, Chi Tiết, Sửa, Chuyển, Ra viện, Xóa */}
+                          {/* Bottom Action Buttons: Sửa Bệnh Nhân, Chi Tiết, Chuyển, Ra viện, Xóa */}
                           <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5 mt-auto">
                             <button
                               type="button"
-                              onClick={() => onOpenEvolution(patient)}
-                              className="flex-1 sm:flex-initial py-2.5 sm:py-1.5 px-3.5 min-h-[42px] bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-xl font-black text-xs shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
-                              title="Nhập diễn tiến và hướng xử trí / kế hoạch điều trị"
+                              onClick={() => {
+                                if (onEditPatient) onEditPatient(patient);
+                                else onSelectPatient(patient);
+                              }}
+                              className="flex-1 sm:flex-initial py-2.5 sm:py-1.5 px-4 min-h-[42px] bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-xl font-black text-xs shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                              title="Sửa thông tin bệnh nhân & cập nhật diễn tiến điều trị"
                             >
-                              <Activity className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-white" />
-                              <span>+ Diễn Tiến</span>
+                              <FileEdit className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
+                              <span>Sửa Bệnh Nhân</span>
                             </button>
 
                             <div className="flex items-center gap-1 flex-wrap shrink-0">
@@ -2799,22 +2786,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                 className="py-2.5 sm:py-1.5 px-3 min-h-[42px] bg-white hover:bg-blue-50 hover:text-[#0b4d8c] text-slate-700 border border-slate-200 hover:border-blue-300 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs active:scale-95"
                                 title="Xem chi tiết hồ sơ bệnh nhân"
                               >
-                                <FileEdit className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                                <Eye className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-slate-500" />
                                 <span>Chi tiết</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (onEditPatient) onEditPatient(patient);
-                                  else onSelectPatient(patient);
-                                }}
-                                className="py-1.5 px-2 bg-white hover:bg-amber-50 hover:text-amber-800 text-slate-700 border border-slate-200 hover:border-amber-300 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                                title="Chỉnh sửa thông tin bệnh nhân"
-                              >
-                                <FileEdit className="w-3 h-3" />
-                                <span>Sửa</span>
                               </button>
 
                               <button

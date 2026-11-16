@@ -22,6 +22,7 @@ import {
   Check, 
   ArrowRightLeft, 
   Edit3, 
+  FileEdit, 
   ShieldAlert, 
   HeartPulse, 
   Wind, 
@@ -761,10 +762,10 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                               type="button"
                               onClick={() => onOpenEvolution(patient)}
                               className="text-[10.5px] font-bold text-cyan-800 hover:text-cyan-900 hover:underline flex items-center gap-1 cursor-pointer"
-                              title="Thêm diễn tiến mới cho bệnh nhân này"
+                              title="Sửa thông tin bệnh nhân & cập nhật diễn tiến"
                             >
-                              <Activity className="w-3 h-3 text-cyan-700" />
-                              <span>+ Thêm diễn tiến</span>
+                              <FileEdit className="w-3 h-3 text-cyan-700" />
+                              <span>Sửa bệnh nhân</span>
                             </button>
                           </div>
                         )}

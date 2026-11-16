@@ -135,30 +135,46 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
       : admissionDateTime;
 
     const ageNum = Number(age) || 50;
+    const nowFormatted = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const hour = now.getHours();
+    const currentShift = (hour >= 7 && hour < 17) ? ('Hành chính' as const) : ('Trực đêm' as const);
+    const doctorName = doctors.find((d) => d.id === attendingDoctorId)?.name || currentUser?.name || 'BS. Điều trị';
 
-    // Chuẩn bị diễn tiến nếu có
+    // Chuẩn bị diễn tiến ban đầu nếu thêm mới bệnh nhân
     const initialEvolution = {
       id: `EVO-${Date.now()}`,
       date: formattedAdmissionDate,
       clinicalNote: admissionClinicalNote.trim() || 'Tiếp nhận bệnh nhân vào khoa, toàn trạng ổn định, tiếp tục theo dõi và điều trị theo phác đồ.',
       treatmentAction: treatmentPlan.trim() || 'Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa.',
-      doctorName: doctors.find((d) => d.id === attendingDoctorId)?.name || currentUser?.name || 'BS. Điều trị',
-      shift: 'Hành chính' as const,
+      doctorName,
+      shift: currentShift,
     };
 
     if (isEditing && patientToEdit) {
-      let updatedEvolutions = [...(patientToEdit.evolutions || [])];
-      if (admissionClinicalNote.trim()) {
-        if (updatedEvolutions.length > 0) {
-          updatedEvolutions[0] = {
-            ...updatedEvolutions[0],
-            clinicalNote: admissionClinicalNote.trim(),
-            treatmentAction: treatmentPlan.trim() || updatedEvolutions[0].treatmentAction,
-          };
-        } else {
-          updatedEvolutions.push(initialEvolution);
-        }
-      }
+      // Mỗi lần sửa coi như 1 lần nhập diễn tiến mới
+      const statusText = admissionStatus === 'DISCHARGE_TOMORROW' 
+        ? 'Dự kiến ra viện ngày mai' 
+        : admissionStatus === 'DISCHARGE_TODAY'
+        ? 'Ra viện'
+        : severity === 'CRITICAL' 
+        ? 'Nặng / Nguy kịch' 
+        : severity === 'MODERATE' 
+        ? 'Cần theo dõi' 
+        : 'Ổn định';
+
+      const autoClinicalNote = admissionClinicalNote.trim() || 
+        `Tình trạng: ${statusText}. Chẩn đoán hiện tại: ${primaryDiagnosis.trim()}.${importantNotes.trim() ? ` Lưu ý: ${importantNotes.trim()}` : ''}${handoverNotes.trim() ? ` Bàn giao: ${handoverNotes.trim()}` : ''}`;
+
+      const newEditEvolution = {
+        id: `EVO-${Date.now()}`,
+        date: nowFormatted,
+        clinicalNote: autoClinicalNote,
+        treatmentAction: treatmentPlan.trim() || 'Theo dõi sinh hiệu, tiếp tục điều trị theo phác đồ nội khoa.',
+        doctorName,
+        shift: currentShift,
+      };
+
+      const updatedEvolutions = [newEditEvolution, ...(patientToEdit.evolutions || [])];
 
       const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
