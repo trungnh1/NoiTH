@@ -775,9 +775,9 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                     {/* 5. HƯỚNG XỬ TRÍ & ĐIỀU TRỊ (THAY THẾ CHO THUỐC CHÍNH) */}
                     <td className={`${padClass} align-top bg-emerald-50/20 print:bg-transparent`}>
                       <div className="space-y-1">
-                        <p className="font-semibold text-slate-900 leading-snug whitespace-pre-line line-clamp-4" title={treatmentPlanText || 'Theo dõi và điều trị theo phác đồ nội khoa'}>
+                        <p className="font-semibold text-slate-900 leading-snug whitespace-pre-line line-clamp-4" title={treatmentPlanText || 'Nhập hướng điều trị'}>
                           {treatmentPlanText || (
-                            <span className="text-slate-400 italic">Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa</span>
+                            <span className="text-slate-400 italic">Nhập hướng điều trị</span>
                           )}
                         </p>
                       </div>

@@ -183,7 +183,7 @@ export function formatCombinedDiagnosis(patient: { primaryDiagnosis: string; sec
       parts.push(sec);
     }
   }
-  return parts.join(' - ') || 'Chưa ghi nhận chẩn đoán';
+  return parts.join(' - ') || 'Nhập chẩn đoán';
 }
 
 /**
@@ -538,7 +538,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
       const match = findBestPatientMatchForSatelliteRecord(rec, activeInpatients);
       if (match) {
         const p = match.patient;
-        const hasSpecificDiagnosis = p.primaryDiagnosis && p.primaryDiagnosis.trim().length > 3 && !/chưa ghi rõ|theo dõi bệnh nội khoa/i.test(p.primaryDiagnosis);
+        const hasSpecificDiagnosis = p.primaryDiagnosis && p.primaryDiagnosis.trim().length > 3 && !/chưa ghi rõ|chưa ghi nhận|nhập chẩn đoán|theo dõi bệnh nội khoa/i.test(p.primaryDiagnosis);
         const hasVitals = p.vitals && p.vitals.length > 0;
         const isAlreadyFullyMerged = p.id.includes(rec.id) || (hasSpecificDiagnosis && hasVitals);
 
@@ -2216,7 +2216,12 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                       </p>
                                     </div>
                                   ) : (
-                                    <span className="text-slate-300 font-bold block text-center py-1">-</span>
+                                    <div className="p-1.5 px-2 rounded-lg bg-slate-50 border border-slate-200 shadow-2xs flex items-start gap-1.5">
+                                      <Stethoscope className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                                      <p className="text-[11.5px] text-amber-700 italic font-medium leading-snug flex-1">
+                                        Nhập hướng điều trị
+                                      </p>
+                                    </div>
                                   )}
                                 </div>
                               </td>
@@ -2323,14 +2328,14 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                               {/* THAO TÁC */}
                               <td className={`${cellPadClass} align-top text-right`}>
-                                <div className="flex flex-col items-end gap-1 shrink-0">
+                                <div className="flex items-center justify-end gap-1 shrink-0 whitespace-nowrap">
                                   <button
                                     type="button"
                                     onClick={() => {
                                       if (onEditPatient) onEditPatient(patient);
                                       else onSelectPatient(patient);
                                     }}
-                                    className="w-full py-1 px-1.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-md font-black text-[11px] shadow-xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                                    className="py-1 px-1.5 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-md font-black text-[11px] shadow-xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                                     title="Nhập diễn tiến & cập nhật thông tin bệnh nhân"
                                   >
                                     <FileEdit className="w-3 h-3 text-amber-300" />
@@ -2340,36 +2345,48 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                                   <button
                                     type="button"
                                     onClick={() => onSelectPatient(patient)}
-                                    className="w-full py-0.5 px-1.5 bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0b4d8c] border border-slate-200 hover:border-blue-300 rounded-md font-bold text-[10.5px] transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap"
+                                    className="py-1 px-1.5 bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0b4d8c] border border-slate-200 hover:border-blue-300 rounded-md font-bold text-[10.5px] transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap"
                                     title="Xem chi tiết hồ sơ bệnh nhân"
                                   >
                                     <Eye className="w-3 h-3 text-slate-500" />
                                     <span>Chi tiết</span>
                                   </button>
 
-                                  <div className="flex items-center gap-1 w-full justify-end pt-0.5">
-                                    {onTransferPatient && (
-                                      <button
-                                        type="button"
-                                        onClick={() => onTransferPatient(patient)}
-                                        className="p-1 rounded-md text-slate-500 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 transition-colors cursor-pointer"
-                                        title="Chuyển buồng phòng"
-                                      >
-                                        <ArrowRightLeft className="w-3 h-3" />
-                                      </button>
-                                    )}
+                                  {onTransferPatient && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onTransferPatient(patient)}
+                                      className="p-1 rounded-md text-slate-500 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 transition-colors cursor-pointer"
+                                      title="Chuyển buồng phòng"
+                                    >
+                                      <ArrowRightLeft className="w-3 h-3" />
+                                    </button>
+                                  )}
 
-                                    {onDischargePatient && (
-                                      <button
-                                        type="button"
-                                        onClick={() => onDischargePatient(patient)}
-                                        className="p-1 rounded-md text-slate-500 hover:text-purple-700 hover:bg-purple-50 border border-slate-200 transition-colors cursor-pointer"
-                                        title="Lập phiếu ra viện / chuyển viện"
-                                      >
-                                        <LogOut className="w-3 h-3" />
-                                      </button>
-                                    )}
-                                  </div>
+                                  {onDischargePatient && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onDischargePatient(patient)}
+                                      className="p-1 rounded-md text-slate-500 hover:text-purple-700 hover:bg-purple-50 border border-slate-200 transition-colors cursor-pointer"
+                                      title="Lập phiếu ra viện / chuyển viện"
+                                    >
+                                      <LogOut className="w-3 h-3" />
+                                    </button>
+                                  )}
+
+                                  {onDeletePatient && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDeletePatient(patient);
+                                      }}
+                                      className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-colors cursor-pointer"
+                                      title="Xóa bệnh nhân khỏi hệ thống"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -2723,8 +2740,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                             <div className="py-2">
                               <div className="p-2.5 sm:p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 shadow-2xs flex items-start gap-2.5">
                                 <Activity className="w-4 h-4 text-[#0b4d8c] shrink-0 mt-0.5" />
-                                <p className="font-bold text-xs sm:text-sm text-slate-900 leading-snug flex-1" title={latestDiagnosis}>
-                                  {latestDiagnosis}
+                                <p className={`font-bold text-xs sm:text-sm leading-snug flex-1 ${!patient.primaryDiagnosis || patient.primaryDiagnosis === 'Nhập chẩn đoán' || latestDiagnosis === 'Nhập chẩn đoán' ? 'text-amber-700 italic font-medium' : 'text-slate-900'}`} title={latestDiagnosis}>
+                                  {latestDiagnosis || 'Nhập chẩn đoán'}
                                 </p>
                               </div>
                             </div>
@@ -2732,8 +2749,8 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                             {/* 5. Hướng xử trí & Kế hoạch điều trị (Icon và nội dung cùng 1 hàng) */}
                             <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 mb-2 shadow-2xs flex items-start gap-2.5">
                               <Stethoscope className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                              <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug whitespace-pre-line flex-1" title={currentPlan || 'Theo dõi diễn tiến'}>
-                                {currentPlan || 'Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa'}
+                              <p className={`text-xs sm:text-sm leading-snug whitespace-pre-line flex-1 ${!currentPlan || currentPlan === 'Nhập hướng điều trị' ? 'text-amber-700 italic font-medium' : 'font-semibold text-slate-800'}`} title={currentPlan || 'Nhập hướng điều trị'}>
+                                {currentPlan || 'Nhập hướng điều trị'}
                               </p>
                             </div>
 
@@ -2759,71 +2776,69 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
 
                           </div>
 
-                          {/* Bottom Action Buttons: Sửa Bệnh Nhân, Chi Tiết, Chuyển, Ra viện, Xóa */}
-                          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5 mt-auto">
+                          {/* Bottom Action Buttons: Nhập diễn tiến, Chi Tiết, Chuyển, Ra viện, Xóa cùng 1 dòng */}
+                          <div className="pt-2.5 border-t border-slate-100 flex items-center gap-1 sm:gap-1.5 w-full mt-auto flex-nowrap">
                             <button
                               type="button"
                               onClick={() => {
                                 if (onEditPatient) onEditPatient(patient);
                                 else onSelectPatient(patient);
                               }}
-                              className="flex-1 sm:flex-initial py-2.5 sm:py-1.5 px-4 min-h-[42px] bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-xl font-black text-xs shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                              className="flex-1 py-1.5 px-2 bg-gradient-to-r from-[#0b4d8c] to-[#083a69] hover:from-[#094178] hover:to-[#062c52] text-white rounded-lg font-black text-[11px] sm:text-xs shadow-xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap min-w-0"
                               title="Sửa thông tin bệnh nhân & cập nhật diễn tiến điều trị"
                             >
-                              <FileEdit className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
-                              <span>Nhập diễn tiến</span>
+                              <FileEdit className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                              <span className="truncate">Nhập diễn tiến</span>
                             </button>
 
-                            <div className="flex items-center gap-1 flex-wrap shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => onSelectPatient(patient)}
-                                className="py-2.5 sm:py-1.5 px-3 min-h-[42px] bg-white hover:bg-blue-50 hover:text-[#0b4d8c] text-slate-700 border border-slate-200 hover:border-blue-300 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs active:scale-95"
-                                title="Xem chi tiết hồ sơ bệnh nhân"
-                              >
-                                <Eye className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-slate-500" />
-                                <span>Chi tiết</span>
-                              </button>
+                            <button
+                              type="button"
+                              onClick={() => onSelectPatient(patient)}
+                              className="py-1.5 px-2 bg-white hover:bg-blue-50 hover:text-[#0b4d8c] text-slate-700 border border-slate-200 hover:border-blue-300 rounded-lg font-bold text-[11px] sm:text-xs transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs active:scale-95 whitespace-nowrap shrink-0"
+                              title="Xem chi tiết hồ sơ bệnh nhân"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                              <span>Chi tiết</span>
+                            </button>
 
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (onTransferPatient) onTransferPatient(patient);
-                                }}
-                                className="py-1.5 px-2 bg-white hover:bg-indigo-50 hover:text-indigo-800 text-slate-700 border border-slate-200 hover:border-indigo-300 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                                title="Chuyển bệnh nhân sang buồng phòng khác"
-                              >
-                                <ArrowRightLeft className="w-3 h-3" />
-                                <span>Chuyển</span>
-                              </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onTransferPatient) onTransferPatient(patient);
+                              }}
+                              className="py-1.5 px-2 bg-white hover:bg-indigo-50 hover:text-indigo-800 text-slate-700 border border-slate-200 hover:border-indigo-300 rounded-lg font-bold text-[11px] sm:text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
+                              title="Chuyển bệnh nhân sang buồng phòng khác"
+                            >
+                              <ArrowRightLeft className="w-3 h-3 text-indigo-600 shrink-0" />
+                              <span>Chuyển</span>
+                            </button>
 
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (onDischargePatient) onDischargePatient(patient);
-                                }}
-                                className="py-1.5 px-2 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 hover:border-emerald-300 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                                title="Bấm đã ra viện (rời khỏi buồng phòng)"
-                              >
-                                <LogOut className="w-3 h-3" />
-                                <span>Ra viện</span>
-                              </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onDischargePatient) onDischargePatient(patient);
+                              }}
+                              className="py-1.5 px-2 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 hover:border-emerald-300 rounded-lg font-bold text-[11px] sm:text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
+                              title="Bấm đã ra viện (rời khỏi buồng phòng)"
+                            >
+                              <LogOut className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span>Ra viện</span>
+                            </button>
 
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (onDeletePatient) onDeletePatient(patient);
-                                }}
-                                className="py-1.5 px-2 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 text-slate-400 border border-slate-200 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                                title="Xóa bệnh nhân khỏi hệ thống"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                                <span>Xóa</span>
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onDeletePatient) onDeletePatient(patient);
+                              }}
+                              className="py-1.5 px-2 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 text-slate-400 hover:text-rose-600 border border-slate-200 rounded-lg font-bold text-[11px] sm:text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
+                              title="Xóa bệnh nhân khỏi hệ thống"
+                            >
+                              <Trash2 className="w-3 h-3 text-rose-500 shrink-0" />
+                              <span>Xóa</span>
+                            </button>
                           </div>
 
                         </div>

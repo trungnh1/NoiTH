@@ -436,8 +436,8 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
 
                     {/* Primary Diagnosis */}
                     <td className="py-3.5 px-4 max-w-xs">
-                      <p className="font-bold text-slate-900 text-xs line-clamp-2" title={patient.primaryDiagnosis}>
-                        {patient.primaryDiagnosis}
+                      <p className={`font-bold text-xs line-clamp-2 ${!patient.primaryDiagnosis || patient.primaryDiagnosis === 'Nhập chẩn đoán' ? 'text-amber-700 italic font-medium' : 'text-slate-900'}`} title={patient.primaryDiagnosis || 'Nhập chẩn đoán'}>
+                        {patient.primaryDiagnosis || 'Nhập chẩn đoán'}
                       </p>
                       
                       {patient.secondaryDiagnosis && (

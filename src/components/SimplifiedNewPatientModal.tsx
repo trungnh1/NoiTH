@@ -94,8 +94,12 @@ export const SimplifiedNewPatientModal: React.FC<SimplifiedNewPatientModalProps>
   const attendingDoctor = doctors.find((d) => d.id === attendingDoctorId);
 
   // 2. Chẩn đoán, Hướng xử trí, Ghi chú, Bàn giao & Gắn nhãn Mức Độ Tình Trạng
-  const [primaryDiagnosis, setPrimaryDiagnosis] = useState(patientToEdit?.primaryDiagnosis || '');
-  const [treatmentPlan, setTreatmentPlan] = useState(patientToEdit?.treatmentPlan || '');
+  const [primaryDiagnosis, setPrimaryDiagnosis] = useState(
+    patientToEdit?.primaryDiagnosis === 'Nhập chẩn đoán' ? '' : (patientToEdit?.primaryDiagnosis || '')
+  );
+  const [treatmentPlan, setTreatmentPlan] = useState(
+    patientToEdit?.treatmentPlan === 'Nhập hướng điều trị' ? '' : (patientToEdit?.treatmentPlan || '')
+  );
   const [importantNotes, setImportantNotes] = useState(patientToEdit?.importantNotes || '');
   const [handoverNotes, setHandoverNotes] = useState(patientToEdit?.handoverNotes || '');
   const [severity, setSeverity] = useState<SeverityLevel>(patientToEdit?.severity || 'STABLE');
@@ -231,7 +235,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
       id: `EVO-${Date.now()}`,
       date: formattedAdmissionDate,
       clinicalNote: admissionClinicalNote.trim() || 'Tiếp nhận bệnh nhân vào khoa, toàn trạng ổn định, tiếp tục theo dõi và điều trị theo phác đồ.',
-      treatmentAction: treatmentPlan.trim() || 'Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa.',
+      treatmentAction: treatmentPlan.trim() || 'Nhập hướng điều trị',
       doctorName,
       shift: currentShift,
     };
@@ -318,7 +322,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
       admissionStatus: admissionStatus || 'ADMITTED_TODAY',
       dischargeTomorrowSetDate: admissionStatus === 'DISCHARGE_TOMORROW' ? todayDateStr : undefined,
       tags: [],
-      treatmentPlan: treatmentPlan.trim() || 'Theo dõi sinh hiệu, điều trị theo phác đồ nội khoa.',
+      treatmentPlan: treatmentPlan.trim() || 'Nhập hướng điều trị',
       importantNotes: importantNotes.trim() || undefined,
       handoverNotes: handoverNotes.trim() || undefined,
       initialLabsText: initialLabsText.trim() || undefined,
@@ -343,7 +347,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
         title="Bấm bên ngoài để đóng" 
       />
 
-      <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 flex flex-col max-h-[94vh] animate-in zoom-in-95 duration-150">
         
         {/* Header Modal */}
         <div className="px-4 sm:px-6 py-3.5 bg-gradient-to-r from-[#0b4d8c] via-[#083a69] to-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs">
@@ -934,7 +938,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                   <span>Hướng Xử Trí / Kế Hoạch Điều Trị</span>
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={treatmentPlan}
                   onChange={(e) => setTreatmentPlan(e.target.value)}
                   placeholder="Nhập y lệnh điều trị, kháng sinh, dịch truyền, chế độ ăn, theo dõi sinh hiệu..."
@@ -951,7 +955,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                     <span>Ghi Chú Của Bác Sĩ</span>
                   </label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     value={importantNotes}
                     onChange={(e) => setImportantNotes(e.target.value)}
                     placeholder="Lưu ý đặc biệt, nhắc nhở theo dõi..."
@@ -966,7 +970,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                     <span>Bàn Giao Ca Trực</span>
                   </label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     value={handoverNotes}
                     onChange={(e) => setHandoverNotes(e.target.value)}
                     placeholder="Dặn dò trực đêm, việc cần làm ca tiếp theo..."
@@ -1117,7 +1121,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                     <span>Kết Quả Cận Lâm Sàng & Xét Nghiệm (HIS / Bệnh Án)</span>
                   </label>
                   <textarea
-                    rows={3}
+                    rows={4}
                     value={initialLabsText}
                     onChange={(e) => setInitialLabsText(e.target.value)}
                     placeholder="Dán hoặc nhập kết quả xét nghiệm máu (CTM, Sinh hóa), X-Quang phổi, CT Scanner, Siêu âm, ECG từ HIS..."
@@ -1132,7 +1136,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                     <span>Diễn Tiến Lâm Sàng & Thăm Khám</span>
                   </label>
                   <textarea
-                    rows={3}
+                    rows={5}
                     value={admissionClinicalNote}
                     onChange={(e) => setAdmissionClinicalNote(e.target.value)}
                     placeholder="Nhập diễn biến lâm sàng, triệu chứng cơ năng, thăm khám thực thể lúc tiếp nhận / hiện tại..."

@@ -177,7 +177,7 @@ export function mapFirestoreRecordToPatient(docId: string, record: DocumentData)
       bedNumber: record.bedNumber || 'Giường 01',
       attendingDoctorId: record.attendingDoctorId || '00161',
       primaryNurse: record.primaryNurse || 'ĐD. Tua trực',
-      primaryDiagnosis: record.primaryDiagnosis || 'Chưa ghi rõ chẩn đoán',
+      primaryDiagnosis: record.primaryDiagnosis || 'Nhập chẩn đoán',
       icd10Primary: record.icd10Primary,
       secondaryDiagnosis: record.secondaryDiagnosis,
       allergies: isRealAllergy(record.allergies) ? record.allergies : undefined,

@@ -1087,9 +1087,9 @@ export function mergeExcelAndSatellitePatient(
     insuranceType: excelRow.insuranceType || basePatient.insuranceType,
     treatmentDays: excelRow.treatmentDays !== undefined ? excelRow.treatmentDays : basePatient.treatmentDays,
     
-    // LÂM SÀNG: Luôn ưu tiên chẩn đoán của bác sĩ từ Vệ tinh (bỏ qua mã ICD của Excel)
-    primaryDiagnosis: satelliteRecord.diagnosis || basePatient.primaryDiagnosis || '',
-    treatmentPlan: cleanSatelliteTreatmentPlan(satelliteRecord.treatmentPlan || basePatient.treatmentPlan || excelRow.treatmentPlan || ''),
+    // LÂM SÀNG: Luôn ưu tiên chẩn đoán của bác sĩ từ Vệ tinh (bỏ qua mã ICD của Excel), mặc định 'Nhập chẩn đoán'
+    primaryDiagnosis: satelliteRecord.diagnosis || basePatient.primaryDiagnosis || 'Nhập chẩn đoán',
+    treatmentPlan: cleanSatelliteTreatmentPlan(satelliteRecord.treatmentPlan || basePatient.treatmentPlan || excelRow.treatmentPlan || '') || 'Nhập hướng điều trị',
     medicalHistory: satelliteRecord.medicalHistory || basePatient.medicalHistory || excelRow.medicalHistory,
     
     // Bác sĩ điều trị: giữ buồng phòng hoặc gán
@@ -1116,7 +1116,7 @@ export function enrichPatientWithSatelliteData(
   const updated: Patient = { ...existingPatient };
 
   // 1. Chẩn đoán lâm sàng: nếu bệnh nhân chưa có hoặc chẩn đoán sơ sài -> cập nhật từ vệ tinh
-  if (satelliteRecord.diagnosis && (!updated.primaryDiagnosis || /chưa ghi rõ|theo dõi bệnh nội khoa/i.test(updated.primaryDiagnosis))) {
+  if (satelliteRecord.diagnosis && (!updated.primaryDiagnosis || /chưa ghi rõ|chưa ghi nhận|nhập chẩn đoán|theo dõi bệnh nội khoa/i.test(updated.primaryDiagnosis))) {
     updated.primaryDiagnosis = satelliteRecord.diagnosis.trim();
   }
 

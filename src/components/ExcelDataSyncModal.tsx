@@ -302,17 +302,17 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       insuranceNumber: excelRow.insuranceNumber || undefined,
       insuranceType: excelRow.insuranceType || undefined,
       treatmentDays: excelRow.treatmentDays,
-      // Theo yêu cầu BS: Bỏ qua chẩn đoán ICD trong file Excel, để trống chờ bác sĩ khám và chẩn đoán lâm sàng
-      primaryDiagnosis: '',
+      // Theo yêu cầu BS: Mặc định hiển thị "Nhập chẩn đoán" cho bệnh nhân nhập từ Excel chờ bác sĩ khám
+      primaryDiagnosis: 'Nhập chẩn đoán',
       medicalHistory: excelRow.medicalHistory || undefined,
-      // Theo yêu cầu BS: khi dán nhãn từ dữ liệu Excel, để CHƯA PHÂN LOẠI
+      // Theo yêu cầu BS: khi dán nhãn từ dữ liệu Excel, để Chưa phân loại
       severity: 'UNCLASSIFIED',
       admissionStatus: 'ADMITTED_TODAY',
       tags: [],
       // Theo yêu cầu BS: Khi nhập dữ liệu từ Excel, không tự động tích có dị ứng
       allergies: undefined,
-      // Bỏ hiển thị "Chăm sóc cấp 2, theo dõi sinh hiệu, ăn chế độ bệnh lý"
-      treatmentPlan: excelRow.treatmentPlan || '',
+      // Mặc định hiển thị "Nhập hướng điều trị" cho bệnh nhân nhập từ Excel
+      treatmentPlan: excelRow.treatmentPlan || 'Nhập hướng điều trị',
       importantNotes: '',
       vitals: [],
       evolutions: [],
