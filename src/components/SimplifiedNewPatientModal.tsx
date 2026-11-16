@@ -263,7 +263,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
         id: `EVO-${Date.now()}`,
         date: nowFormatted,
         clinicalNote: autoClinicalNote,
-        treatmentAction: treatmentPlan.trim() || 'Theo dõi sinh hiệu, tiếp tục điều trị theo phác đồ nội khoa.',
+        treatmentAction: treatmentPlan.trim() || 'Nhập hướng điều trị',
         doctorName,
         shift: currentShift,
       };
@@ -281,13 +281,13 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
         admissionDate: formattedAdmissionDate,
         roomNumber: roomNumber.trim(),
         attendingDoctorId,
-        primaryDiagnosis: primaryDiagnosis.trim(),
+        primaryDiagnosis: primaryDiagnosis.trim() || 'Nhập chẩn đoán',
         severity,
         admissionStatus,
         dischargeTomorrowSetDate: admissionStatus === 'DISCHARGE_TOMORROW' 
           ? (dischargeTomorrowSetDate || todayDateStr) 
           : undefined,
-        treatmentPlan: treatmentPlan.trim() || patientToEdit.treatmentPlan,
+        treatmentPlan: treatmentPlan.trim() || 'Nhập hướng điều trị',
         importantNotes: importantNotes.trim() || undefined,
         handoverNotes: handoverNotes.trim() || undefined,
         initialLabsText: initialLabsText.trim() || undefined,

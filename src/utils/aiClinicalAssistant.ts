@@ -404,7 +404,7 @@ export async function analyzeFullClinicalNote(
   const summaryParts: string[] = [
     `🏥 TÓM TẮT BỆNH ÁN (${severityLabel}${dischargeLabel}):`,
     `• Bệnh nhân: ${fullName || 'Chưa rõ họ tên'} (${age} tuổi, ${gender})${roomNumber ? ` - Buồng/Phòng: ${roomNumber}` : ''}`,
-    `• Chẩn đoán hiện tại: ${primaryDiagnosis || 'Theo dõi nội khoa'}`,
+    `• Chẩn đoán hiện tại: ${primaryDiagnosis || 'Nhập chẩn đoán'}`,
   ];
 
   if (clinicalNote) {
