@@ -13,7 +13,8 @@ import {
   formatAdmissionDateShort,
   calculateTreatmentDays,
   isNewAdmissionWithin24Hours,
-  isNewAdmissionFromYesterday1630
+  isNewAdmissionFromYesterday1630,
+  isSatelliteOrDetailedEvolution
 } from './DetailedPatientListView';
 import { AppSettings } from '../utils/settings';
 
@@ -482,7 +483,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                       <th className="p-1.5 border border-slate-600 min-w-[130px] w-[17%]">Bệnh Nhân (Tuổi/Giới)</th>
                       <th className="p-1.5 border border-slate-600 text-center min-w-[65px] w-[7%]">Ngày NV/ĐT</th>
                       <th className="p-1.5 border border-slate-600 min-w-[140px] w-[18%]">Chẩn Đoán & Mức Độ</th>
-                      <th className="p-1.5 border border-slate-600 min-w-[140px] w-[18%]">Diễn Tiến Ca Trực & Sinh Hiệu</th>
+                      <th className="p-1.5 border border-slate-600 min-w-[140px] w-[18%]">Tóm Tắt Diễn Tiến Mới Nhất</th>
                       <th className="p-1.5 border border-slate-600 min-w-[130px] w-[16%]">Y Lệnh & Hướng Xử Trí</th>
                       <th className="p-1.5 border border-slate-600 min-w-[170px] w-[24%] text-center bg-slate-700">Ghi Chú Đi Buồng (Viết tay)</th>
                     </tr>
@@ -498,9 +499,10 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                       const isNew = isNewAdmissionWithin24Hours(patient.admissionDate);
                       
                       const latestEvo = patient.evolutions?.[0];
-                      const rawEvo = latestEvo?.clinicalNote || '';
-                      const clinicalEvo = rawEvo.split(/\[Sinh hiệu:.*?\]/i)[0].trim();
-                      const latestVital = patient.vitals && patient.vitals.length > 0 ? patient.vitals[patient.vitals.length - 1] : null;
+                      const isSatEvo = isSatelliteOrDetailedEvolution(latestEvo, patient);
+                      const progressSummary = patient.todayProgressSummary?.trim() || 
+                        (!isSatEvo ? latestEvo?.clinicalNote?.split(/\[Sinh hiệu:.*?\]/i)[0]?.trim() : '') || 
+                        '';
                       const plan = patient.treatmentPlan || patient.evolutions?.[0]?.treatmentAction || '';
                       const handover = patient.handoverNotes || patient.importantNotes || '';
                       const docName = doctorMap.get(patient.attendingDoctorId)?.name;
@@ -547,17 +549,9 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                             </div>
                           </td>
                           <td className="p-1 border border-slate-400 leading-tight">
-                            <div className="text-slate-800 text-[10px] line-clamp-2">
-                              {clinicalEvo || 'Bệnh tỉnh, tiếp xúc tốt, tạm ổn.'}
+                            <div className="text-slate-800 text-[10px] leading-snug line-clamp-3 whitespace-pre-line" title={progressSummary || undefined}>
+                              {progressSummary || '-'}
                             </div>
-                            {latestVital && (latestVital.bpSystolic || latestVital.heartRate || latestVital.spO2 || latestVital.temperature) && (
-                              <div className="text-[9.5px] font-bold text-slate-700 mt-0.5 bg-slate-100 p-0.5 px-1 rounded border border-slate-300">
-                                {latestVital.bpSystolic && latestVital.bpDiastolic ? `HA ${latestVital.bpSystolic}/${latestVital.bpDiastolic} ` : ''}
-                                {latestVital.heartRate ? `• M ${latestVital.heartRate} ` : ''}
-                                {latestVital.spO2 ? `• SpO2 ${latestVital.spO2}% ` : ''}
-                                {latestVital.temperature ? `• ${latestVital.temperature}°C` : ''}
-                              </div>
-                            )}
                           </td>
                           <td className="p-1 border border-slate-400 leading-tight">
                             <div className="text-slate-900 font-medium text-[10px] line-clamp-3">
@@ -594,7 +588,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                       <th className="p-1.5 border border-slate-400 text-center min-w-[70px] w-[8%]">Ngày NV/ĐT</th>
                       <th className="p-1.5 border border-slate-400 min-w-[150px] w-[20%]">Chẩn Đoán Mới Nhất</th>
                       {includeNotes && (
-                        <th className="p-1.5 border border-slate-400 min-w-[150px] w-[20%]">Diễn Tiến / Hướng Xử Trí</th>
+                        <th className="p-1.5 border border-slate-400 min-w-[150px] w-[20%]">Tóm Tắt Diễn Tiến / Hướng Xử Trí</th>
                       )}
                       <th className="p-1.5 border border-slate-400 min-w-[170px] w-[26%] text-center">Ghi Chú Đi Buồng (Viết tay)</th>
                     </tr>
@@ -604,12 +598,18 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                       const roomName = (patient.roomNumber || '').replace(/^(phòng|p\.?)\s*/i, '').trim();
                       const latestDiag = getLatestDiagnosis(patient);
                       const treatmentInfo = calculateTreatmentDays(patient.admissionDate);
-                      const notes = patient.treatmentPlan || 
-                        patient.importantNotes || 
-                        patient.handoverNotes || 
-                        patient.evolutions?.[0]?.treatmentAction || 
-                        patient.evolutions?.[0]?.clinicalNote || 
+                      const isSatTableEvo = isSatelliteOrDetailedEvolution(patient.evolutions?.[0], patient);
+                      const progressSummary = patient.todayProgressSummary?.trim() || 
+                        (!isSatTableEvo ? patient.evolutions?.[0]?.clinicalNote?.split(/\[Sinh hiệu:.*?\]/i)[0]?.trim() : '') || 
                         '';
+                      const planText = patient.treatmentPlan || 
+                        patient.evolutions?.[0]?.treatmentAction || 
+                        patient.handoverNotes || 
+                        patient.importantNotes || 
+                        '';
+                      const notes = progressSummary 
+                        ? (planText ? `${progressSummary} • ${planText}` : progressSummary) 
+                        : (planText || '-');
 
                       return (
                         <tr key={patient.id} className="border-b border-slate-300 break-inside-avoid hover:bg-slate-50/50">
@@ -669,11 +669,18 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                 {printablePatients.map((patient, index) => {
                   const combinedDiag = formatCombinedDiagnosis(patient);
                   const roomName = `Phòng ${(patient.roomNumber || '').replace(/^(phòng|p\.?)\s*/i, '').trim()}`;
-                  const notes = patient.importantNotes || 
+                  const isSatCardEvo = isSatelliteOrDetailedEvolution(patient.evolutions?.[0], patient);
+                  const progressSummary = patient.todayProgressSummary?.trim() || 
+                    (!isSatCardEvo ? patient.evolutions?.[0]?.clinicalNote?.split(/\[Sinh hiệu:.*?\]/i)[0]?.trim() : '') || 
+                    '';
+                  const planText = patient.importantNotes || 
                     patient.handoverNotes || 
                     patient.treatmentPlan || 
                     patient.evolutions?.[0]?.treatmentAction || 
-                    'Theo dõi sinh hiệu, chăm sóc cấp 2';
+                    'Theo dõi sát, chăm sóc cấp 2';
+                  const notes = progressSummary 
+                    ? (planText ? `${progressSummary} • ${planText}` : progressSummary) 
+                    : planText;
 
                   return (
                     <div 
@@ -709,7 +716,7 @@ export const PatientPrintModal: React.FC<PatientPrintModalProps> = ({
                             <strong className="text-slate-900">Chẩn đoán:</strong> {combinedDiag}
                           </div>
                           <div>
-                            <strong className="text-slate-900">Ghi chú/Y lệnh:</strong> {notes}
+                            <strong className="text-slate-900">Tóm tắt DT / Y lệnh:</strong> {notes}
                           </div>
                         </div>
                       ) : (

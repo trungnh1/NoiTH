@@ -45,7 +45,8 @@ import {
   getRoomGroupName,
   GROUP_1_ROOM_NUMBERS,
   GROUP_2_ROOM_NUMBERS,
-  CARDIO_ROOM_NUMBERS
+  CARDIO_ROOM_NUMBERS,
+  isSatelliteOrDetailedEvolution
 } from './DetailedPatientListView';
 
 interface ClinicalKardexViewProps {
@@ -545,10 +546,13 @@ export const ClinicalKardexView: React.FC<ClinicalKardexViewProps> = ({
                   const isNew = isNewAdmissionWithin24Hours(patient.admissionDate);
                   const criticalAlerts = getCriticalLabAlerts(patient);
 
-                  // Diễn tiến lâm sàng & Sinh hiệu
+                  // Diễn tiến lâm sàng & Tóm tắt diễn tiến
                   const latestEvo = patient.evolutions && patient.evolutions.length > 0 ? patient.evolutions[0] : null;
-                  const rawClinicalNote = latestEvo?.clinicalNote || patient.medicalHistory || '';
-                  const clinicalNoteClean = rawClinicalNote.split(/\[Sinh hiệu:.*?\]/i)[0].trim();
+                  const isSatEvo = isSatelliteOrDetailedEvolution(latestEvo, patient);
+                  const clinicalNoteClean = patient.todayProgressSummary?.trim() || 
+                    (!isSatEvo ? latestEvo?.clinicalNote?.split(/\[Sinh hiệu:.*?\]/i)[0]?.trim() : '') || 
+                    patient.medicalHistory?.split(/\[Sinh hiệu:.*?\]/i)[0]?.trim() || 
+                    '';
                   const latestVital = patient.vitals && patient.vitals.length > 0 ? patient.vitals[0] : null;
 
                   // Hướng xử trí & kế hoạch điều trị (Thay thế cho thuốc chính)
