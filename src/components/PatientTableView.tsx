@@ -420,13 +420,20 @@ export const PatientTableView: React.FC<PatientTableViewProps> = ({
                         onClick={() => onSelectPatient(patient)}
                         className="cursor-pointer group"
                       >
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:gap-x-1.5 flex-wrap">
                           <span className="font-bold text-slate-900 group-hover:text-rose-600 transition-colors text-sm">
                             {formatPatientDisplayName(patient.fullName)}
                           </span>
-                        </div>
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          {patient.gender === "Nam" ? (<span className="text-blue-700 font-extrabold flex items-center gap-0.5"><span>♂</span> Nam</span>) : (<span className="text-rose-600 font-extrabold flex items-center gap-0.5"><span>♀</span> Nữ</span>)}, {patient.age}t ({patient.dateOfBirth})
+                          <div className="text-xs text-slate-500 mt-0.5 sm:mt-0 flex items-center gap-1">
+                            <span className="hidden sm:inline text-slate-300">•</span>
+                            <span>{patient.age}t ({patient.dateOfBirth})</span>
+                            <span className="text-slate-300">•</span>
+                            {patient.gender === "Nam" ? (
+                              <span className="text-blue-700 font-extrabold flex items-center gap-0.5"><span>♂</span> Nam</span>
+                            ) : (
+                              <span className="text-rose-600 font-extrabold flex items-center gap-0.5"><span>♀</span> Nữ</span>
+                            )}
+                          </div>
                         </div>
                         <div className="text-[11px] text-slate-400">
                           Vào viện: {patient.admissionDate.split(' ')[0]}

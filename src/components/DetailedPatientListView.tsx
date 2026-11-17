@@ -1972,38 +1972,41 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                               {/* CỘT 1: BỆNH NHÂN (Tên, Tuổi, Ngày NV, Số Ngày ĐT) */}
                               <td className={`${cellPadClass} align-top`}>
                                 <div className="space-y-1">
-                                  {/* Họ và tên BN */}
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-[10px] font-mono text-slate-400 font-bold shrink-0">
-                                      #{pIdx + 1}
-                                    </span>
-                                    <h4
-                                      onClick={() => onSelectPatient(patient)}
-                                      className={`text-[13px] sm:text-sm font-black tracking-tight cursor-pointer hover:underline transition-colors ${nameColorClass}`}
-                                      title="Bấm để xem bệnh án chi tiết"
-                                    >
-                                      {formatPatientDisplayName(patient.fullName)}
-                                    </h4>
-                                    {showNewBadge && isNewPatient && (
-                                      <span className="px-1 py-0.2 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-rose-600 text-white animate-pulse shrink-0">
-                                        NEW
+                                  {/* Họ tên, Tuổi, Giới: Cùng dòng trên màn hình lớn */}
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-x-2 flex-wrap">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-[10px] font-mono text-slate-400 font-bold shrink-0">
+                                        #{pIdx + 1}
                                       </span>
-                                    )}
-                                  </div>
+                                      <h4
+                                        onClick={() => onSelectPatient(patient)}
+                                        className={`text-[13px] sm:text-sm font-black tracking-tight cursor-pointer hover:underline transition-colors ${nameColorClass}`}
+                                        title="Bấm để xem bệnh án chi tiết"
+                                      >
+                                        {formatPatientDisplayName(patient.fullName)}
+                                      </h4>
+                                      {showNewBadge && isNewPatient && (
+                                        <span className="px-1 py-0.2 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-rose-600 text-white animate-pulse shrink-0">
+                                          NEW
+                                        </span>
+                                      )}
+                                    </div>
 
-                                  {/* Giới tính & Tuổi */}
-                                  <div className="flex items-center gap-2 text-[11px] font-bold text-slate-600">
-                                    {patient.gender === 'Nam' ? (
-                                      <span className="text-blue-700 font-extrabold flex items-center gap-0.5" title="Nam">
-                                        <span className="text-xs font-black">♂</span> Nam
-                                      </span>
-                                    ) : (
-                                      <span className="text-rose-600 font-extrabold flex items-center gap-0.5" title="Nữ">
-                                        <span className="text-xs font-black">♀</span> Nữ
-                                      </span>
-                                    )}
-                                    <span className="text-slate-300">•</span>
-                                    <span className="text-slate-800">{patient.age} tuổi</span>
+                                    {/* Giới tính & Tuổi */}
+                                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 mt-0.5 sm:mt-0">
+                                      <span className="hidden sm:inline text-slate-300">•</span>
+                                      <span>{patient.age} tuổi</span>
+                                      <span className="text-slate-300">•</span>
+                                      {patient.gender === 'Nam' ? (
+                                        <span className="text-blue-700 font-extrabold flex items-center gap-0.5" title="Nam">
+                                          <span className="text-xs font-black">♂</span> Nam
+                                        </span>
+                                      ) : (
+                                        <span className="text-rose-600 font-extrabold flex items-center gap-0.5" title="Nữ">
+                                          <span className="text-xs font-black">♀</span> Nữ
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
 
                                   {/* Ngày vào viện & Số ngày điều trị */}
@@ -2586,31 +2589,38 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
                           <div>
                             
                             {/* 1. Họ và tên (màu theo tình trạng), Tuổi, Giới & Tình trạng bệnh */}
-                            <div className="pb-3 border-b border-slate-100 flex items-start justify-between gap-2">
+                            <div className="pb-2.5 sm:pb-3 border-b border-slate-100 flex items-start sm:items-center justify-between gap-2">
                               <div 
                                 onClick={() => onSelectPatient(patient)}
                                 className="cursor-pointer group flex-1 min-w-[130px]"
                               >
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className={`text-base sm:text-lg font-black tracking-tight leading-snug group-hover:underline transition-colors ${nameColorClass}`}>
-                                    {formatPatientDisplayName(patient.fullName)}
-                                  </h4>
-                                  {isNewPatient && (
-                                    <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs animate-pulse shrink-0">
-                                      NEW
-                                    </span>
-                                  )}
-                                </div>
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-x-2 flex-wrap">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className={`text-base sm:text-lg font-black tracking-tight leading-snug group-hover:underline transition-colors ${nameColorClass}`}>
+                                      {formatPatientDisplayName(patient.fullName)}
+                                    </h4>
+                                    {isNewPatient && (
+                                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs animate-pulse shrink-0">
+                                        NEW
+                                      </span>
+                                    )}
+                                  </div>
 
-                                {/* Tuổi & Giới (HOÀN TOÀN BỎ SỐ GIƯỜNG) */}
-                                <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 font-bold mt-1">
-                                  <span>{patient.age} tuổi</span>
-                                  <span>•</span>
-                                  {patient.gender === 'Nam' ? (
-                                    <span className="inline-flex items-center gap-1 text-blue-700 font-extrabold" title="Nam"><span className="text-sm font-black">♂</span> Nam</span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 text-rose-600 font-extrabold" title="Nữ"><span className="text-sm font-black">♀</span> Nữ</span>
-                                  )}
+                                  {/* Tuổi & Giới: Cùng nằm 1 dòng với Tên trên màn hình lớn */}
+                                  <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-600 font-bold mt-0.5 sm:mt-0">
+                                    <span className="hidden sm:inline text-slate-400 font-semibold">•</span>
+                                    <span>{patient.age} tuổi</span>
+                                    <span className="text-slate-400 font-semibold">•</span>
+                                    {patient.gender === 'Nam' ? (
+                                      <span className="inline-flex items-center gap-0.5 text-blue-700 font-extrabold" title="Nam">
+                                        <span className="text-sm font-black">♂</span> Nam
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-0.5 text-rose-600 font-extrabold" title="Nữ">
+                                        <span className="text-sm font-black">♀</span> Nữ
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
 
