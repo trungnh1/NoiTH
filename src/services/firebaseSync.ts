@@ -11,6 +11,7 @@ import {
   getDocs, 
   addDoc, 
   serverTimestamp, 
+  deleteField,
   DocumentData, 
   Firestore 
 } from 'firebase/firestore';
@@ -191,6 +192,15 @@ export function mapFirestoreRecordToPatient(docId: string, record: DocumentData)
       initialLabsText: record.initialLabsText || '',
       initialMedicationsText: record.initialMedicationsText || '',
       status: record.status || 'ACTIVE',
+      dischargeDate: record.dischargeDate,
+      dischargeTomorrowSetDate: dsSetDate,
+      treatmentPlan: record.treatmentPlan,
+      todayProgressSummary: record.todayProgressSummary,
+      detailedClinicalEvolution: record.detailedClinicalEvolution,
+      phoneNumber: record.phoneNumber,
+      insuranceType: record.insuranceType,
+      treatmentDays: record.treatmentDays,
+      icd10Secondary: record.icd10Secondary,
       vitals: record.vitals || [],
       evolutions: record.evolutions || [],
       labs: record.labs || [],
@@ -472,6 +482,16 @@ export function sanitizeObjectForFirestore<T>(obj: T): T {
   if (obj === null || obj === undefined) {
     return null as any;
   }
+  // Giữ nguyên các FieldValue đặc biệt của Firestore (như serverTimestamp(), deleteField())
+  if (
+    typeof obj === 'object' &&
+    ('_methodName' in (obj as any) ||
+      (obj as any).constructor?.name === 'FieldValueImpl' ||
+      (obj as any).constructor?.name === 'FieldValue' ||
+      (obj as any).constructor?.name === 'DeleteFieldValueImpl')
+  ) {
+    return obj;
+  }
   if (typeof obj !== 'object') {
     return obj;
   }
@@ -520,11 +540,15 @@ export async function syncPatientToCloud(patient: Patient): Promise<{ success: b
   try {
     await executeFirestoreOp(async (db) => {
       const docRef = doc(db, 'department_patients', patient.id);
-      const payload = sanitizeObjectForFirestore({
+      const rawData: any = {
         ...patient,
         cloudSyncedAt: serverTimestamp(),
         updatedAt: new Date().toISOString(),
-      });
+      };
+      if (patient.status === 'ACTIVE' && !patient.dischargeDate) {
+        rawData.dischargeDate = deleteField();
+      }
+      const payload = sanitizeObjectForFirestore(rawData);
       await setDoc(docRef, payload, { merge: true });
     });
     return { success: true };

@@ -22,7 +22,9 @@ import {
   X,
   User,
   Sparkles,
-  FileSpreadsheet
+  FileSpreadsheet,
+  DoorOpen,
+  RotateCcw
 } from 'lucide-react';
 import { Patient, Doctor } from '../types/patient';
 import { SyncStatus } from '../services/firebaseSync';
@@ -43,6 +45,9 @@ interface HeaderProps {
   onOpenChangePassword?: () => void;
   duplicateGroupCount?: number;
   onOpenDuplicateModal?: () => void;
+  dischargedCount?: number;
+  nov16DischargedCount?: number;
+  onOpenDischargedModal?: () => void;
   pendingSatelliteCount?: number;
   syncStatus: SyncStatus;
   isAutoSyncing?: boolean;
@@ -60,6 +65,9 @@ export const Header: React.FC<HeaderProps> = ({
   onManualPushToCloud,
   duplicateGroupCount,
   onOpenDuplicateModal,
+  dischargedCount = 0,
+  nov16DischargedCount = 0,
+  onOpenDischargedModal,
   onOpenSatelliteSync,
   onOpenSettings,
   onOpenChangePassword,
@@ -143,6 +151,31 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <AlertTriangle className="w-3.5 h-3.5 text-slate-950" />
                 <span>Trùng BN ({duplicateGroupCount})</span>
+              </button>
+            )}
+
+            {onOpenDischargedModal && (
+              <button
+                type="button"
+                onClick={onOpenDischargedModal}
+                className={`px-3 py-1.5 border text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-xs active:scale-95 ${
+                  nov16DischargedCount > 0
+                    ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-300 font-black animate-pulse'
+                    : 'bg-white/15 hover:bg-white/25 text-white border border-white/20 font-bold'
+                }`}
+                title="Quản lý và khôi phục bệnh nhân đã ra viện về buồng phòng"
+              >
+                <DoorOpen className={`w-3.5 h-3.5 ${nov16DischargedCount > 0 ? 'text-slate-950' : 'text-blue-200'}`} />
+                <span>Đã ra viện</span>
+                {dischargedCount > 0 && (
+                  <span className={`px-1.5 py-0.2 rounded-full font-black text-[10px] ${
+                    nov16DischargedCount > 0
+                      ? 'bg-slate-950 text-amber-300'
+                      : 'bg-white/20 text-white'
+                  }`}>
+                    {dischargedCount}
+                  </span>
+                )}
               </button>
             )}
 
@@ -270,6 +303,18 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
+            {Boolean(nov16DischargedCount && nov16DischargedCount > 0) && onOpenDischargedModal && (
+              <button
+                type="button"
+                onClick={onOpenDischargedModal}
+                className="px-2 py-1 bg-amber-400 text-slate-950 font-black text-[10.5px] rounded-lg shadow-2xs flex items-center gap-1 animate-pulse"
+                title="Khôi phục ca ra viện ngày 16/11/2026"
+              >
+                <RotateCcw className="w-3 h-3 text-slate-950" />
+                <span>Khôi phục ({nov16DischargedCount})</span>
+              </button>
+            )}
+
             {onOpenSatelliteSync && (
               <button
                 type="button"
@@ -376,6 +421,27 @@ export const Header: React.FC<HeaderProps> = ({
                     {Boolean(pendingSatelliteCount && pendingSatelliteCount > 0) && (
                       <span className="ml-auto px-1.5 py-0.2 rounded-full bg-rose-600 text-white font-black text-[10px]">
                         {pendingSatelliteCount}
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                {onOpenDischargedModal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenDischargedModal();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
+                  >
+                    <DoorOpen className="w-4 h-4 text-[#0b4d8c]" />
+                    <span>Bệnh nhân đã ra viện</span>
+                    {Boolean(dischargedCount && dischargedCount > 0) && (
+                      <span className={`ml-auto px-1.5 py-0.2 rounded-full font-black text-[10px] ${
+                        nov16DischargedCount > 0 ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {dischargedCount}
                       </span>
                     )}
                   </button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
-import { Trash2, LogOut, AlertTriangle } from 'lucide-react';
+import { Trash2, LogOut, AlertTriangle, RotateCcw, DoorOpen } from 'lucide-react';
 import { 
   Patient, 
   Doctor, 
@@ -11,7 +11,8 @@ import {
   loadDoctors, 
   saveDoctors, 
   loadRooms, 
-  resetAllData 
+  resetAllData,
+  formatPatientDisplayName 
 } from './utils/storage';
 import { Header } from './components/Header';
 import { DetailedPatientListView } from './components/DetailedPatientListView';
@@ -21,6 +22,7 @@ import { loadAppSettings, saveAppSettings, getFontSizeScale, AppSettings, FONT_F
 import { isRealAllergy } from './utils/clinicalTextParser';
 import { isSameClinicalPatient, findDuplicatePatientGroups, DuplicatePatientGroup, extractCleanRoomNumber } from './utils/excelParser';
 import { normalizeSearchText } from './utils/searchUtils';
+import { isDischargedOnNov16, restoreDischargedPatient } from './utils/dischargeUtils';
 import { 
   subscribeToClinicalRecords, 
   checkSatelliteRecordCompleteness, 
@@ -66,9 +68,21 @@ const ShiftHandoverModal = React.lazy(() => import('./components/ShiftHandoverMo
 const ClinicalWatchlistModal = React.lazy(() => import('./components/ClinicalWatchlistModal').then(m => ({ default: m.ClinicalWatchlistModal })));
 const DutyRosterModal = React.lazy(() => import('./components/DutyRosterModal').then(m => ({ default: m.DutyRosterModal })));
 const DuplicatePatientsModal = React.lazy(() => import('./components/DuplicatePatientsModal').then(m => ({ default: m.DuplicatePatientsModal })));
+const DischargedPatientsModal = React.lazy(() => import('./components/DischargedPatientsModal').then(m => ({ default: m.DischargedPatientsModal })));
 
 export default function App() {
-  const [patients, setPatients] = useState<Patient[]>(() => loadPatients());
+  const [patients, setPatients] = useState<Patient[]>(() => {
+    const list = loadPatients();
+    const nov16Pats = list.filter(isDischargedOnNov16);
+    if (nov16Pats.length > 0) {
+      const nov16Ids = new Set(nov16Pats.map((p) => p.id));
+      const restoredList = list.map((p) => nov16Ids.has(p.id) ? restoreDischargedPatient(p) : p);
+      savePatients(restoredList);
+      nov16Pats.forEach((p) => syncPatientToCloud(restoreDischargedPatient(p)).catch(() => {}));
+      return restoredList;
+    }
+    return list;
+  });
   const [doctors, setDoctors] = useState<Doctor[]>(() => loadDoctors());
   const [rooms, setRooms] = useState<DepartmentRoom[]>(() => loadRooms());
   const [authenticatedDoctor, setAuthenticatedDoctor] = useState<Doctor | null>(() => {
@@ -107,6 +121,16 @@ export default function App() {
   const [appSettings, setAppSettings] = useState<AppSettings>(loadAppSettings);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
+  const [isDischargedModalOpen, setIsDischargedModalOpen] = useState(false);
+
+  // Quản lý bệnh nhân đã ra viện & các ca ra viện ngày 16/11/2026
+  const dischargedPatients = useMemo(() => {
+    return patients.filter((p) => p.status === 'DISCHARGED');
+  }, [patients]);
+
+  const nov16DischargedCount = useMemo(() => {
+    return dischargedPatients.filter(isDischargedOnNov16).length;
+  }, [dischargedPatients]);
 
   // Đối soát & Phát hiện trùng lặp bệnh nhân hàng ngày
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
@@ -250,7 +274,7 @@ export default function App() {
         const now = new Date();
         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         
-        const normalized = cloudPatients.map((p) => {
+        let normalized = cloudPatients.map((p) => {
           if (p.admissionStatus === 'DISCHARGE_TOMORROW' && p.dischargeTomorrowSetDate && p.dischargeTomorrowSetDate < todayStr) {
             const updated: Patient = {
               ...p,
@@ -262,6 +286,27 @@ export default function App() {
           }
           return p;
         });
+
+        // Tự động phát hiện và khôi phục tất cả ca bị cho ra viện ngày 16/11/2026 trở lại buồng phòng
+        const toRestoreNov16 = cloudPatients.filter(isDischargedOnNov16);
+        if (toRestoreNov16.length > 0) {
+          console.info(`[Auto-Restore] Phát hiện ${toRestoreNov16.length} ca bị cho ra viện ngày 16/11/2026. Đang tự động khôi phục...`);
+          const restoredIds = new Set(toRestoreNov16.map((p) => p.id));
+          normalized = normalized.map((p) => {
+            if (restoredIds.has(p.id)) {
+              return restoreDischargedPatient(p);
+            }
+            return p;
+          });
+          toRestoreNov16.forEach((p) => {
+            const restored = restoreDischargedPatient(p);
+            syncPatientToCloud(restored).catch(() => {});
+          });
+          const restoredNames = toRestoreNov16.slice(0, 3).map((p) => p.fullName).join(', ') + 
+            (toRestoreNov16.length > 3 ? ` và ${toRestoreNov16.length - 3} BN khác` : '');
+          setManualPushMessage(`🎉 Đã tự động khôi phục ${toRestoreNov16.length} bệnh nhân bị cho ra viện ngày 16/11/2026 (${restoredNames}) trở lại buồng phòng!`);
+          setTimeout(() => setManualPushMessage(null), 9000);
+        }
 
         setPatients(normalized);
         savePatients(normalized);
@@ -719,6 +764,59 @@ export default function App() {
     }
   };
 
+  // Khôi phục một bệnh nhân đã ra viện trở lại buồng bệnh
+  const handleRestoreSinglePatient = async (patient: Patient, targetRoom?: string) => {
+    const restored = restoreDischargedPatient(patient, targetRoom);
+    const updated = patients.map((p) => (p.id === patient.id ? restored : p));
+    setPatients(updated);
+    savePatients(updated);
+
+    setManualPushMessage(`🎉 Đã khôi phục BN "${formatPatientDisplayName(patient.fullName)}" trở lại buồng P.${restored.roomNumber}!`);
+    setTimeout(() => setManualPushMessage(null), 6000);
+
+    try {
+      await syncPatientToCloud(restored);
+      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+    } catch (e) {
+      console.warn('Lỗi sync cloud khi khôi phục BN:', e);
+    }
+  };
+
+  // Khôi phục tất cả các ca bị cho ra viện ngày 16/11/2026 trở lại buồng bệnh
+  const handleRestoreNov16Discharged = async (patientsToRestore?: Patient[]) => {
+    const targetList = patientsToRestore || dischargedPatients.filter(isDischargedOnNov16);
+    if (!targetList || targetList.length === 0) return;
+
+    const targetIds = new Set(targetList.map((p) => p.id));
+    const updated = patients.map((p) => {
+      if (targetIds.has(p.id)) {
+        return restoreDischargedPatient(p);
+      }
+      return p;
+    });
+
+    setPatients(updated);
+    savePatients(updated);
+
+    const names = targetList.slice(0, 3).map((p) => p.fullName).join(', ') + 
+      (targetList.length > 3 ? ` và ${targetList.length - 3} BN khác` : '');
+    setManualPushMessage(`🎉 Đã khôi phục thành công ${targetList.length} ca ngày 16/11/2026 (${names}) trở lại buồng phòng!`);
+    setTimeout(() => setManualPushMessage(null), 8000);
+
+    setIsAutoSyncing(true);
+    try {
+      for (const pat of targetList) {
+        const restored = restoreDischargedPatient(pat);
+        await syncPatientToCloud(restored);
+      }
+      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+    } catch (err) {
+      console.warn('Lỗi sync cloud khi khôi phục ca ngày 16/11:', err);
+    } finally {
+      setIsAutoSyncing(false);
+    }
+  };
+
   // Mở hồ sơ bệnh nhân vệ tinh chờ bổ sung để hoàn thiện thông tin và tiếp nhận
   const handleOpenSatelliteDraft = (record: ClinicalRecord) => {
     const mapped = mapClinicalRecordToPatient(record, doctors, rooms, authenticatedDoctor?.id);
@@ -1069,6 +1167,9 @@ export default function App() {
         onOpenChangePassword={() => setIsChangePasswordOpen(true)}
         duplicateGroupCount={duplicatePatientGroups.length}
         onOpenDuplicateModal={() => setIsDuplicateModalOpen(true)}
+        dischargedCount={dischargedPatients.length}
+        nov16DischargedCount={nov16DischargedCount}
+        onOpenDischargedModal={() => setIsDischargedModalOpen(true)}
         pendingSatelliteCount={pendingSatelliteRecords.length}
         isAutoSyncing={isAutoSyncing}
         lastAutoSyncTime={lastAutoSyncTime}
@@ -1094,6 +1195,39 @@ export default function App() {
             >
               <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
               <span>Xem & Chọn Xóa Trùng ({duplicatePatientGroups.reduce((acc, g) => acc + g.patients.length, 0)} ca)</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* CẢNH BÁO / KHÔI PHỤC CA BỊ CHO RA VIỆN NGÀY 16/11/2026 */}
+      {nov16DischargedCount > 0 && !isDischargedModalOpen && (
+        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-[#0b4d8c] text-white px-3 sm:px-5 py-2.5 shadow-md flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm animate-in slide-in-from-top duration-200">
+          <div className="flex items-center gap-2 max-w-4xl truncate">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0" />
+            <span className="font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded text-[10.5px]">
+              Khôi phục ca ra viện
+            </span>
+            <span className="font-extrabold truncate">
+              Phát hiện {nov16DischargedCount} bệnh nhân bị cho ra viện ngày 16/11/2026!
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleRestoreNov16Discharged()}
+              disabled={isAutoSyncing}
+              className="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-950" />
+              <span>⚡ Khôi phục ngay tất cả ({nov16DischargedCount} ca)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsDischargedModalOpen(true)}
+              className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+            >
+              Xem danh sách ({dischargedPatients.length})
             </button>
           </div>
         </div>
@@ -1535,6 +1669,19 @@ export default function App() {
             onMergePatients={handleMergePatients}
             onDismissPair={handleDismissDuplicatePair}
             onSelectPatient={(patient) => setSelectedPatient(patient)}
+          />
+        </Suspense>
+      )}
+
+      {/* 12. Discharged Patients & Nov 16 Restoration Modal */}
+      {isDischargedModalOpen && (
+        <Suspense fallback={null}>
+          <DischargedPatientsModal
+            patients={patients}
+            rooms={rooms}
+            onClose={() => setIsDischargedModalOpen(false)}
+            onRestorePatient={handleRestoreSinglePatient}
+            onRestoreMultiplePatients={handleRestoreNov16Discharged}
           />
         </Suspense>
       )}
