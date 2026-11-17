@@ -390,50 +390,50 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
       <div className={`relative w-full ${isMaximized ? 'max-w-[100vw] sm:max-w-[98vw] h-[100dvh] sm:h-[96vh]' : 'max-w-full sm:max-w-6xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[95vh]'} bg-white rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 overflow-hidden z-10 flex flex-col transition-all duration-200 animate-in zoom-in-95`}>
         
         {/* Header Modal */}
-        <div className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 bg-gradient-to-r from-[#0b4d8c] via-[#083a69] to-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shadow-inner">
-              {isEditing ? <FileEdit className="w-5 h-5 text-amber-300" /> : <UserPlus className="w-5 h-5 text-emerald-300" />}
+        <div className="px-3 sm:px-6 py-2 sm:py-3.5 bg-gradient-to-r from-[#0b4d8c] via-[#083a69] to-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-white/10 flex items-center justify-center shadow-inner shrink-0">
+              {isEditing ? <FileEdit className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" /> : <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-300" />}
             </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-2">
-                <span>{isEditing ? 'Nhập Diễn Tiến Bệnh Nhân' : 'Tiếp Nhận Bệnh Nhân Mới'}</span>
+            <div className="min-w-0">
+              <h3 className="text-xs sm:text-base font-black tracking-tight text-white flex items-center gap-1.5 sm:gap-2 truncate">
+                <span className="truncate">{isEditing ? 'Nhập Diễn Tiến Bệnh Nhân' : 'Tiếp Nhận Bệnh Nhân Mới'}</span>
                 {isEditing && patientToEdit?.roomNumber && (
-                  <span className="text-xs px-2 py-0.5 rounded-md bg-white/20 text-white font-bold">
+                  <span className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-md bg-white/20 text-white font-extrabold shrink-0">
                     P.{patientToEdit.roomNumber}
                   </span>
                 )}
               </h3>
-              <p className="text-[11px] text-blue-100/80 font-medium">
+              <p className="text-[10px] sm:text-[11px] text-blue-100/80 font-medium truncate hidden sm:block">
                 {isEditing ? 'Cập nhật chẩn đoán, hướng xử trí, ghi chú & tự động ghi nhận diễn tiến mới' : 'Khoa Nội Tổng Hợp • Bệnh Viện Hùng Vương Gia Lai'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setShowAiPanel((prev) => !prev)}
-              className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-xs shadow-md border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="py-1 sm:py-1.5 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-[11px] sm:text-xs shadow-md border border-white/20 flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer active:scale-95"
               title="Mở trình bóc tách và phân tích bệnh án bằng AI"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" style={{ animationDuration: '4s' }} />
-              <span>{showAiPanel ? 'Đóng AI' : 'Nhập bằng AI'}</span>
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-300" />
+              <span>{showAiPanel ? 'Đóng AI' : <><span className="hidden sm:inline">Nhập bằng </span>AI</>}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsMaximized((prev) => !prev)}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white hidden sm:flex items-center justify-center transition-colors cursor-pointer"
               title={isMaximized ? "Thu nhỏ kích thước" : "Mở rộng toàn màn hình"}
             >
-              {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              {isMaximized ? <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
             </button>
 
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
               title="Đóng cửa sổ"
             >
               <X className="w-4 h-4" />
@@ -463,16 +463,16 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
           
           {/* Quick AI Trigger Banner when collapsed */}
           {!showAiPanel && (
-            <div className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-violet-600/10 via-indigo-600/10 to-blue-600/10 border border-indigo-200/80 flex items-center justify-between gap-2 shadow-2xs">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Sparkles className="w-4 h-4 text-amber-300" />
+            <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-violet-600/10 via-indigo-600/10 to-blue-600/10 border border-indigo-200/80 flex items-center justify-between gap-2 shadow-2xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-amber-300" />
                 </div>
-                <div>
-                  <span className="text-xs font-black text-indigo-950 block">
-                    Nhập Nhanh Hồ Sơ & Diễn Tiến Bằng AI
+                <div className="min-w-0">
+                  <span className="text-[11px] sm:text-xs font-black text-indigo-950 block truncate">
+                    Nhập Nhanh Bằng AI (Bóc Tách & CLS)
                   </span>
-                  <span className="text-[11px] text-slate-600 block">
+                  <span className="text-[10px] sm:text-[11px] text-slate-600 hidden sm:block truncate">
                     Dán tóm tắt bệnh án, diễn biến hoặc CLS để AI tự động điền đúng mục & phân tích thay đổi
                   </span>
                 </div>
@@ -480,9 +480,9 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
               <button
                 type="button"
                 onClick={() => setShowAiPanel(true)}
-                className="py-1.5 px-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 active:scale-95"
+                className="py-1 sm:py-1.5 px-2.5 sm:px-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-[11px] sm:text-xs rounded-lg sm:rounded-xl shadow-xs flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer shrink-0 active:scale-95"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-300" />
                 <span>Nhập bằng AI</span>
               </button>
             </div>
@@ -490,28 +490,28 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
 
           {/* BẢNG TRỢ LÝ AI: PHÂN TÍCH BỆNH ÁN & BIỂU DẪN CẬN LÂM SÀNG */}
           {showAiPanel && (
-            <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 text-white p-3 sm:p-5 rounded-xl sm:rounded-2xl border-2 border-indigo-400/50 shadow-2xl space-y-3 sm:space-y-4 animate-in slide-in-from-top-3 duration-200">
-              <div className="flex items-center justify-between border-b border-indigo-800/60 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-amber-300 shadow-inner">
-                    <Sparkles className="w-4 h-4" />
+            <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 text-white p-2.5 sm:p-5 rounded-xl sm:rounded-2xl border border-indigo-400/50 shadow-2xl space-y-2.5 sm:space-y-4 animate-in slide-in-from-top-3 duration-200">
+              <div className="flex items-center justify-between border-b border-indigo-800/60 pb-2 sm:pb-3">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-amber-300 shadow-inner shrink-0">
+                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-2">
-                      <span>Trợ Lý Lâm Sàng AI • Bóc Tách Bệnh Án & Biểu Dẫn Cận Lâm Sàng</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 font-mono">
+                  <div className="min-w-0">
+                    <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5 sm:gap-2 truncate">
+                      <span>Trợ Lý Lâm Sàng AI</span>
+                      <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 font-mono">
                         Thông minh
                       </span>
                     </h4>
-                    <p className="text-[11px] text-indigo-200/80">
-                      Dán toàn bộ văn bản bệnh án, diễn biến, kết quả xét nghiệm... AI sẽ tự động phân tích, điền đúng mục, tóm tắt bệnh án và biểu dẫn thay đổi CLS.
+                    <p className="text-[10px] sm:text-[11px] text-indigo-200/80 hidden sm:block truncate">
+                      Dán toàn bộ văn bản bệnh án, diễn biến, kết quả xét nghiệm... AI sẽ tự động phân tích và điền đúng mục.
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowAiPanel(false)}
-                  className="text-xs text-indigo-300 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                  className="text-xs text-indigo-300 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer shrink-0"
                 >
                   Đóng AI
                 </button>
@@ -520,7 +520,7 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
               {/* Textarea nhập liệu */}
               <div className="space-y-2">
                 <textarea
-                  rows={6}
+                  rows={4}
                   value={aiInputText}
                   onChange={(e) => setAiInputText(e.target.value)}
                   placeholder="Dán toàn bộ nội dung bệnh án, diễn tiến, kết quả xét nghiệm tại đây (VD: Bệnh nhân Nguyễn Văn A 65 tuổi phòng 703, chẩn đoán Viêm phổi / ĐTĐ, CLS: WBC 15 -> 7.8, CRP 85 -> 12, kế hoạch điều trị...)"
