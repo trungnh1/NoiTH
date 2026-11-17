@@ -165,6 +165,16 @@ export function parseExcelAdmissionDate(rawVal: any): { formatted: string; raw: 
 }
 
 /**
+ * Danh sách số phòng chuẩn của Khoa Nội Tổng Hợp & Tim Mạch
+ */
+export const ALL_ROOM_NUMBERS = [
+  '743',
+  '703', '705', '707', '709', '711', '713', '715', '717', '719', '721', '725', '727', '729', '731', '733',
+  '704', '718', '747', '749', '751', '753', '755', '757',
+  '735', '737', '739', '741', '745'
+];
+
+/**
  * Trích xuất số phòng chuẩn từ chuỗi Excel (vd: "Phòng 743", "P743", "G743-1", "743_G01", "Phòng 705", "705")
  */
 export function extractCleanRoomNumber(roomRaw?: string): string {

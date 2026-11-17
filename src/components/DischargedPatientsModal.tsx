@@ -15,7 +15,7 @@ import {
 import { Patient, DepartmentRoom } from '../types/patient';
 import { isDischargedOnNov16, restoreDischargedPatient, formatDischargeDateDisplay } from '../utils/dischargeUtils';
 import { formatPatientDisplayName } from '../utils/storage';
-import { ALL_ROOM_NUMBERS } from '../utils/excelParser';
+import { ALL_ROOM_NUMBERS } from './DetailedPatientListView';
 
 interface DischargedPatientsModalProps {
   patients: Patient[];
