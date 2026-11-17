@@ -45,7 +45,16 @@ import {
   Loader2,
   Copy,
   Check,
-  ClipboardCheck
+  ClipboardCheck,
+  Search,
+  LayoutGrid,
+  Table as TableIcon,
+  ChevronDown,
+  ChevronUp,
+  FileCode,
+  CheckCircle,
+  AlertCircle,
+  Layers
 } from 'lucide-react';
 
 interface PatientDetailModalProps {
@@ -131,6 +140,9 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   const [newAppendLabText, setNewAppendLabText] = useState('');
   const [appendSuccessAlert, setAppendSuccessAlert] = useState<string | null>(null);
   const [labCategoryFilter, setLabCategoryFilter] = useState<string>('ALL');
+  const [labViewMode, setLabViewMode] = useState<'cards' | 'table'>('cards');
+  const [labSearchTerm, setLabSearchTerm] = useState<string>('');
+  const [showRawLabsText, setShowRawLabsText] = useState<boolean>(false);
 
   useEffect(() => {
     setInitialLabsText(patient.initialLabsText || '');
@@ -251,11 +263,30 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
     let list = patient.labs || [];
     if (labCategoryFilter === 'PANIC') {
       list = list.filter((l) => l.isPanicValue);
+    } else if (labCategoryFilter === 'ABNORMAL') {
+      list = list.filter((l) => l.isAbnormal || l.isPanicValue);
     } else if (labCategoryFilter !== 'ALL') {
       list = list.filter((l) => l.category === labCategoryFilter);
     }
+    if (labSearchTerm.trim()) {
+      const q = labSearchTerm.toLowerCase();
+      list = list.filter((l) => 
+        l.testName.toLowerCase().includes(q) || 
+        (l.category && l.category.toLowerCase().includes(q)) ||
+        (l.value && l.value.toLowerCase().includes(q))
+      );
+    }
     return list;
-  }, [patient.labs, labCategoryFilter]);
+  }, [patient.labs, labCategoryFilter, labSearchTerm]);
+
+  const labStats = useMemo(() => {
+    const all = patient.labs || [];
+    const panicCount = all.filter((l) => l.isPanicValue).length;
+    const abnormalCount = all.filter((l) => l.isAbnormal && !l.isPanicValue).length;
+    const bloodCount = all.filter((l) => l.category === 'Huyết học' || l.category === 'Sinh hóa' || l.category === 'Điện giải' || l.category === 'Khí máu').length;
+    const imagingCount = all.filter((l) => l.category === 'CĐHA').length;
+    return { total: all.length, panicCount, abnormalCount, bloodCount, imagingCount };
+  }, [patient.labs]);
 
   const currentDoctor = doctors.find((d) => d.id === patient.attendingDoctorId);
 
@@ -955,6 +986,65 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                       </div>
                     </div>
                   )}
+
+                  {/* Cận lâm sàng & Kết quả nổi bật */}
+                  {(patient.initialLabsText || (patient.labs && patient.labs.length > 0)) && (
+                    <div className="mt-2 pt-2 border-t border-slate-200 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold uppercase text-blue-900 flex items-center gap-1.5">
+                          <TestTube className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                          <span>Cận lâm sàng nổi bật:</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('labs')}
+                          className="text-[11px] font-bold text-[#0b4d8c] hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Xem toàn bộ ({patient.labs?.length || 0} chỉ số)</span>
+                          <span>→</span>
+                        </button>
+                      </div>
+
+                      {/* Hiển thị nhanh các chỉ số bất thường hoặc nổi bật */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        {patient.labs && patient.labs.length > 0 ? (
+                          <>
+                            {patient.labs.filter((l) => l.isPanicValue || l.isAbnormal).slice(0, 6).map((lab) => (
+                              <span
+                                key={lab.id}
+                                className={`px-2 py-0.5 rounded-md text-[11px] font-bold shadow-2xs flex items-center gap-1 ${
+                                  lab.isPanicValue
+                                    ? 'bg-rose-600 text-white animate-pulse'
+                                    : 'bg-amber-100 text-amber-900 border border-amber-300'
+                                }`}
+                              >
+                                <span>{lab.isPanicValue ? '🚨' : '⚠️'}</span>
+                                <span>{lab.testName}: <strong>{lab.value}</strong> {lab.unit}</span>
+                              </span>
+                            ))}
+                            {patient.labs.filter((l) => l.category === 'CĐHA').slice(0, 2).map((lab) => (
+                              <span
+                                key={lab.id}
+                                className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-900 border border-blue-200 truncate max-w-[280px]"
+                                title={lab.value}
+                              >
+                                🩻 <strong>{lab.testName}:</strong> {lab.value}
+                              </span>
+                            ))}
+                            {patient.labs.filter((l) => l.isPanicValue || l.isAbnormal).length === 0 && (
+                              <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                🟢 Các chỉ số xét nghiệm hiện tại trong giới hạn bình thường
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-[11px] text-slate-500 italic">
+                            Đã lưu văn bản kết quả CLS. Bấm "Xem toàn bộ" để bóc tách chi tiết.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1271,205 +1361,334 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
           {/* TAB 3: LABS & PARACLINICAL RESULTS */}
           {activeTab === 'labs' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              
+              {/* 1. Header & Quick Action Buttons */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
                 <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">
-                    Kết Quả Xét Nghiệm & Cận Lâm Sàng
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Tự động cảnh báo chỉ số nguy hiểm (Panic value) và bất thường sinh hóa, huyết học
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-blue-100 text-[#0b4d8c] flex items-center justify-center font-bold">
+                      <TestTube className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                        <span>Kết Quả Xét Nghiệm & Cận Lâm Sàng</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 font-bold font-mono">
+                          {patient.labs?.length || 0} chỉ số
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        Tự động bóc tách chỉ số từ HIS/Bệnh án, phân nhóm chuyên khoa và cảnh báo bất thường
+                      </p>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Right Actions */}
+                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                  {/* Nút 1-chạm dán từ clipboard */}
+                  <button
+                    type="button"
+                    onClick={handleDirectClipboardAppend}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-black shadow-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                    title="Đọc kết quả CLS từ clipboard, tự động phân tích và đưa nối tiếp xuống dưới ngay lập tức"
+                  >
+                    <ClipboardCheck className="w-3.5 h-3.5 text-emerald-200" />
+                    <span>📋 Dán & Đưa Xuống Dưới</span>
+                  </button>
+
+                  {/* Nút mở ô dán thủ công có mốc thời gian */}
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickAppendingLab(!isQuickAppendingLab)}
+                    className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>+ Nối Tiếp</span>
+                  </button>
+
+                  {/* Nút xem văn bản gốc HIS */}
+                  <button
+                    type="button"
+                    onClick={() => setShowRawLabsText(!showRawLabsText)}
+                    className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1 ${
+                      showRawLabsText
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                    }`}
+                    title="Xem hoặc chỉnh sửa toàn văn bản sao chép gốc từ HIS"
+                  >
+                    <FileCode className="w-3.5 h-3.5" />
+                    <span>{showRawLabsText ? 'Đóng văn bản HIS' : 'Văn bản gốc HIS'}</span>
+                  </button>
+
+                  {/* Nút thêm thủ công */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAddLab(!showAddLab)}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Thêm thủ công</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Thống Kê & Bộ Lọc Nhanh 1-Chạm (KPI Cards) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                {/* Panic card */}
                 <button
-                  onClick={() => setShowAddLab(!showAddLab)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-rose-600 text-white hover:bg-rose-700 shadow-xs transition-colors"
+                  type="button"
+                  onClick={() => setLabCategoryFilter(labCategoryFilter === 'PANIC' ? 'ALL' : 'PANIC')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    labCategoryFilter === 'PANIC'
+                      ? 'bg-rose-600 text-white border-rose-700 ring-2 ring-rose-300 shadow-xs'
+                      : labStats.panicCount > 0
+                      ? 'bg-rose-50/80 border-rose-300 hover:bg-rose-100/80 text-rose-950'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Thêm Chỉ Số Mới</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${
+                      labCategoryFilter === 'PANIC' ? 'text-rose-100' : 'text-rose-700'
+                    }`}>
+                      Báo động nguy hiểm
+                    </span>
+                    {labStats.panicCount > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-black">{labStats.panicCount}</span>
+                    <span className="text-[11px] font-semibold opacity-80">chỉ số</span>
+                  </div>
+                </button>
+
+                {/* Abnormal card */}
+                <button
+                  type="button"
+                  onClick={() => setLabCategoryFilter(labCategoryFilter === 'ABNORMAL' ? 'ALL' : 'ABNORMAL')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    labCategoryFilter === 'ABNORMAL'
+                      ? 'bg-amber-600 text-white border-amber-700 ring-2 ring-amber-300 shadow-xs'
+                      : labStats.abnormalCount > 0
+                      ? 'bg-amber-50/80 border-amber-300 hover:bg-amber-100/80 text-amber-950'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${
+                      labCategoryFilter === 'ABNORMAL' ? 'text-amber-100' : 'text-amber-700'
+                    }`}>
+                      Chỉ số bất thường
+                    </span>
+                    <AlertTriangle className={`w-3.5 h-3.5 ${
+                      labCategoryFilter === 'ABNORMAL' ? 'text-amber-200' : 'text-amber-600'
+                    }`} />
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-black">{labStats.abnormalCount}</span>
+                    <span className="text-[11px] font-semibold opacity-80">chỉ số</span>
+                  </div>
+                </button>
+
+                {/* Blood tests count */}
+                <button
+                  type="button"
+                  onClick={() => setLabCategoryFilter(labCategoryFilter === 'Huyết học' ? 'ALL' : 'Huyết học')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    labCategoryFilter === 'Huyết học' || labCategoryFilter === 'Sinh hóa' || labCategoryFilter === 'Điện giải'
+                      ? 'bg-[#0b4d8c] text-white border-blue-900 shadow-xs'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                      Xét nghiệm máu & SH
+                    </span>
+                    <Activity className="w-3.5 h-3.5 text-blue-600" />
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-black text-slate-900">{labStats.bloodCount}</span>
+                    <span className="text-[11px] font-semibold text-slate-500">chỉ số</span>
+                  </div>
+                </button>
+
+                {/* Imaging count */}
+                <button
+                  type="button"
+                  onClick={() => setLabCategoryFilter(labCategoryFilter === 'CĐHA' ? 'ALL' : 'CĐHA')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    labCategoryFilter === 'CĐHA'
+                      ? 'bg-purple-700 text-white border-purple-900 shadow-xs'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                      CĐHA & ECG
+                    </span>
+                    <span className="text-xs">🩻</span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-black text-slate-900">{labStats.imagingCount}</span>
+                    <span className="text-[11px] font-semibold text-slate-500">kết quả</span>
+                  </div>
                 </button>
               </div>
 
-              {/* Raw Copy-Paste Labs & Results Card */}
-              <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 space-y-2.5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-blue-200/60 gap-2">
+              {/* Thông báo cập nhật thành công nếu có */}
+              {appendSuccessAlert && (
+                <div className="bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-1">
                   <div className="flex items-center gap-2">
-                    <TestTube className="w-4 h-4 text-blue-600 shrink-0" />
-                    <div>
-                      <span className="font-extrabold text-blue-950 text-xs uppercase tracking-wide block">
-                        Văn Bản Cận Lâm Sàng & Kết Quả Ban Đầu (HIS / Copy-Paste)
-                      </span>
-                      <span className="text-[10px] text-blue-700 font-medium">
-                        Tự động phân tích chỉ số & sắp xếp nối tiếp xuống dưới khi có cận lâm sàng mới
-                      </span>
-                    </div>
+                    <Check className="w-4 h-4 stroke-[3] text-emerald-200" />
+                    <span>{appendSuccessAlert}</span>
                   </div>
-                  
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {/* NÚT 1 CHẠM: DÁN TỪ CLIPBOARD & ĐƯA XUỐNG DƯỚI NGAY */}
+                  <button
+                    type="button"
+                    onClick={() => setAppendSuccessAlert(null)}
+                    className="text-emerald-100 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-emerald-700 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {/* 3. Ô DÁN NHANH CẬN LÂM SÀNG MỚI ĐỂ NỐI TIẾP (Khi bật "+ Nối Tiếp") */}
+              {isQuickAppendingLab && (
+                <div className="bg-white p-3.5 rounded-2xl border-2 border-emerald-500 space-y-2.5 shadow-md animate-in fade-in">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-1 pb-1.5 border-b border-emerald-100">
+                    <span className="flex items-center gap-1.5 font-black text-emerald-950">
+                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                      <span>Dán Kết Quả Cận Lâm Sàng Mới (HIS):</span>
+                    </span>
+                    <span className="text-[10.5px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      ⚡ Tự động phân tích & đưa xuống dưới ngay khi dán (Ctrl+V)
+                    </span>
+                  </div>
+                  <textarea
+                    rows={3}
+                    value={newAppendLabText}
+                    onChange={(e) => setNewAppendLabText(e.target.value)}
+                    onPaste={(e) => {
+                      const pasted = e.clipboardData?.getData('text');
+                      if (pasted && pasted.trim()) {
+                        e.preventDefault();
+                        handleAutoAppendAndParseNewLabs(pasted.trim());
+                      }
+                    }}
+                    placeholder="Dán (Ctrl+V) kết quả xét nghiệm mới tại đây: Hệ thống sẽ TỰ ĐỘNG PHÂN TÍCH và ĐƯA NỐI TIẾP XUỐNG DƯỚI ngay khi dán..."
+                    className="w-full p-2.5 bg-emerald-50/30 border border-emerald-300 rounded-xl text-xs font-mono font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-400"
+                    autoFocus
+                  />
+                  <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
                     <button
                       type="button"
                       onClick={handleDirectClipboardAppend}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-[11px] font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1"
-                      title="Đọc kết quả CLS từ clipboard, tự động phân tích và đưa nối tiếp xuống dưới ngay lập tức"
+                      className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Đọc từ Clipboard và đưa xuống dưới ngay lập tức"
                     >
-                      <ClipboardCheck className="w-3.5 h-3.5 text-emerald-200" />
-                      <span>📋 Dán & Đưa Xuống Dưới Ngay</span>
+                      <ClipboardCheck className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>📋 Dán từ Clipboard</span>
                     </button>
-
-                    {/* NÚT THÊM CLS MỚI NỐI TIẾP XUỐNG DƯỚI */}
-                    <button
-                      type="button"
-                      onClick={() => setIsQuickAppendingLab(!isQuickAppendingLab)}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-[11px] font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1"
-                      title="Mở ô dán kết quả CLS mới từ HIS, tự động phân tích ngay khi dán (Ctrl+V)"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-                      <span>+ Nối Tiếp CLS Mới Xuống Dưới</span>
-                    </button>
-
-                    {initialLabsText && (
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => handleCopyText(initialLabsText, 'labs')}
-                        className="px-2 py-1 rounded-lg bg-white hover:bg-blue-100 text-blue-800 border border-blue-200 text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
+                        onClick={() => {
+                          setIsQuickAppendingLab(false);
+                          setNewAppendLabText('');
+                        }}
+                        className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold cursor-pointer"
                       >
-                        {copiedSection === 'labs' ? '✓ Đã sao chép' : 'Sao chép'}
+                        Hủy
                       </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isEditingLabText) handleSaveLabText();
-                        else setIsEditingLabText(true);
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
-                    >
-                      {isEditingLabText ? 'Lưu & Tự Động Phân Tích' : 'Sửa văn bản'}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAutoAppendAndParseNewLabs()}
+                        disabled={!newAppendLabText.trim()}
+                        className={`px-3.5 py-1.5 rounded-lg font-black text-white shadow-xs flex items-center gap-1.5 transition-all ${
+                          newAppendLabText.trim()
+                            ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 cursor-pointer'
+                            : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                        }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                        <span>⚡ Tự Động Phân Tích & Thêm Xuống Dưới</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* THÔNG BÁO TỰ ĐỘNG PHÂN TÍCH & ĐƯA XUỐNG DƯỚI THÀNH CÔNG */}
-                {appendSuccessAlert && (
-                  <div className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-1">
+              {/* 4. KHỐI VĂN BẢN GỐC TỪ HIS (DẠNG ACCORDION THU GỌN THÔNG MINH) */}
+              {showRawLabsText && (
+                <div className="bg-white rounded-2xl border border-blue-200 p-3.5 space-y-2.5 shadow-sm animate-in fade-in">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                     <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 stroke-[3] text-emerald-200" />
-                      <span>{appendSuccessAlert}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setAppendSuccessAlert(null)}
-                      className="text-emerald-100 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-emerald-700 cursor-pointer"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-
-                {/* HỘP DÁN NHANH CẬN LÂM SÀNG MỚI ĐỂ NỐI TIẾP XUỐNG DƯỚI */}
-                {isQuickAppendingLab && (
-                  <div className="bg-white p-3 rounded-xl border-2 border-emerald-500 space-y-2.5 shadow-sm animate-in fade-in">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-1 pb-1 border-b border-emerald-100">
-                      <span className="flex items-center gap-1.5 font-bold text-emerald-950">
-                        <Sparkles className="w-4 h-4 text-emerald-600" />
-                        <span>Dán Kết Quả Cận Lâm Sàng Mới (HIS):</span>
-                      </span>
-                      <span className="text-[10.5px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        ⚡ Tự động phân tích & đưa xuống dưới ngay khi dán (Ctrl+V)
+                      <FileCode className="w-4 h-4 text-blue-600" />
+                      <span className="font-extrabold text-xs text-blue-950 uppercase tracking-wide">
+                        Văn Bản Toàn Văn Sao Chép Từ HIS / Bệnh Án
                       </span>
                     </div>
-                    <textarea
-                      rows={3}
-                      value={newAppendLabText}
-                      onChange={(e) => setNewAppendLabText(e.target.value)}
-                      onPaste={(e) => {
-                        const pasted = e.clipboardData?.getData('text');
-                        if (pasted && pasted.trim()) {
-                          e.preventDefault();
-                          handleAutoAppendAndParseNewLabs(pasted.trim());
-                        }
-                      }}
-                      placeholder="Dán (Ctrl+V) kết quả xét nghiệm mới tại đây: Hệ thống sẽ TỰ ĐỘNG PHÂN TÍCH và ĐƯA NỐI TIẾP XUỐNG DƯỚI ngay khi dán..."
-                      className="w-full p-2.5 bg-emerald-50/30 border border-emerald-300 rounded-lg text-xs font-mono font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-400"
-                      autoFocus
-                    />
-                    <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+                    <div className="flex items-center gap-1.5">
+                      {initialLabsText && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyText(initialLabsText, 'labs')}
+                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer"
+                        >
+                          {copiedSection === 'labs' ? '✓ Đã sao chép' : 'Sao chép'}
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={handleDirectClipboardAppend}
-                        className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                        title="Đọc từ Clipboard và đưa xuống dưới ngay lập tức"
+                        onClick={() => {
+                          if (isEditingLabText) handleSaveLabText();
+                          else setIsEditingLabText(true);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold cursor-pointer"
                       >
-                        <ClipboardCheck className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>📋 Dán từ Clipboard</span>
+                        {isEditingLabText ? 'Lưu & Phân Tích' : 'Sửa văn bản'}
                       </button>
-                      <div className="flex items-center gap-2">
+                    </div>
+                  </div>
+
+                  {isEditingLabText ? (
+                    <div className="space-y-2">
+                      <textarea
+                        rows={6}
+                        value={initialLabsText}
+                        onChange={(e) => setInitialLabsText(e.target.value)}
+                        placeholder="Dán hoặc cập nhật kết quả xét nghiệm, CTM, sinh hóa, ECG, X-Quang..."
+                        className="w-full p-2.5 bg-slate-50 border border-blue-300 rounded-xl text-xs font-mono font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500 leading-relaxed"
+                      />
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span>Khi bấm Lưu, hệ thống sẽ <strong>tự động phân tích</strong> và cập nhật các chỉ số phía dưới.</span>
                         <button
                           type="button"
-                          onClick={() => {
-                            setIsQuickAppendingLab(false);
-                            setNewAppendLabText('');
-                          }}
-                          className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold cursor-pointer"
+                          onClick={handleSaveLabText}
+                          className="px-3.5 py-1.5 bg-blue-600 text-white font-bold rounded-lg cursor-pointer"
                         >
-                          Hủy
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAutoAppendAndParseNewLabs()}
-                          disabled={!newAppendLabText.trim()}
-                          className={`px-3.5 py-1.5 rounded-lg font-black text-white shadow-xs flex items-center gap-1.5 transition-all ${
-                            newAppendLabText.trim()
-                              ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 cursor-pointer'
-                              : 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                          }`}
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-                          <span>⚡ Tự Động Phân Tích & Thêm Xuống Dưới</span>
+                          Lưu & Tự Động Phân Tích
                         </button>
                       </div>
                     </div>
-                  </div>
-                )}
+                  ) : initialLabsText ? (
+                    <pre className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed bg-slate-50/70 p-3 rounded-xl border border-slate-200 max-h-48 overflow-y-auto">
+                      {initialLabsText}
+                    </pre>
+                  ) : (
+                    <p className="text-xs text-blue-800/80 italic p-2">
+                      Chưa có văn bản kết quả CLS sao chép nhanh. Bấm "+ Nối Tiếp" hoặc "Sửa văn bản" để dán trực tiếp từ HIS.
+                    </p>
+                  )}
+                </div>
+              )}
 
-                {/* KHUNG HIỂN THỊ / CHỈNH SỬA TOÀN BỘ VĂN BẢN */}
-                {isEditingLabText ? (
-                  <div className="space-y-2">
-                    <textarea
-                      rows={5}
-                      value={initialLabsText}
-                      onChange={(e) => setInitialLabsText(e.target.value)}
-                      placeholder="Dán hoặc cập nhật kết quả xét nghiệm, CTM, sinh hóa, ECG, X-Quang..."
-                      className="w-full p-2.5 bg-white border border-blue-300 rounded-lg text-xs font-mono font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex items-center justify-between text-xs text-slate-500">
-                      <span>Khi bấm Lưu, hệ thống sẽ <strong>tự động phân tích</strong> và sắp xếp các chỉ số xuống bảng phía dưới.</span>
-                      <button
-                        type="button"
-                        onClick={handleSaveLabText}
-                        className="px-3 py-1 bg-blue-600 text-white font-bold rounded-lg cursor-pointer"
-                      >
-                        Lưu & Tự Động Phân Tích
-                      </button>
-                    </div>
-                  </div>
-                ) : initialLabsText ? (
-                  <pre className="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed bg-white/80 p-2.5 rounded-lg border border-blue-100 max-h-48 overflow-y-auto">
-                    {initialLabsText}
-                  </pre>
-                ) : (
-                  <p className="text-xs text-blue-800/80 italic">
-                    Chưa có văn bản kết quả CLS sao chép nhanh. Bấm "Nối Tiếp CLS Mới Xuống Dưới" hoặc "Sửa văn bản" để dán trực tiếp từ HIS hoặc bệnh án.
-                  </p>
-                )}
-              </div>
-
-              {/* Add Lab Form */}
+              {/* 5. KHỐI FORM THÊM CHỈ SỐ THỦ CÔNG */}
               {showAddLab && (
                 <form
                   onSubmit={handleSaveLab}
-                  className="bg-white p-4 rounded-xl border border-rose-200 shadow-sm space-y-3 animate-in fade-in text-xs"
+                  className="bg-white p-4 rounded-2xl border border-rose-200 shadow-sm space-y-3 animate-in fade-in text-xs"
                 >
                   <h4 className="font-extrabold text-rose-700 uppercase tracking-wider">
                     Nhập Chỉ Số Xét Nghiệm Mới
@@ -1540,13 +1759,13 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowAddLab(false)}
-                      className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg"
+                      className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
                     >
                       Hủy
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs"
+                      className="px-4 py-1.5 font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs cursor-pointer"
                     >
                       Lưu kết quả
                     </button>
@@ -1554,136 +1773,414 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                 </form>
               )}
 
-              {/* Category Filter Pills & Summary for Labs */}
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+              {/* 6. KHỐI BÁO ĐỘNG NGUY HIỂM (PANIC VALUES BANNER) NẾU CÓ */}
+              {labStats.panicCount > 0 && (
+                <div className="p-3.5 bg-gradient-to-r from-rose-50 via-rose-100/60 to-red-50 border-2 border-rose-400 rounded-2xl shadow-xs space-y-2 animate-in fade-in">
+                  <div className="flex items-center justify-between pb-1 border-b border-rose-200">
+                    <div className="flex items-center gap-2 font-black text-xs text-rose-900 uppercase tracking-wide">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
+                      <span>CẢNH BÁO CHỈ SỐ CẬN LÂM SÀNG NGUY HIỂM (PANIC VALUE)</span>
+                    </div>
+                    <span className="text-[10px] font-bold bg-rose-600 text-white px-2 py-0.5 rounded-full uppercase">
+                      Cần xử trí
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
+                    {patient.labs.filter((l) => l.isPanicValue).map((lab) => (
+                      <div
+                        key={lab.id}
+                        className="bg-white/90 p-2.5 rounded-xl border border-rose-300 shadow-2xs space-y-1"
+                      >
+                        <div className="flex items-center justify-between text-[11px]">
+                          <strong className="text-rose-950 font-black">{lab.testName}</strong>
+                          <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-rose-600 text-white font-extrabold uppercase animate-pulse">
+                            🚨 Nguy hiểm
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-base font-black text-rose-700">{lab.value}</span>
+                          <span className="text-xs font-bold text-rose-900">{lab.unit}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          Khoảng tham chiếu: <strong className="text-slate-700">{lab.normalRange || '---'}</strong>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 7. THANH CÔNG CỤ: CHUYỂN ĐỔI CHẾ ĐỘ XEM (THẺ CHUYÊN KHOA VS BẢNG) & TÌM KIẾM */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+                {/* Left: View Mode Tabs */}
+                <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl">
                   <button
                     type="button"
-                    onClick={() => setLabCategoryFilter('ALL')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      labCategoryFilter === 'ALL'
-                        ? 'bg-slate-900 text-white shadow-2xs'
-                        : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    onClick={() => setLabViewMode('cards')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                      labViewMode === 'cards'
+                        ? 'bg-white text-[#0b4d8c] shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Tất cả ({patient.labs.length})
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>🗂️ Thẻ Chuyên Khoa</span>
                   </button>
-                  {patient.labs.some((l) => l.isPanicValue) && (
+                  <button
+                    type="button"
+                    onClick={() => setLabViewMode('table')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                      labViewMode === 'table'
+                        ? 'bg-white text-[#0b4d8c] shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <TableIcon className="w-3.5 h-3.5" />
+                    <span>📊 Bảng Dữ Liệu</span>
+                  </button>
+                </div>
+
+                {/* Right: Search & Category Filter */}
+                <div className="flex items-center gap-2 flex-1 max-w-md ml-auto">
+                  <div className="relative w-full">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={labSearchTerm}
+                      onChange={(e) => setLabSearchTerm(e.target.value)}
+                      placeholder="Tìm chỉ số (WBC, Creatinine, Kali, X-quang...)..."
+                      className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
+                    />
+                    {labSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setLabSearchTerm('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-500 shrink-0 whitespace-nowrap">
+                    {displayedLabs.length} / {patient.labs?.length || 0}
+                  </span>
+                </div>
+              </div>
+
+              {/* Category Filter Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                <button
+                  type="button"
+                  onClick={() => setLabCategoryFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 ${
+                    labCategoryFilter === 'ALL'
+                      ? 'bg-slate-900 text-white shadow-2xs'
+                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  Tất cả ({patient.labs?.length || 0})
+                </button>
+
+                {labStats.panicCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setLabCategoryFilter('PANIC')}
+                    className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                      labCategoryFilter === 'PANIC'
+                        ? 'bg-rose-600 text-white shadow-2xs ring-2 ring-rose-300'
+                        : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                    <span>🚨 Báo động ({labStats.panicCount})</span>
+                  </button>
+                )}
+
+                {labStats.abnormalCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setLabCategoryFilter('ABNORMAL')}
+                    className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                      labCategoryFilter === 'ABNORMAL'
+                        ? 'bg-amber-600 text-white shadow-2xs ring-2 ring-amber-300'
+                        : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                    }`}
+                  >
+                    <span>⚠️ Bất thường ({labStats.abnormalCount})</span>
+                  </button>
+                )}
+
+                {(['Huyết học', 'Sinh hóa', 'Điện giải', 'Khí máu', 'CĐHA'] as const).map((cat) => {
+                  const count = patient.labs.filter((l) => l.category === cat).length;
+                  if (count === 0) return null;
+                  return (
                     <button
+                      key={cat}
                       type="button"
-                      onClick={() => setLabCategoryFilter('PANIC')}
-                      className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer flex items-center gap-1 ${
-                        labCategoryFilter === 'PANIC'
-                          ? 'bg-rose-600 text-white shadow-2xs ring-2 ring-rose-300'
-                          : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                      onClick={() => setLabCategoryFilter(cat)}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer shrink-0 ${
+                        labCategoryFilter === cat
+                          ? 'bg-[#0b4d8c] text-white shadow-2xs'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                       }`}
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                      <span>Báo động đỏ ({patient.labs.filter((l) => l.isPanicValue).length})</span>
+                      {cat === 'Huyết học' ? '🩸 ' : cat === 'Sinh hóa' ? '🧪 ' : cat === 'Điện giải' ? '⚡ ' : cat === 'Khí máu' ? '🫁 ' : '🩻 '}
+                      {cat} ({count})
                     </button>
-                  )}
-                  {['Huyết học', 'Sinh hóa', 'Điện giải', 'Khí máu', 'CĐHA'].map((cat) => {
-                    const count = patient.labs.filter((l) => l.category === cat).length;
-                    if (count === 0) return null;
-                    return (
+                  );
+                })}
+              </div>
+
+              {/* 8. MAIN DISPLAY: CHẾ ĐỘ THẺ CHUYÊN KHOA (CARDS VIEW) HOẶC BẢNG DỮ LIỆU (TABLE VIEW) */}
+              {displayedLabs.length === 0 ? (
+                <div className="py-12 bg-white rounded-2xl border border-slate-200 text-center space-y-3 p-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0b4d8c] flex items-center justify-center mx-auto shadow-inner">
+                    <TestTube className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-800">
+                      {patient.labs?.length === 0 ? 'Chưa Có Kết Quả Cận Lâm Sàng Nào' : 'Không Tìm Thấy Chỉ Số Phù Hợp'}
+                    </h4>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                      {patient.labs?.length === 0 
+                        ? 'Dán văn bản sao chép từ HIS/Bệnh án hoặc đọc trực tiếp từ Clipboard để hệ thống tự động bóc tách và phân loại.'
+                        : 'Hãy thử xóa từ khóa tìm kiếm hoặc chọn bộ lọc "Tất cả".'}
+                    </p>
+                  </div>
+                  {patient.labs?.length === 0 && (
+                    <div className="pt-2 flex items-center justify-center gap-2">
                       <button
-                        key={cat}
                         type="button"
-                        onClick={() => setLabCategoryFilter(cat)}
-                        className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                          labCategoryFilter === cat
-                            ? 'bg-[#0b4d8c] text-white shadow-2xs'
-                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                        }`}
+                        onClick={handleDirectClipboardAppend}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
                       >
-                        {cat} ({count})
+                        <ClipboardCheck className="w-4 h-4 text-emerald-200" />
+                        <span>📋 Dán từ Clipboard ngay</span>
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsQuickAppendingLab(true)}
+                        className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl font-bold text-xs cursor-pointer"
+                      >
+                        + Dán thủ công
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : labViewMode === 'cards' ? (
+                /* CHẾ ĐỘ 1: XEM THEO THẺ CHUYÊN KHOA */
+                <div className="space-y-4">
+                  {(['Huyết học', 'Sinh hóa', 'Điện giải', 'Khí máu', 'CĐHA', 'Khác'] as const).map((categoryName) => {
+                    const labsInCat = displayedLabs.filter((l) => l.category === categoryName);
+                    if (labsInCat.length === 0) return null;
+
+                    const catTitle = 
+                      categoryName === 'Huyết học' ? '🩸 Huyết Học & Đông Máu (Công Thức Máu - CTM)' :
+                      categoryName === 'Sinh hóa' ? '🧪 Sinh Hóa & Đánh Giá Chức Năng (Gan - Thận - Viêm - Tim)' :
+                      categoryName === 'Điện giải' ? '⚡ Điện Giải Đồ (Na+, K+, Cl-, Ca2+)' :
+                      categoryName === 'Khí máu' ? '🫁 Khí Máu Động Mạch (ABG)' :
+                      categoryName === 'CĐHA' ? '🩻 Chẩn Đoán Hình Ảnh & Thăm Dò Chức Năng (X-Quang, Siêu Âm, ECG, CT)' :
+                      '📋 Các Xét Nghiệm Khác';
+
+                    return (
+                      <div key={categoryName} className="space-y-2.5 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                          <h4 className="font-black text-xs sm:text-sm text-slate-900 tracking-tight flex items-center gap-1.5">
+                            <span>{catTitle}</span>
+                            <span className="text-[10.5px] font-bold font-mono px-2 py-0.2 bg-slate-100 text-slate-700 rounded-full">
+                              {labsInCat.length}
+                            </span>
+                          </h4>
+                          {labsInCat.some((l) => l.isPanicValue) && (
+                            <span className="text-[10px] font-black uppercase text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 animate-pulse">
+                              Có chỉ số nguy hiểm
+                            </span>
+                          )}
+                        </div>
+
+                        {categoryName === 'CĐHA' ? (
+                          /* Hiển thị CĐHA dạng thẻ kết luận chi tiết */
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                            {labsInCat.map((lab) => (
+                              <div 
+                                key={lab.id} 
+                                className={`p-3.5 rounded-xl border transition-all ${
+                                  lab.isPanicValue 
+                                    ? 'bg-rose-50/90 border-rose-400 ring-2 ring-rose-300 shadow-xs' 
+                                    : lab.isAbnormal 
+                                    ? 'bg-amber-50/70 border-amber-300 shadow-2xs' 
+                                    : 'bg-slate-50/60 border-slate-200 shadow-2xs'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200/80 mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                      lab.isPanicValue ? 'bg-rose-600 text-white' : lab.isAbnormal ? 'bg-amber-500 text-white' : 'bg-blue-100 text-blue-700'
+                                    }`}>
+                                      {/ecg/i.test(lab.testName) ? '📈' : /siêu âm/i.test(lab.testName) ? '📡' : /ct/i.test(lab.testName) ? '🖥️' : '🩻'}
+                                    </div>
+                                    <div>
+                                      <h5 className="font-black text-xs sm:text-sm text-slate-900">
+                                        {lab.testName}
+                                      </h5>
+                                      <span className="text-[10px] text-slate-400 font-mono">
+                                        {lab.timestamp}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                                    lab.isPanicValue ? 'bg-rose-600 text-white animate-pulse' : lab.isAbnormal ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800'
+                                  }`}>
+                                    {lab.isPanicValue ? '🚨 NGUY HIỂM' : lab.isAbnormal ? '⚠️ BẤT THƯỜNG' : 'BÌNH THƯỜNG'}
+                                  </span>
+                                </div>
+
+                                <div className="text-xs text-slate-800 leading-relaxed font-medium bg-white/80 p-2.5 rounded-lg border border-slate-200/70">
+                                  <span className="font-bold text-slate-900 block mb-0.5 text-[10.5px] uppercase tracking-wide text-slate-500">
+                                    Mô tả & Kết luận chuyên môn:
+                                  </span>
+                                  <span className={`whitespace-pre-line text-xs sm:text-sm ${
+                                    lab.isPanicValue ? 'text-rose-950 font-black' : lab.isAbnormal ? 'text-amber-950 font-bold' : 'text-slate-800 font-semibold'
+                                  }`}>
+                                    {lab.value}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          /* Hiển thị xét nghiệm số học dạng lưới thẻ Metric Card */
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 pt-1">
+                            {labsInCat.map((lab) => (
+                              <div
+                                key={lab.id}
+                                className={`p-3 rounded-xl border transition-all flex flex-col justify-between ${
+                                  lab.isPanicValue
+                                    ? 'bg-rose-50 border-rose-400 ring-2 ring-rose-300/70 shadow-xs'
+                                    : lab.isAbnormal
+                                    ? 'bg-amber-50/70 border-amber-300 shadow-2xs'
+                                    : 'bg-slate-50/50 border-slate-200 shadow-2xs hover:bg-white'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-1 mb-1">
+                                  <h5 className="font-extrabold text-xs text-slate-900 leading-tight">
+                                    {lab.testName}
+                                  </h5>
+                                  {lab.isPanicValue ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-rose-600 text-white shrink-0 animate-pulse">
+                                      🚨 Nguy hiểm
+                                    </span>
+                                  ) : lab.isAbnormal ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
+                                      ⚠️ Bất thường
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold text-emerald-700 bg-emerald-50 shrink-0">
+                                      🟢 BT
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-baseline gap-1 my-1.5">
+                                  <span className={`text-lg font-black tracking-tight ${
+                                    lab.isPanicValue ? 'text-rose-700' : lab.isAbnormal ? 'text-amber-800' : 'text-slate-900'
+                                  }`}>
+                                    {lab.value}
+                                  </span>
+                                  {lab.unit && (
+                                    <span className="text-xs font-semibold text-slate-500">{lab.unit}</span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1.5 border-t border-slate-200/60 mt-1">
+                                  <span title={`Khoảng tham chiếu: ${lab.normalRange || '---'}`}>
+                                    BT: <strong className="font-semibold text-slate-700">{lab.normalRange || '---'}</strong>
+                                  </span>
+                                  <span className="text-[9px] text-slate-400 font-mono">
+                                    {lab.timestamp}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
-
-                <span className="text-[11px] font-bold text-slate-500">
-                  {displayedLabs.length} chỉ số được phân tích
-                </span>
-              </div>
-
-              {/* Lab table */}
-              <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-xs">
-                <table className="w-full text-left text-xs min-w-[550px]">
-                  <thead className="bg-slate-100 text-slate-700 uppercase font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="py-2.5 px-4">Thời gian</th>
-                      <th className="py-2.5 px-4">Nhóm</th>
-                      <th className="py-2.5 px-4">Xét nghiệm</th>
-                      <th className="py-2.5 px-4">Kết quả</th>
-                      <th className="py-2.5 px-4">Khoảng tham chiếu</th>
-                      <th className="py-2.5 px-4 text-right">Đánh giá</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {displayedLabs.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-400">
-                          {patient.labs.length === 0 
-                            ? 'Chưa có kết quả xét nghiệm được ghi nhận. Dán văn bản từ HIS phía trên để hệ thống tự động bóc tách.'
-                            : 'Không có chỉ số nào phù hợp với bộ lọc chuyên mục.'}
-                        </td>
-                      </tr>
-                    ) : (
-                      displayedLabs.map((lab) => (
-                        <tr
-                          key={lab.id}
-                          className={`hover:bg-slate-50 ${
-                            lab.isPanicValue
-                              ? 'bg-rose-50/70 font-semibold text-rose-950'
-                              : lab.isAbnormal
-                              ? 'bg-amber-50/30'
-                              : ''
-                          }`}
-                        >
-                          <td className="py-2.5 px-4 text-slate-500 whitespace-nowrap">
-                            {lab.timestamp}
-                          </td>
-                          <td className="py-2.5 px-4">
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 font-semibold text-slate-700">
-                              {lab.category}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-4 font-bold text-slate-900">
-                            {lab.testName}
-                          </td>
-                          <td className="py-2.5 px-4">
-                            <span className={`text-sm font-black ${
-                              lab.isPanicValue ? 'text-rose-600' : lab.isAbnormal ? 'text-amber-700' : 'text-slate-800'
-                            }`}>
-                              {lab.value}
-                            </span>{' '}
-                            <span className="text-[11px] text-slate-500">{lab.unit}</span>
-                          </td>
-                          <td className="py-2.5 px-4 text-slate-500">
-                            {lab.normalRange}
-                          </td>
-                          <td className="py-2.5 px-4 text-right">
-                            {lab.isPanicValue ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white animate-pulse">
-                                NGUY HIỂM
-                              </span>
-                            ) : lab.isAbnormal ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                                Bất thường
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-emerald-700 font-bold">
-                                Bình thường
-                              </span>
-                            )}
-                          </td>
+              ) : (
+                /* CHẾ ĐỘ 2: XEM BẢNG DỮ LIỆU ĐẦY ĐỦ (DATA TABLE VIEW) */
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs min-w-[650px]">
+                      <thead className="bg-slate-100 text-slate-700 uppercase font-black border-b border-slate-200 text-[10.5px]">
+                        <tr>
+                          <th className="py-2.5 px-3.5">Thời Gian</th>
+                          <th className="py-2.5 px-3.5">Chuyên Khoa</th>
+                          <th className="py-2.5 px-3.5">Xét Nghiệm / Chỉ Số</th>
+                          <th className="py-2.5 px-3.5">Kết Quả Đo</th>
+                          <th className="py-2.5 px-3.5">Khoảng Tham Chiếu</th>
+                          <th className="py-2.5 px-3.5 text-right">Đánh Giá Lâm Sàng</th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {displayedLabs.map((lab) => (
+                          <tr
+                            key={lab.id}
+                            className={`hover:bg-slate-50/80 transition-colors ${
+                              lab.isPanicValue
+                                ? 'bg-rose-50/80 font-semibold text-rose-950'
+                                : lab.isAbnormal
+                                ? 'bg-amber-50/40'
+                                : ''
+                            }`}
+                          >
+                            <td className="py-2 px-3.5 text-slate-500 whitespace-nowrap font-mono text-[11px]">
+                              {lab.timestamp}
+                            </td>
+                            <td className="py-2 px-3.5">
+                              <span className="px-2 py-0.5 rounded-md bg-slate-100 font-bold text-slate-700 text-[10.5px]">
+                                {lab.category}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3.5 font-bold text-slate-900">
+                              {lab.testName}
+                            </td>
+                            <td className="py-2 px-3.5">
+                              <span className={`text-sm font-black ${
+                                lab.isPanicValue ? 'text-rose-600' : lab.isAbnormal ? 'text-amber-700' : 'text-slate-800'
+                              }`}>
+                                {lab.value}
+                              </span>{' '}
+                              <span className="text-[11px] text-slate-500 font-semibold">{lab.unit}</span>
+                            </td>
+                            <td className="py-2 px-3.5 text-slate-500 font-medium text-[11px]">
+                              {lab.normalRange || '---'}
+                            </td>
+                            <td className="py-2 px-3.5 text-right">
+                              {lab.isPanicValue ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white animate-pulse">
+                                  🚨 NGUY HIỂM
+                                </span>
+                              ) : lab.isAbnormal ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                  ⚠️ Bất thường
+                                </span>
+                              ) : (
+                                <span className="text-[10.5px] text-emerald-700 font-bold">
+                                  🟢 Bình thường
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 

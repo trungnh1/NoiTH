@@ -35,6 +35,7 @@ import {
   Minimize2
 } from 'lucide-react';
 import { analyzeFullClinicalNote, AIAnalysisOutput } from '../utils/aiClinicalAssistant';
+import { parseRawLabsText } from '../utils/labAlerts';
 
 export interface SimplifiedNewPatientModalProps {
   rooms: DepartmentRoom[];
@@ -1218,6 +1219,53 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                     placeholder="Dán hoặc nhập kết quả xét nghiệm máu (CTM, Sinh hóa), X-Quang phổi, CT Scanner, Siêu âm, ECG từ HIS..."
                     className="w-full p-2.5 sm:p-3 bg-slate-50/60 border border-slate-300 rounded-xl font-mono text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#0b4d8c] focus:border-transparent leading-relaxed"
                   />
+
+                  {initialLabsText.trim() && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-blue-50/70 border border-blue-200 text-xs space-y-1.5 animate-in fade-in">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-blue-950">
+                        <span className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Chỉ số cận lâm sàng nhận diện tự động:</span>
+                        </span>
+                        <span className="text-slate-500 font-mono text-[10px]">
+                          {initialLabsText.split('\n').filter(Boolean).length} dòng kết quả
+                        </span>
+                      </div>
+                      {(() => {
+                        const parsed = parseRawLabsText(initialLabsText);
+                        if (parsed.length === 0) {
+                          return (
+                            <p className="text-[11px] text-slate-500 italic">
+                              Hệ thống sẽ tự động bóc tách và phân loại theo chuyên khoa khi lưu hồ sơ.
+                            </p>
+                          );
+                        }
+                        return (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            {parsed.slice(0, 10).map((l, idx) => (
+                              <span
+                                key={idx}
+                                className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold shadow-2xs ${
+                                  l.isPanicValue
+                                    ? 'bg-rose-600 text-white animate-pulse'
+                                    : l.isAbnormal
+                                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                    : 'bg-white text-slate-800 border border-slate-200'
+                                }`}
+                              >
+                                {l.testName}: <strong>{l.value}</strong> {l.unit}
+                              </span>
+                            ))}
+                            {parsed.length > 10 && (
+                              <span className="text-[10.5px] text-[#0b4d8c] font-black">
+                                +{parsed.length - 10} chỉ số khác
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
