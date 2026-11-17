@@ -947,15 +947,124 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
             </div>
           )}
 
-          {/* NỘI DUNG 2: CHẨN ĐOÁN, HƯỚNG XỬ TRÍ, GHI CHÚ, BÀN GIAO & MỨC ĐỘ */}
+          {/* NỘI DUNG 2: GẮN NHÃN MỨC ĐỘ TÌNH TRẠNG & DỰ KIẾN RA VIỆN (NẰM PHÍA TRÊN, NGAY DƯỚI HÀNH CHÍNH) */}
+          <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <label className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span>Gắn Nhãn: Mức Độ Tình Trạng & Ra Viện</span>
+              </label>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-[10px] sm:text-[10.5px] font-black px-2 sm:px-2.5 py-0.5 rounded-md border ${
+                  severity === 'CRITICAL' 
+                    ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                    : severity === 'MODERATE' 
+                    ? 'bg-amber-50 text-amber-700 border-amber-200' 
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                }`}>
+                  {severity === 'CRITICAL' ? '🔴 Nặng' : severity === 'MODERATE' ? '🟡 Cần theo dõi' : '🟢 Ổn định'}
+                </span>
+                {admissionStatus === 'DISCHARGE_TODAY' && (
+                  <span className="text-[10px] sm:text-[10.5px] font-black text-purple-700 bg-purple-50 px-2 sm:px-2.5 py-0.5 rounded-md border border-purple-200">
+                    🟣 Ra viện
+                  </span>
+                )}
+                {admissionStatus === 'DISCHARGE_TOMORROW' && (
+                  <span className="text-[10px] sm:text-[10.5px] font-black text-blue-700 bg-blue-50 px-2 sm:px-2.5 py-0.5 rounded-md border border-blue-200">
+                    🔵 RV ngày mai
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={() => setSeverity('STABLE')}
+                className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  severity === 'STABLE'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-2 ring-emerald-300'
+                    : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                }`}
+              >
+                <span>🟢</span>
+                <span>Ổn định</span>
+                {severity === 'STABLE' && (
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSeverity('MODERATE')}
+                className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  severity === 'MODERATE'
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-xs ring-2 ring-amber-300'
+                    : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                <span>🟡</span>
+                <span>Cần theo dõi</span>
+                {severity === 'MODERATE' && (
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSeverity('CRITICAL')}
+                className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  severity === 'CRITICAL'
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-xs ring-2 ring-rose-300 animate-pulse'
+                    : 'bg-rose-50 text-rose-900 border-rose-200 hover:bg-rose-100'
+                }`}
+              >
+                <span>🔴</span>
+                <span>Nặng</span>
+                {severity === 'CRITICAL' && (
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                  if (admissionStatus === 'DISCHARGE_TOMORROW' || admissionStatus === 'DISCHARGE_TODAY') {
+                    setAdmissionStatus('STABLE_INPATIENT');
+                    setDischargeTomorrowSetDate(undefined);
+                  } else {
+                    setAdmissionStatus('DISCHARGE_TOMORROW');
+                    setDischargeTomorrowSetDate(todayDateStr);
+                  }
+                }}
+                className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  admissionStatus === 'DISCHARGE_TOMORROW'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-300'
+                    : admissionStatus === 'DISCHARGE_TODAY'
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-xs ring-2 ring-purple-300'
+                    : 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100'
+                }`}
+                title="Bấm để bật/tắt nhãn RV ngày mai (dùng kèm với Ổn định, Cần theo dõi hoặc Nặng)"
+              >
+                <span>{admissionStatus === 'DISCHARGE_TODAY' ? '🟣' : '🔵'}</span>
+                <span>{admissionStatus === 'DISCHARGE_TODAY' ? 'Ra viện' : 'RV ngày mai'}</span>
+                {(admissionStatus === 'DISCHARGE_TOMORROW' || admissionStatus === 'DISCHARGE_TODAY') && (
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* NỘI DUNG 3: CHẨN ĐOÁN, DIỄN TIẾN HÔM NAY & HƯỚNG XỬ TRÍ */}
           <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs space-y-2.5 sm:space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-xs">
-                  2
+                  <Activity className="w-3.5 h-3.5" />
                 </div>
                 <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">
-                  Chẩn Đoán, Hướng Xử Trí & Bàn Giao
+                  Chẩn Đoán, Diễn Tiến Hôm Nay & Hướng Xử Trí
                 </h4>
               </div>
             </div>
@@ -1042,117 +1151,10 @@ Tình trạng: Ổn định, dự kiến ra viện ngày mai.`;
                   />
                 </div>
               </div>
-
-              {/* Gắn nhãn: Mức Độ Tình Trạng & Dự Kiến Ra Viện (Có thể dùng kèm nhau) */}
-              <div className="pt-2 border-t border-slate-100">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-[11px] font-black text-slate-700 uppercase">
-                    Gắn Nhãn: Mức Độ Tình Trạng & Ra Viện
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${
-                      severity === 'CRITICAL' 
-                        ? 'bg-rose-50 text-rose-700 border-rose-200' 
-                        : severity === 'MODERATE' 
-                        ? 'bg-amber-50 text-amber-700 border-amber-200' 
-                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    }`}>
-                      {severity === 'CRITICAL' ? '🔴 Nặng' : severity === 'MODERATE' ? '🟡 Cần theo dõi' : '🟢 Ổn định'}
-                    </span>
-                    {admissionStatus === 'DISCHARGE_TODAY' && (
-                      <span className="text-[10px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
-                        🟣 Ra viện
-                      </span>
-                    )}
-                    {admissionStatus === 'DISCHARGE_TOMORROW' && (
-                      <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                        🔵 RV ngày mai
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSeverity('STABLE')}
-                    className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      severity === 'STABLE'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-2 ring-emerald-300'
-                        : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                    }`}
-                  >
-                    <span>🟢</span>
-                    <span>Ổn định</span>
-                    {severity === 'STABLE' && (
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSeverity('MODERATE')}
-                    className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      severity === 'MODERATE'
-                        ? 'bg-amber-500 text-white border-amber-500 shadow-xs ring-2 ring-amber-300'
-                        : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
-                    }`}
-                  >
-                    <span>🟡</span>
-                    <span>Cần theo dõi</span>
-                    {severity === 'MODERATE' && (
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSeverity('CRITICAL')}
-                    className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      severity === 'CRITICAL'
-                        ? 'bg-rose-600 text-white border-rose-600 shadow-xs ring-2 ring-rose-300 animate-pulse'
-                        : 'bg-rose-50 text-rose-900 border-rose-200 hover:bg-rose-100'
-                    }`}
-                  >
-                    <span>🔴</span>
-                    <span>Nặng</span>
-                    {severity === 'CRITICAL' && (
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                      if (admissionStatus === 'DISCHARGE_TOMORROW' || admissionStatus === 'DISCHARGE_TODAY') {
-                        setAdmissionStatus('STABLE_INPATIENT');
-                        setDischargeTomorrowSetDate(undefined);
-                      } else {
-                        setAdmissionStatus('DISCHARGE_TOMORROW');
-                        setDischargeTomorrowSetDate(todayDateStr);
-                      }
-                    }}
-                    className={`p-2.5 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      admissionStatus === 'DISCHARGE_TOMORROW'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-300'
-                        : admissionStatus === 'DISCHARGE_TODAY'
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-xs ring-2 ring-purple-300'
-                        : 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100'
-                    }`}
-                    title="Bấm để bật/tắt nhãn RV ngày mai (dùng kèm với Ổn định, Cần theo dõi hoặc Nặng)"
-                  >
-                    <span>{admissionStatus === 'DISCHARGE_TODAY' ? '🟣' : '🔵'}</span>
-                    <span>{admissionStatus === 'DISCHARGE_TODAY' ? 'Ra viện' : 'RV ngày mai'}</span>
-                    {(admissionStatus === 'DISCHARGE_TOMORROW' || admissionStatus === 'DISCHARGE_TODAY') && (
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    )}
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
 
-          {/* NỘI DUNG 3: NÚT MỞ RỘNG: KẾT QUẢ CẬN LÂM SÀNG & XÉT NGHIỆM (HIS) VÀ DIỄN TIẾN LÂM SÀNG CHI TIẾT */}
+          {/* NỘI DUNG 4: NÚT MỞ RỘNG: KẾT QUẢ CẬN LÂM SÀNG & XÉT NGHIỆM (HIS) VÀ DIỄN TIẾN LÂM SÀNG CHI TIẾT */}
           <div className="rounded-xl sm:rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-2xs transition-all">
             <button
               type="button"
