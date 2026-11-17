@@ -148,23 +148,24 @@ export function parseExcelAdmissionDate(rawVal: any): { formatted: string; raw: 
 }
 
 /**
- * Trích xuất số phòng chuẩn từ chuỗi Excel (vd: "Phòng 743", "Phòng 705", "Phòng 735", "705")
+ * Trích xuất số phòng chuẩn từ chuỗi Excel (vd: "Phòng 743", "P743", "G743-1", "743_G01", "Phòng 705", "705")
  */
 export function extractCleanRoomNumber(roomRaw?: string): string {
   if (!roomRaw) return '703';
   const str = String(roomRaw).trim();
   
-  // 1. Match số phòng 3 chữ số bắt đầu bằng 7 (chuẩn Khoa Nội TH - Tim Mạch: 703 -> 757)
-  const match7xx = str.match(/\b(7\d{2})\b/);
+  // 1. Match số phòng 3 chữ số bắt đầu bằng 7 (chuẩn Khoa Nội TH - Tim Mạch: 703 -> 757, kể cả dạng dính P743, G743-1, P.743)
+  const match7xx = str.match(/(?:^|[^\d])(7\d{2})(?=[^\d]|$)/i) || str.match(/(7\d{2})/);
   if (match7xx) return match7xx[1];
 
   // 2. Match bất kỳ số phòng 3 chữ số nào
-  const any3Digit = str.match(/\b(\d{3})\b/);
+  const any3Digit = str.match(/(?:^|[^\d])(\d{3})(?=[^\d]|$)/) || str.match(/(\d{3})/);
   if (any3Digit) return any3Digit[1];
 
   // 3. Làm sạch các tiền tố thông thường nếu không phải dạng 3 số chuẩn
   const cleaned = str
     .replace(/^(phòng|buồng|phong|buong|p\.?|b\.?)\s*/i, '')
+    .split(/[-_/]/)[0]
     .trim();
   return cleaned || '703';
 }
@@ -435,34 +436,35 @@ export function findRoomValue(row: Record<string, any>): string {
     const k = normalizeVietnameseString(rawKey);
     const strVal = String(val ?? '').trim();
     if (!strVal) continue;
+    if (k.startsWith('ma') || k.includes('maphong') || k.includes('khoa')) continue;
     if (k.includes('tenphong') || k.includes('ten phong') || k.includes('ten buong')) {
       return strVal;
     }
   }
 
   // 3. ƯU TIÊN SỐ 3: Cột 'phong' hoặc 'buong' hoặc 'so phong', 'so buong', 'room'
-  // BỎ QUA TUYỆT ĐỐI các cột mã phòng (maphong, maphongth, ma phong, mabuong)
+  // BỎ QUA TUYỆT ĐỐI các cột mã phòng (maphong, maphongth, ma phong, mabuong) và tên khoa (khoa, khoaphong, tenkhoa)
   for (const [rawKey, val] of Object.entries(row)) {
     const k = normalizeVietnameseString(rawKey);
     const strVal = String(val ?? '').trim();
     if (!strVal) continue;
     
-    // Loại trừ hoàn toàn các cột mã phòng
-    if (k.startsWith('ma') || k.includes('maphong') || k.includes('ma phong') || k.includes('mabuong')) {
+    // Loại trừ hoàn toàn các cột mã phòng và tên khoa
+    if (k.startsWith('ma') || k.includes('maphong') || k.includes('ma phong') || k.includes('mabuong') || k.includes('khoa')) {
       continue;
     }
 
-    if (k === 'phong' || k === 'so phong' || k === 'buong' || k === 'so buong' || k === 'room') {
+    if (k === 'phong' || k === 'so phong' || k === 'buong' || k === 'so buong' || k === 'room' || k === 'buong benh' || k === 'phong benh' || k === 'so buong benh') {
       return strVal;
     }
   }
 
-  // 4. ƯU TIÊN SỐ 4: Bất kỳ cột nào chứa 'phong' hoặc 'buong' nhưng TUYỆT ĐỐI không chứa 'ma'
+  // 4. ƯU TIÊN SỐ 4: Bất kỳ cột nào chứa 'phong' hoặc 'buong' nhưng TUYỆT ĐỐI không chứa 'ma' hoặc 'khoa'
   for (const [rawKey, val] of Object.entries(row)) {
     const k = normalizeVietnameseString(rawKey);
     const strVal = String(val ?? '').trim();
     if (!strVal) continue;
-    if (k.startsWith('ma') || k.includes('maphong') || k.includes('ma phong') || k.includes('mabuong')) {
+    if (k.startsWith('ma') || k.includes('maphong') || k.includes('ma phong') || k.includes('mabuong') || k.includes('khoa')) {
       continue;
     }
     if (k.includes('phong') || k.includes('buong')) {

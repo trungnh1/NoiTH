@@ -19,7 +19,7 @@ import { DoctorLoginScreen } from './components/DoctorLoginScreen';
 import { getSavedDoctorSession, saveDoctorSession, clearDoctorSession } from './utils/auth';
 import { loadAppSettings, saveAppSettings, getFontSizeScale, AppSettings, FONT_FAMILY_MAP } from './utils/settings';
 import { isRealAllergy } from './utils/clinicalTextParser';
-import { isSameClinicalPatient, findDuplicatePatientGroups, DuplicatePatientGroup } from './utils/excelParser';
+import { isSameClinicalPatient, findDuplicatePatientGroups, DuplicatePatientGroup, extractCleanRoomNumber } from './utils/excelParser';
 import { normalizeSearchText } from './utils/searchUtils';
 import { 
   subscribeToClinicalRecords, 
@@ -541,6 +541,55 @@ export default function App() {
     // Chặn trùng lặp bệnh nhân: trùng họ tên, tuổi, ngày nhập viện hoặc mã BN
     const duplicate = patients.find((p) => isSameClinicalPatient(p, newPatient));
     if (duplicate) {
+      if (duplicate.status === 'DISCHARGED') {
+        // TÁI NHẬP VIỆN / KHÔI PHỤC BỆNH NHÂN ĐÃ RA VIỆN
+        const newRoomClean = extractCleanRoomNumber(newPatient.roomNumber);
+        const reactivated: Patient = {
+          ...duplicate,
+          ...newPatient,
+          id: duplicate.id,
+          status: 'ACTIVE',
+          admissionStatus: newPatient.admissionStatus || 'ADMITTED_TODAY',
+          roomNumber: newRoomClean || duplicate.roomNumber,
+          bedNumber: newPatient.bedNumber || duplicate.bedNumber,
+          dischargeDate: undefined,
+          dischargeTomorrowSetDate: undefined,
+        };
+        const updated = patients.map((p) => (p.id === duplicate.id ? reactivated : p));
+        setPatients(updated);
+        savePatients(updated);
+        setIsAutoSyncing(true);
+        try {
+          await syncPatientToCloud(reactivated);
+          setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+        } catch (err) {
+          console.warn('Auto sync reactivated patient error:', err);
+        } finally {
+          setIsAutoSyncing(false);
+        }
+        setManualPushMessage(`🔄 Đã khôi phục bệnh nhân "${reactivated.fullName}" vào Phòng ${reactivated.roomNumber}!`);
+        setTimeout(() => setManualPushMessage(null), 5000);
+        return;
+      }
+
+      // Nếu đang ACTIVE nhưng phòng trong Excel khác phòng hiện tại -> TỰ ĐỘNG CẬP NHẬT PHÒNG!
+      const newRoomClean = extractCleanRoomNumber(newPatient.roomNumber);
+      const oldRoomClean = extractCleanRoomNumber(duplicate.roomNumber);
+      if (newRoomClean && oldRoomClean && newRoomClean !== oldRoomClean) {
+        const moved: Patient = {
+          ...duplicate,
+          roomNumber: newRoomClean,
+          bedNumber: newPatient.bedNumber || duplicate.bedNumber,
+        };
+        const updated = patients.map((p) => (p.id === duplicate.id ? moved : p));
+        setPatients(updated);
+        savePatients(updated);
+        syncPatientToCloud(moved).catch(console.warn);
+        setManualPushMessage(`🔄 Đã cập nhật chuyển buồng cho BN "${moved.fullName}": P.${oldRoomClean} ➔ P.${newRoomClean}!`);
+        setTimeout(() => setManualPushMessage(null), 5000);
+        return;
+      }
+
       console.warn('Patient already exists in ward, skipping duplicate:', newPatient.fullName, duplicate.id);
       setManualPushMessage(`⚠️ Bệnh nhân "${newPatient.fullName}" đã có trong danh sách khoa (${duplicate.roomNumber ? `P.${duplicate.roomNumber}` : ''}), tự động bỏ qua để tránh trùng.`);
       setTimeout(() => setManualPushMessage(null), 6000);
@@ -563,30 +612,64 @@ export default function App() {
     }
   };
 
-  // Import nhieu benh nhan cung luc tu Cloud ve tinh
+  // Import nhiều bệnh nhân cùng lúc (từ Excel hoặc Cloud vệ tinh)
   const handleImportMultiplePatients = async (newPatients: Patient[]) => {
     if (newPatients.length === 0) return;
-    // Lọc bỏ các bệnh nhân đã có sẵn trong danh sách khoa (trùng họ tên, tuổi, ngày nhập viện hoặc mã BN)
-    const nonDuplicates = newPatients.filter((newP) => !patients.some((p) => isSameClinicalPatient(p, newP)));
-    if (nonDuplicates.length === 0) {
-      setManualPushMessage('⚠️ Tất cả bệnh nhân vừa nạp đều đã có trong danh sách khoa, không có bệnh nhân mới nào được thêm.');
-      setTimeout(() => setManualPushMessage(null), 6000);
-      return;
-    }
+    
+    let currentList = [...patients];
+    const affectedToSync: Patient[] = [];
 
-    const updated = [...nonDuplicates, ...patients];
-    setPatients(updated);
-    savePatients(updated);
-    setIsAutoSyncing(true);
-    try {
-      for (const p of nonDuplicates) {
-        await syncPatientToCloud(p);
+    newPatients.forEach((newP) => {
+      const duplicateIdx = currentList.findIndex((p) => isSameClinicalPatient(p, newP));
+      if (duplicateIdx !== -1) {
+        const dup = currentList[duplicateIdx];
+        if (dup.status === 'DISCHARGED') {
+          const reactivated: Patient = {
+            ...dup,
+            ...newP,
+            id: dup.id,
+            status: 'ACTIVE',
+            admissionStatus: newP.admissionStatus || 'ADMITTED_TODAY',
+            roomNumber: extractCleanRoomNumber(newP.roomNumber) || dup.roomNumber,
+            bedNumber: newP.bedNumber || dup.bedNumber,
+            dischargeDate: undefined,
+            dischargeTomorrowSetDate: undefined,
+          };
+          currentList[duplicateIdx] = reactivated;
+          affectedToSync.push(reactivated);
+        } else {
+          const newRoomClean = extractCleanRoomNumber(newP.roomNumber);
+          const oldRoomClean = extractCleanRoomNumber(dup.roomNumber);
+          if (newRoomClean && oldRoomClean && newRoomClean !== oldRoomClean) {
+            const moved: Patient = {
+              ...dup,
+              roomNumber: newRoomClean,
+              bedNumber: newP.bedNumber || dup.bedNumber,
+            };
+            currentList[duplicateIdx] = moved;
+            affectedToSync.push(moved);
+          }
+        }
+      } else {
+        currentList = [newP, ...currentList];
+        affectedToSync.push(newP);
       }
-      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
-    } catch (err: any) {
-      console.warn('Auto sync multiple patients error:', err);
-    } finally {
-      setIsAutoSyncing(false);
+    });
+
+    setPatients(currentList);
+    savePatients(currentList);
+    if (affectedToSync.length > 0) {
+      setIsAutoSyncing(true);
+      try {
+        for (const p of affectedToSync) {
+          await syncPatientToCloud(p);
+        }
+        setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
+      } catch (err) {
+        console.warn('Auto sync multiple patients error:', err);
+      } finally {
+        setIsAutoSyncing(false);
+      }
     }
   };
 

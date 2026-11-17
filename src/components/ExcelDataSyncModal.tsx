@@ -161,13 +161,30 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
 
   // Deduplication Helper: Kiểm tra bệnh nhân đã có trong danh sách khoa chưa
   // Tiêu chí đối soát (theo yêu cầu BS): Nếu trùng Họ tên, Tuổi, Ngày nhập viện thì bỏ qua không nhập
-  const checkPatientAlreadyExists = (row: ExcelPatientRow): { exists: boolean; existingRecord?: Patient; reason?: string } => {
+  const checkPatientAlreadyExists = (row: ExcelPatientRow): { 
+    exists: boolean; 
+    isDischarged?: boolean;
+    roomMismatch?: boolean;
+    existingRecord?: Patient; 
+    reason?: string 
+  } => {
     if (!existingPatients || existingPatients.length === 0) return { exists: false };
 
     for (const p of existingPatients) {
       const dupCheck = isPatientDuplicateWithExisting(row, p);
       if (dupCheck.isDuplicate) {
-        return { exists: true, existingRecord: p, reason: dupCheck.reason };
+        const isDischarged = p.status === 'DISCHARGED';
+        const rowRoom = extractCleanRoomNumber(row.patientRoom);
+        const pRoom = extractCleanRoomNumber(p.roomNumber);
+        const roomMismatch = !isDischarged && Boolean(rowRoom && pRoom && rowRoom !== pRoom);
+        return { 
+          // Chỉ coi là đã tồn tại trọn vẹn (bỏ qua không làm gì) nếu đang ACTIVE và CÙNG buồng phòng
+          exists: !isDischarged && !roomMismatch, 
+          isDischarged,
+          roomMismatch,
+          existingRecord: p, 
+          reason: dupCheck.reason 
+        };
       }
     }
 
@@ -254,6 +271,9 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
   const handleImportDirectFromExcel = (excelRow: ExcelPatientRow, index: number) => {
     // Kiểm tra chặn trùng lặp trước khi tiếp nhận trực tiếp
     const dupCheck = checkPatientAlreadyExists(excelRow);
+    const existingRec = dupCheck.existingRecord;
+
+    // 1. Nếu đã có trong khoa và cùng buồng phòng -> bỏ qua
     if (dupCheck.exists) {
       setNotification({
         message: `Bệnh nhân "${excelRow.patientName}" đã có trong danh sách khoa (${dupCheck.reason || 'đã tồn tại'}), tự động bỏ qua để tránh trùng!`,
@@ -262,11 +282,59 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
       return;
     }
 
+    const roomClean = extractCleanRoomNumber(excelRow.patientRoom) || '703';
+
+    // 2. Nếu bệnh nhân đã có nhưng đang ở trạng thái Ra viện (DISCHARGED) -> Khôi phục lại nội trú!
+    if (dupCheck.isDischarged && existingRec) {
+      const reactivated: Patient = {
+        ...existingRec,
+        status: 'ACTIVE',
+        admissionStatus: 'ADMITTED_TODAY',
+        roomNumber: roomClean,
+        bedNumber: excelRow.bedNumber || existingRec.bedNumber || 'Giường 01',
+        admissionDate: excelRow.admissionDate || existingRec.admissionDate,
+        dischargeDate: undefined,
+        dischargeTomorrowSetDate: undefined,
+      };
+      if (onReactivatePatient) {
+        onReactivatePatient(reactivated);
+      } else {
+        onImportPatientDirect(reactivated);
+      }
+      setImportedIds((prev) => new Set(prev).add(`excel-${index}`));
+      setNotification({
+        message: `Đã khôi phục bệnh nhân "${reactivated.fullName}" trở lại danh sách nội trú vào Phòng ${reactivated.roomNumber}!`,
+        type: 'success',
+      });
+      setTimeout(() => setNotification(null), 4000);
+      return;
+    }
+
+    // 3. Nếu bệnh nhân đang ACTIVE nhưng lệch buồng phòng -> Cập nhật buồng phòng mới từ Excel!
+    if (dupCheck.roomMismatch && existingRec) {
+      const moved: Patient = {
+        ...existingRec,
+        roomNumber: roomClean,
+        bedNumber: excelRow.bedNumber || existingRec.bedNumber || 'Giường 01',
+      };
+      if (onReactivatePatient) {
+        onReactivatePatient(moved);
+      } else {
+        onImportPatientDirect(moved);
+      }
+      setImportedIds((prev) => new Set(prev).add(`excel-${index}`));
+      setNotification({
+        message: `Đã cập nhật buồng phòng cho BN "${moved.fullName}": P.${existingRec.roomNumber} ➔ P.${moved.roomNumber}!`,
+        type: 'success',
+      });
+      setTimeout(() => setNotification(null), 4000);
+      return;
+    }
+
     const now = new Date();
     const defaultDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     const ageNum = parseAgeNumber(excelRow.patientAge) || 60;
-    const roomClean = excelRow.patientRoom || '703';
 
     // Ngày nhập viện: ưu tiên ngày đã parse chuẩn xác từ file Excel
     const finalAdmissionDate = excelRow.admissionDate && excelRow.admissionDate.trim() 
@@ -350,14 +418,20 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     }
 
     let mergedCount = 0;
+    let reactivatedCount = 0;
+    let movedCount = 0;
     excelRows.forEach((row, idx) => {
       const key = `excel-${idx}`;
-      // Nếu đã có trong dữ liệu khoa -> BỎ QUA KHÔNG NHẬP THÊM
-      if (checkPatientAlreadyExists(row).exists) {
+      const check = checkPatientAlreadyExists(row);
+      // Nếu đã có trong dữ liệu khoa và cùng phòng -> BỎ QUA KHÔNG NHẬP THÊM
+      if (check.exists) {
         skippedExisting++;
         return;
       }
       if (!importedIds.has(key)) {
+        if (check.isDischarged) reactivatedCount++;
+        if (check.roomMismatch) movedCount++;
+
         // Tự động kiểm tra xem hàng Excel này có bản ghi Vệ Tinh chờ ghép nối không
         const matchedSat = matchedRecords.find((m) => m.matchedExcelRow === row && !importedIds.has(m.satelliteRecord.id));
         if (matchedSat) {
@@ -372,17 +446,20 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
 
     const dischargeMsg = toDischarge.length > 0 ? ` (Đã tự động cho ra viện ${toDischarge.length} BN không có trong file Excel)` : '';
     const mergeMsg = mergedCount > 0 ? ` (Tự động ghép nối ${mergedCount} ca với Bệnh án Vệ tinh)` : '';
+    const reactivateMsg = reactivatedCount > 0 ? ` (Khôi phục ${reactivatedCount} ca đã ra viện)` : '';
+    const moveMsg = movedCount > 0 ? ` (Đổi buồng cho ${movedCount} ca)` : '';
     if (count > 0) {
       setNotification({
-        message: `Đã nhập thành công ${count} bệnh nhân mới vào hệ thống!${mergeMsg} ${skippedExisting > 0 ? `(Đã tự động bỏ qua ${skippedExisting} bệnh nhân đã có sẵn trong khoa)` : ''}${dischargeMsg}`,
+        message: `Đã xử lý thành công ${count} bệnh nhân!${mergeMsg}${reactivateMsg}${moveMsg} ${skippedExisting > 0 ? `(Đã tự động bỏ qua ${skippedExisting} bệnh nhân đã ổn định trong buồng)` : ''}${dischargeMsg}`,
         type: 'success',
       });
     } else {
       setNotification({
-        message: `Tất cả ${skippedExisting} bệnh nhân trong file đều đã có trong danh sách khoa, đã tự động bỏ qua không nhập trùng.${dischargeMsg}`,
+        message: `Tất cả ${skippedExisting} bệnh nhân trong file đều đã có đúng buồng trong danh sách khoa, đã tự động bỏ qua không nhập trùng.${dischargeMsg}`,
         type: 'info',
       });
     }
+  };
   };
 
   return (
@@ -763,8 +840,38 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-300"
                                 title={`Bệnh nhân đã có trong danh sách khoa: ${existingRecord?.fullName || ''} - P.${existingRecord?.roomNumber || ''} (${dupReason || 'Trùng thông tin'})`}
                               >
-                                ✓ Đã có trong dữ liệu (Bỏ qua)
+                                ✓ Đang ở P.{existingRecord?.roomNumber}
                               </span>
+                            ) : dupCheck.isDischarged ? (
+                              <button
+                                type="button"
+                                onClick={() => handleImportDirectFromExcel(row, idx)}
+                                disabled={isImported}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1 ${
+                                  isImported
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                    : 'bg-purple-600 hover:bg-purple-700 text-white shadow-2xs active:scale-95'
+                                }`}
+                                title="Bệnh nhân này trước đó đã ở trạng thái Ra viện. Bấm để khôi phục lại danh sách nội trú!"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>{isImported ? 'Đã Khôi Phục' : `Khôi phục vào P.${row.patientRoom}`}</span>
+                              </button>
+                            ) : dupCheck.roomMismatch ? (
+                              <button
+                                type="button"
+                                onClick={() => handleImportDirectFromExcel(row, idx)}
+                                disabled={isImported}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1 ${
+                                  isImported
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                    : 'bg-amber-600 hover:bg-amber-700 text-white shadow-2xs active:scale-95'
+                                }`}
+                                title={`Bệnh nhân đang lưu ở P.${existingRecord?.roomNumber}. Bấm để chuyển sang P.${row.patientRoom}!`}
+                              >
+                                <ArrowRight className="w-3.5 h-3.5" />
+                                <span>{isImported ? 'Đã Đổi Buồng' : `Đổi P.${existingRecord?.roomNumber} ➔ P.${row.patientRoom}`}</span>
+                              </button>
                             ) : (
                               <button
                                 type="button"

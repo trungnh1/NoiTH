@@ -50,7 +50,8 @@ import { sortDoctorsAlphabetically } from '../utils/doctorSorter';
 import { 
   parseExcelAdmissionDate, 
   findBestPatientMatchForSatelliteRecord, 
-  enrichPatientWithSatelliteData 
+  enrichPatientWithSatelliteData,
+  extractCleanRoomNumber
 } from '../utils/excelParser';
 import { AppSettings } from '../utils/settings';
 import { isRealAllergy } from '../utils/clinicalTextParser';
@@ -638,7 +639,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     return patients.filter((p) => {
       if (p.status !== 'ACTIVE') return false;
       if (selectedGroup === 'ALL') return true;
-      const cleanRoom = p.roomNumber ? p.roomNumber.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim() : '';
+      const cleanRoom = extractCleanRoomNumber(p.roomNumber);
       return currentGroupRoomNumbers.includes(cleanRoom);
     });
   }, [patients, currentGroupRoomNumbers, selectedGroup]);
@@ -706,7 +707,7 @@ export const DetailedPatientListView: React.FC<DetailedPatientListViewProps> = (
     const patientMap = new Map<string, Patient[]>();
 
     filteredPatients.forEach((p) => {
-      const cleanNum = p.roomNumber ? p.roomNumber.replace(/^(phòng|p\.?|buồng|b\.?)\s*/i, '').trim() : '';
+      const cleanNum = extractCleanRoomNumber(p.roomNumber);
       if (cleanNum) {
         if (!patientMap.has(cleanNum)) {
           patientMap.set(cleanNum, []);
