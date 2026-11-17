@@ -62,6 +62,23 @@ export function normalizeVietnameseString(str?: string): string {
 }
 
 /**
+ * Chuẩn hóa họ tên bệnh nhân để so khớp:
+ * Tự động mở rộng các từ viết tắt phổ biến (Ng. -> nguyen, V. -> van, T. -> thi, Đ. -> dong, Tr. -> tran)
+ * và làm sạch dấu tiếng Việt để đối soát chính xác 100% giữa Excel và dữ liệu nội trú.
+ */
+export function normalizePatientFullName(name?: string): string {
+  if (!name) return '';
+  let clean = ` ${String(name).trim().toLowerCase()} `;
+  clean = clean
+    .replace(/\sng[\.\s]+/g, ' nguyen ')
+    .replace(/\sv[\.\s]+/g, ' van ')
+    .replace(/\st[\.\s]+/g, ' thi ')
+    .replace(/\sd[\.\s]+/g, ' dong ')
+    .replace(/\str[\.\s]+/g, ' tran ');
+  return normalizeVietnameseString(clean);
+}
+
+/**
  * Chuyển đổi an toàn ngày nhập viện từ Excel thành định dạng chuẩn: YYYY-MM-DD HH:mm
  * Hỗ trợ:
  * 1. Date object (khi dùng cellDates: true)
@@ -228,8 +245,8 @@ export function isPatientDuplicateWithExisting(
     }
   }
 
-  const excelNameNorm = normalizeVietnameseString(row.patientName);
-  const pNameNorm = normalizeVietnameseString(existingPatient.fullName);
+  const excelNameNorm = normalizePatientFullName(row.patientName);
+  const pNameNorm = normalizePatientFullName(existingPatient.fullName);
 
   if (!excelNameNorm || !pNameNorm || excelNameNorm !== pNameNorm) {
     return { isDuplicate: false };
@@ -281,8 +298,8 @@ export function isSameClinicalPatient(p1: Patient, p2: Patient): boolean {
   const code2 = (p2.patientCode || p2.medicalRecordNumber || '').trim().toLowerCase();
   if (code1 && code2 && code1 === code2) return true;
 
-  const name1 = normalizeVietnameseString(p1.fullName);
-  const name2 = normalizeVietnameseString(p2.fullName);
+  const name1 = normalizePatientFullName(p1.fullName);
+  const name2 = normalizePatientFullName(p2.fullName);
   if (!name1 || !name2 || name1 !== name2) return false;
 
   const age1 = parseAgeNumber(p1.age);
@@ -324,8 +341,8 @@ export function areTwoPatientsDuplicate(p1: Patient, p2: Patient): { isDuplicate
   }
 
   // 2. Họ tên
-  const name1 = normalizeVietnameseString(p1.fullName);
-  const name2 = normalizeVietnameseString(p2.fullName);
+  const name1 = normalizePatientFullName(p1.fullName);
+  const name2 = normalizePatientFullName(p2.fullName);
   if (!name1 || !name2 || name1 !== name2) {
     return { isDuplicate: false };
   }

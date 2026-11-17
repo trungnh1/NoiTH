@@ -120,26 +120,16 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
         setExcelRows(parsed);
         setDetectedColumns(headers);
 
-        // Theo yêu cầu: Tự động cho ra viện những ca có trong danh sách khoa nhưng KHÔNG CÓ trong file Excel
+        // Kiểm tra đối soát những ca có trong danh sách khoa nhưng KHÔNG CÓ trong file Excel (chỉ đưa vào danh sách xem xét, không tự ý cho ra viện ngay khi mới đọc file)
         if (parsed.length > 0 && existingPatients && existingPatients.length > 0) {
           const activeInpatients = existingPatients.filter((p) => p.status === 'ACTIVE');
           const toDischarge = activeInpatients.filter((p) => !isPatientInExcel(p, parsed));
+          setAutoDischargedPatients(toDischarge);
 
-          if (toDischarge.length > 0) {
-            setAutoDischargedPatients(toDischarge);
-            if (onAutoDischargePatients) {
-              onAutoDischargePatients(toDischarge);
-            }
-            setNotification({
-              message: `Đã đọc thành công ${parsed.length} BN từ file "${file.name}"! Tự động cho ra viện ${toDischarge.length} bệnh nhân không có trong file Excel.`,
-              type: 'success',
-            });
-          } else {
-            setNotification({
-              message: `Đã đọc thành công ${parsed.length} bệnh nhân từ file "${file.name}"! Nhận diện được ${headers.length} cột dữ liệu.`,
-              type: 'success',
-            });
-          }
+          setNotification({
+            message: `Đã đọc thành công ${parsed.length} bệnh nhân từ file "${file.name}"! Nhận diện được ${headers.length} cột dữ liệu.`,
+            type: 'success',
+          });
         } else {
           setNotification({
             message: `Đã đọc thành công ${parsed.length} bệnh nhân từ file "${file.name}"! Nhận diện được ${headers.length} cột dữ liệu.`,
@@ -399,67 +389,165 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // Action: Nhập tất cả dữ liệu quét được từ file Excel (Tự động bỏ qua các bệnh nhân ĐÃ CÓ trong dữ liệu khoa)
+  // Action: Nhập tất cả dữ liệu quét được từ file Excel (Tự động cập nhật buồng, khôi phục ca ra viện, thêm ca mới)
   const handleImportAllExcelRows = () => {
     if (excelRows.length === 0) return;
     let count = 0;
     let skippedExisting = 0;
-
-    // Kiểm tra và tự động cho ra viện các ca không còn trong file Excel
-    const activeInpatients = (existingPatients || []).filter((p) => p.status === 'ACTIVE');
-    const toDischarge = activeInpatients.filter((p) => !isPatientInExcel(p, excelRows));
-    if (toDischarge.length > 0 && onAutoDischargePatients) {
-      onAutoDischargePatients(toDischarge);
-      setAutoDischargedPatients((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        const newOnes = toDischarge.filter((p) => !seen.has(p.id));
-        return [...prev, ...newOnes];
-      });
-    }
-
     let mergedCount = 0;
     let reactivatedCount = 0;
     let movedCount = 0;
+
+    const patientsToBatch: Patient[] = [];
+    const newImportedIds = new Set(importedIds);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const defaultDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
     excelRows.forEach((row, idx) => {
       const key = `excel-${idx}`;
       const check = checkPatientAlreadyExists(row);
-      // Nếu đã có trong dữ liệu khoa và cùng phòng -> BỎ QUA KHÔNG NHẬP THÊM
+      const existingRec = check.existingRecord;
+      const roomClean = extractCleanRoomNumber(row.patientRoom) || '703';
+
+      // 1. Nếu đã có trong khoa và cùng phòng -> bỏ qua không nhập thêm
       if (check.exists) {
         skippedExisting++;
         return;
       }
-      if (!importedIds.has(key)) {
-        if (check.isDischarged) reactivatedCount++;
-        if (check.roomMismatch) movedCount++;
 
+      if (!newImportedIds.has(key)) {
         // Tự động kiểm tra xem hàng Excel này có bản ghi Vệ Tinh chờ ghép nối không
-        const matchedSat = matchedRecords.find((m) => m.matchedExcelRow === row && !importedIds.has(m.satelliteRecord.id));
+        const matchedSat = matchedRecords.find((m) => m.matchedExcelRow === row && !newImportedIds.has(m.satelliteRecord.id));
         if (matchedSat) {
-          handleMergeAndAdmit(matchedSat);
+          const sat = matchedSat.satelliteRecord;
+          const mapped = mapClinicalRecordToPatient(sat, doctors, rooms, currentUser?.id);
+          mapped.roomNumber = roomClean;
+          mapped.bedNumber = row.bedNumber || extractCleanBedNumber(row.bedNumber) || 'Giường 01';
+          mapped.status = 'ACTIVE';
+          mapped.admissionStatus = 'ADMITTED_TODAY';
+          mapped.dischargeDate = undefined;
+          patientsToBatch.push(mapped);
+          newImportedIds.add(sat.id);
+          newImportedIds.add(key);
           mergedCount++;
-        } else {
-          handleImportDirectFromExcel(row, idx);
+          count++;
+          return;
         }
+
+        // 2. Nếu bệnh nhân đã có nhưng đang ở trạng thái Ra viện (DISCHARGED) -> Khôi phục lại nội trú!
+        if (check.isDischarged && existingRec) {
+          const reactivated: Patient = {
+            ...existingRec,
+            status: 'ACTIVE',
+            admissionStatus: 'ADMITTED_TODAY',
+            roomNumber: roomClean,
+            bedNumber: row.bedNumber || existingRec.bedNumber || 'Giường 01',
+            admissionDate: row.admissionDate || existingRec.admissionDate,
+            dischargeDate: undefined,
+            dischargeTomorrowSetDate: undefined,
+          };
+          patientsToBatch.push(reactivated);
+          newImportedIds.add(key);
+          reactivatedCount++;
+          count++;
+          return;
+        }
+
+        // 3. Nếu bệnh nhân đang ACTIVE nhưng lệch buồng phòng -> Cập nhật buồng phòng mới từ Excel!
+        if (check.roomMismatch && existingRec) {
+          const moved: Patient = {
+            ...existingRec,
+            roomNumber: roomClean,
+            bedNumber: row.bedNumber || existingRec.bedNumber || 'Giường 01',
+          };
+          patientsToBatch.push(moved);
+          newImportedIds.add(key);
+          movedCount++;
+          count++;
+          return;
+        }
+
+        // 4. Bệnh nhân mới hoàn toàn từ Excel
+        const ageNum = parseAgeNumber(row.patientAge) || 60;
+        const finalAdmissionDate = row.admissionDate && row.admissionDate.trim() 
+          ? row.admissionDate 
+          : defaultDateStr;
+
+        let matchedDocId = '';
+        if (row.doctorName) {
+          const docFound = doctors.find(d => 
+            row.doctorName && (
+              d.name.toLowerCase().includes(row.doctorName.toLowerCase()) || 
+              row.doctorName.toLowerCase().includes(d.name.toLowerCase())
+            )
+          );
+          if (docFound) matchedDocId = docFound.id;
+        }
+
+        const newPatient: Patient = {
+          id: `EXCEL-${row.patientCode || Date.now()}-${idx}`,
+          patientCode: row.patientCode || undefined,
+          fullName: row.patientName || 'Bệnh Nhân Excel',
+          age: ageNum,
+          gender: (row.patientGender?.toLowerCase().includes('nữ') || row.patientGender?.toLowerCase() === 'nu') ? 'Nữ' : 'Nam',
+          dateOfBirth: `${currentYear - ageNum}-01-01`,
+          admissionDate: finalAdmissionDate,
+          department: 'Khoa Nội Tổng Hợp',
+          roomNumber: roomClean,
+          bedNumber: row.bedNumber || 'Giường 01',
+          attendingDoctorId: matchedDocId,
+          primaryNurse: 'ĐD. Tua trực tiếp nhận',
+          primaryDiagnosis: '',
+          icd10Primary: row.icdCode || undefined,
+          secondaryDiagnosis: row.icdDiagnosis || undefined,
+          severity: 'UNCLASSIFIED',
+          admissionStatus: 'ADMITTED_TODAY',
+          tags: [],
+          importantNotes: 'Nhập tự động từ file Excel HIS. Đang cập nhật chẩn đoán lâm sàng và y lệnh.',
+          status: 'ACTIVE',
+          vitals: [],
+          evolutions: [],
+          labs: [],
+          medications: [],
+          phoneNumber: row.phoneNumber || undefined,
+          address: row.address || undefined,
+          insuranceNumber: row.insuranceNumber || undefined,
+          insuranceType: row.insuranceType || undefined,
+          treatmentDays: row.treatmentDays || undefined,
+        };
+
+        patientsToBatch.push(newPatient);
+        newImportedIds.add(key);
         count++;
       }
     });
 
-    const dischargeMsg = toDischarge.length > 0 ? ` (Đã tự động cho ra viện ${toDischarge.length} BN không có trong file Excel)` : '';
-    const mergeMsg = mergedCount > 0 ? ` (Tự động ghép nối ${mergedCount} ca với Bệnh án Vệ tinh)` : '';
+    setImportedIds(newImportedIds);
+
+    // Đồng bộ toàn bộ danh sách trong một đợt nguyên tử
+    if (patientsToBatch.length > 0) {
+      if (onImportMultiplePatients) {
+        onImportMultiplePatients(patientsToBatch);
+      } else {
+        patientsToBatch.forEach((p) => onImportPatientDirect(p));
+      }
+    }
+
+    const mergeMsg = mergedCount > 0 ? ` (Ghép nối ${mergedCount} ca Bệnh án Vệ tinh)` : '';
     const reactivateMsg = reactivatedCount > 0 ? ` (Khôi phục ${reactivatedCount} ca đã ra viện)` : '';
     const moveMsg = movedCount > 0 ? ` (Đổi buồng cho ${movedCount} ca)` : '';
     if (count > 0) {
       setNotification({
-        message: `Đã xử lý thành công ${count} bệnh nhân!${mergeMsg}${reactivateMsg}${moveMsg} ${skippedExisting > 0 ? `(Đã tự động bỏ qua ${skippedExisting} bệnh nhân đã ổn định trong buồng)` : ''}${dischargeMsg}`,
+        message: `Đã xử lý và hiển thị thành công ${count} bệnh nhân vào đúng buồng phòng!${mergeMsg}${reactivateMsg}${moveMsg} ${skippedExisting > 0 ? `(Đã tự động bỏ qua ${skippedExisting} bệnh nhân đã ổn định trong buồng)` : ''}`,
         type: 'success',
       });
     } else {
       setNotification({
-        message: `Tất cả ${skippedExisting} bệnh nhân trong file đều đã có đúng buồng trong danh sách khoa, đã tự động bỏ qua không nhập trùng.${dischargeMsg}`,
+        message: `Tất cả ${skippedExisting} bệnh nhân trong file đều đã có đúng buồng trong danh sách khoa, đã tự động bỏ qua không nhập trùng.`,
         type: 'info',
       });
     }
-  };
   };
 
   return (

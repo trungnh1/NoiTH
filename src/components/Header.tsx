@@ -159,20 +159,16 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={onOpenDischargedModal}
                 className={`px-3 py-1.5 border text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-xs active:scale-95 ${
-                  nov16DischargedCount > 0
+                  dischargedCount > 0
                     ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-300 font-black animate-pulse'
                     : 'bg-white/15 hover:bg-white/25 text-white border border-white/20 font-bold'
                 }`}
                 title="Quản lý và khôi phục bệnh nhân đã ra viện về buồng phòng"
               >
-                <DoorOpen className={`w-3.5 h-3.5 ${nov16DischargedCount > 0 ? 'text-slate-950' : 'text-blue-200'}`} />
+                <DoorOpen className={`w-3.5 h-3.5 ${dischargedCount > 0 ? 'text-slate-950' : 'text-blue-200'}`} />
                 <span>Đã ra viện</span>
                 {dischargedCount > 0 && (
-                  <span className={`px-1.5 py-0.2 rounded-full font-black text-[10px] ${
-                    nov16DischargedCount > 0
-                      ? 'bg-slate-950 text-amber-300'
-                      : 'bg-white/20 text-white'
-                  }`}>
+                  <span className="px-1.5 py-0.2 rounded-full font-black text-[10px] bg-slate-950 text-amber-300">
                     {dischargedCount}
                   </span>
                 )}
@@ -303,15 +299,15 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {Boolean(nov16DischargedCount && nov16DischargedCount > 0) && onOpenDischargedModal && (
+            {Boolean(dischargedCount && dischargedCount > 0) && onOpenDischargedModal && (
               <button
                 type="button"
                 onClick={onOpenDischargedModal}
                 className="px-2 py-1 bg-amber-400 text-slate-950 font-black text-[10.5px] rounded-lg shadow-2xs flex items-center gap-1 animate-pulse"
-                title="Khôi phục ca ra viện ngày 16/11/2026"
+                title="Khôi phục ca ra viện về buồng phòng"
               >
                 <RotateCcw className="w-3 h-3 text-slate-950" />
-                <span>Khôi phục ({nov16DischargedCount})</span>
+                <span>Khôi phục ({dischargedCount})</span>
               </button>
             )}
 

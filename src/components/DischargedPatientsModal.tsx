@@ -85,12 +85,13 @@ export const DischargedPatientsModal: React.FC<DischargedPatientsModalProps> = (
     }
   };
 
-  // Xử lý khôi phục hàng loạt tất cả ca ngày 16/11/2026
+  // Xử lý khôi phục hàng loạt tất cả ca ra viện
   const handleRestoreAllNov16 = async () => {
-    if (nov16List.length === 0) return;
+    const target = activeTab === 'NOV16' ? nov16List : (filteredList.length > 0 ? filteredList : dischargedList);
+    if (target.length === 0) return;
     setIsBatchRestoring(true);
     try {
-      await onRestoreMultiplePatients(nov16List);
+      await onRestoreMultiplePatients(target);
     } finally {
       setIsBatchRestoring(false);
     }
@@ -133,8 +134,8 @@ export const DischargedPatientsModal: React.FC<DischargedPatientsModalProps> = (
           </button>
         </div>
 
-        {/* Special Nov 16 Banner (If any cases found) */}
-        {nov16List.length > 0 && (
+        {/* Special Restore Banner */}
+        {dischargedList.length > 0 && (
           <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-slate-950 px-4 sm:px-6 py-3 border-b border-amber-600/30 flex flex-wrap items-center justify-between gap-3 shadow-xs">
             <div className="flex items-center gap-2.5 text-white">
               <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
@@ -142,7 +143,7 @@ export const DischargedPatientsModal: React.FC<DischargedPatientsModalProps> = (
               </div>
               <div>
                 <div className="font-black text-sm text-white flex items-center gap-1.5">
-                  <span>Phát hiện {nov16List.length} bệnh nhân bị cho ra viện ngày 16/11/2026</span>
+                  <span>Phát hiện {dischargedList.length} bệnh nhân đang ở trạng thái ra viện</span>
                 </div>
                 <div className="text-xs text-amber-100 font-medium">
                   Bấm nút bên cạnh để khôi phục tất cả trở lại trạng thái điều trị nội trú buồng phòng ngay lập tức.
@@ -160,7 +161,7 @@ export const DischargedPatientsModal: React.FC<DischargedPatientsModalProps> = (
               <span>
                 {isBatchRestoring 
                   ? 'Đang khôi phục...' 
-                  : `⚡ Khôi phục tất cả ${nov16List.length} ca ngày 16/11/2026`}
+                  : `⚡ Khôi phục tất cả (${dischargedList.length} ca) về buồng phòng`}
               </span>
             </button>
           </div>

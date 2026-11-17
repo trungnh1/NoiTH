@@ -1200,8 +1200,8 @@ export default function App() {
         </div>
       )}
 
-      {/* CẢNH BÁO / KHÔI PHỤC CA BỊ CHO RA VIỆN NGÀY 16/11/2026 */}
-      {nov16DischargedCount > 0 && !isDischargedModalOpen && (
+      {/* CẢNH BÁO / KHÔI PHỤC CA BỊ CHO RA VIỆN */}
+      {dischargedPatients.length > 0 && !isDischargedModalOpen && (
         <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-[#0b4d8c] text-white px-3 sm:px-5 py-2.5 shadow-md flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm animate-in slide-in-from-top duration-200">
           <div className="flex items-center gap-2 max-w-4xl truncate">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0" />
@@ -1209,7 +1209,7 @@ export default function App() {
               Khôi phục ca ra viện
             </span>
             <span className="font-extrabold truncate">
-              Phát hiện {nov16DischargedCount} bệnh nhân bị cho ra viện ngày 16/11/2026!
+              Phát hiện {dischargedPatients.length} bệnh nhân đang ở trạng thái ra viện!
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -1220,7 +1220,7 @@ export default function App() {
               className="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
               <RotateCcw className="w-3.5 h-3.5 text-slate-950" />
-              <span>⚡ Khôi phục ngay tất cả ({nov16DischargedCount} ca)</span>
+              <span>⚡ Khôi phục ngay tất cả ({dischargedPatients.length} ca)</span>
             </button>
             <button
               type="button"

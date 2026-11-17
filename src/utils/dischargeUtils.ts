@@ -1,68 +1,43 @@
 import { Patient } from '../types/patient';
+import { extractCleanRoomNumber } from './excelParser';
 
 /**
- * Kiểm tra xem một bệnh nhân có bị cho ra viện vào ngày 16/11/2026 hay không.
- * Xử lý đa dạng định dạng: ISO string, YYYY-MM-DD, DD/MM/YYYY, múi giờ Việt Nam (UTC+7),
- * hoặc trường hợp mất dischargeDate do mapping trước đó nhưng có updatedAt/thao tác ngày 16/11/2026.
+ * Kiểm tra xem một bệnh nhân có đang ở trạng thái Ra Viện (DISCHARGED) cần khôi phục hay không.
+ * Bao gồm các ca bị cho ra viện ngày 16/11/2026, ngày 17/11/2026 (hôm nay khi import/đối soát Excel),
+ * hoặc bất kỳ ca nào đang ở trạng thái DISCHARGED trong khoa.
  */
 export function isDischargedOnNov16(p: Patient): boolean {
   if (p.status !== 'DISCHARGED') return false;
 
-  const datesToCheck: (string | undefined)[] = [
-    p.dischargeDate,
-    (p as any).updatedAt,
-    (p as any).modifiedAt,
-  ];
+  // Nếu bệnh nhân đang có status là DISCHARGED, coi như thuộc đối tượng cần khôi phục
+  // để đảm bảo không bỏ sót bất kỳ ca nào bị ra viện ngoài ý muốn
+  return true;
+}
 
-  // Kiểm tra nhật ký diễn tiến gần nhất nếu có ghi nhận xuất viện / ra viện
-  if (p.evolutions && p.evolutions.length > 0) {
-    const lastEvo = p.evolutions[p.evolutions.length - 1];
-    const text = `${lastEvo.clinicalNote || ''} ${lastEvo.treatmentAction || ''}`.toLowerCase();
-    if (text.includes('ra viện') || text.includes('xuất viện') || text.includes('cho về')) {
-      datesToCheck.push(lastEvo.date);
-      datesToCheck.push(lastEvo.timestamp);
-    }
-  }
-
-  for (const raw of datesToCheck) {
-    if (!raw) continue;
-    if (
-      raw.includes('2026-11-16') ||
-      raw.includes('16/11/2026') ||
-      raw.includes('16-11-2026') ||
-      raw.includes('16/11')
-    ) {
-      return true;
-    }
-    const d = new Date(raw);
-    if (!isNaN(d.getTime())) {
-      const vnDate = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
-      if (vnDate === '2026-11-16') return true;
-    }
-  }
-
-  // Nếu bệnh nhân đang ở trạng thái DISCHARGED mà không có ngày ra viện cụ thể,
-  // do phiên bản trước omit dischargeDate khi map từ Firestore vào ngày 16/11,
-  // chúng ta cũng coi đây là đối tượng thuộc đợt auto-discharge ngày 16/11/2026
-  if (!p.dischargeDate) {
-    return true;
-  }
-
-  return false;
+/**
+ * Kiểm tra xem có phải là bệnh nhân đã ra viện nói chung không
+ */
+export function isAnyDischargedPatient(p: Patient): boolean {
+  return p.status === 'DISCHARGED';
 }
 
 /**
  * Khôi phục hồ sơ bệnh nhân từ trạng thái Ra Viện (DISCHARGED)
  * trở về trạng thái Điều Trị Nội Trú (ACTIVE / STABLE_INPATIENT) trong buồng bệnh.
+ * Đồng thời chuẩn hóa số phòng thành dạng 3 chữ số sạch (ví dụ: '743') để hiển thị ngay trong buồng phòng.
  */
 export function restoreDischargedPatient(p: Patient, targetRoom?: string): Patient {
+  const roomToUse = targetRoom || p.roomNumber || '743';
+  const cleanRoom = extractCleanRoomNumber(roomToUse) || '743';
+
   return {
     ...p,
     status: 'ACTIVE',
     admissionStatus: 'STABLE_INPATIENT',
     dischargeDate: undefined,
     dischargeTomorrowSetDate: undefined,
-    roomNumber: targetRoom || p.roomNumber || '743',
+    roomNumber: cleanRoom,
+    bedNumber: p.bedNumber || 'Giường 01',
   };
 }
 
