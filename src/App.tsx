@@ -84,12 +84,15 @@ export default function App() {
     setManualPushMessage,
     dischargedPatients,
     nov16DischargedCount,
+    beforeNov10DischargedCount,
+    activeBeforeNov10Count,
     handleUpdatePatient,
     handleAddPatient,
     handleImportMultiplePatients,
     handleAutoDischargePatients,
     handleRestoreSinglePatient,
     handleRestoreNov16Discharged,
+    handleDischargeBeforeNov10,
     confirmDeletePatient,
     confirmDischargePatient,
     confirmDeleteAllPatients,
@@ -227,6 +230,8 @@ export default function App() {
         isDischargedModalOpen={isDischargedModalOpen}
         onOpenDischargedModal={() => setIsDischargedModalOpen(true)}
         onRestoreNov16Discharged={handleRestoreNov16Discharged}
+        activeBeforeNov10Count={activeBeforeNov10Count}
+        onDischargeBeforeNov10={handleDischargeBeforeNov10}
         isAutoSyncing={isAutoSyncing}
         manualPushMessage={manualPushMessage}
         onClearManualPushMessage={() => setManualPushMessage(null)}
@@ -393,6 +398,8 @@ export default function App() {
         duplicatePatientGroups={duplicatePatientGroups}
         isDischargedModalOpen={isDischargedModalOpen}
         setIsDischargedModalOpen={setIsDischargedModalOpen}
+        activeBeforeNov10Count={activeBeforeNov10Count}
+        onDischargeBeforeNov10={handleDischargeBeforeNov10}
         transferringPatient={transferringPatient}
         setTransferringPatient={setTransferringPatient}
         isNewPatientModalOpen={isNewPatientModalOpen}

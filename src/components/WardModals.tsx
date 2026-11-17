@@ -58,6 +58,8 @@ export interface WardModalsProps {
   duplicatePatientGroups: DuplicatePatientGroup[];
   isDischargedModalOpen: boolean;
   setIsDischargedModalOpen: (open: boolean) => void;
+  activeBeforeNov10Count?: number;
+  onDischargeBeforeNov10?: () => Promise<void> | void;
 
   // Legacy modals
   transferringPatient: Patient | null;
@@ -133,6 +135,8 @@ export const WardModals: React.FC<WardModalsProps> = ({
   duplicatePatientGroups,
   isDischargedModalOpen,
   setIsDischargedModalOpen,
+  activeBeforeNov10Count = 0,
+  onDischargeBeforeNov10,
   transferringPatient,
   setTransferringPatient,
   isNewPatientModalOpen,
@@ -457,6 +461,8 @@ export const WardModals: React.FC<WardModalsProps> = ({
               onClose={() => setIsDischargedModalOpen(false)}
               onRestorePatient={onRestorePatient}
               onRestoreMultiplePatients={onRestoreMultiplePatients}
+              onDischargeBeforeNov10={onDischargeBeforeNov10}
+              activeBeforeNov10Count={activeBeforeNov10Count}
             />
           </Suspense>
         )}

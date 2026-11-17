@@ -1,7 +1,8 @@
 import React from 'react';
-import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { AlertTriangle, RotateCcw, DoorOpen, LogOut } from 'lucide-react';
 import { Patient } from '../types/patient';
 import { DuplicatePatientGroup } from '../utils/excelParser';
+import { isAdmittedBeforeNov10 } from '../utils/dischargeUtils';
 
 interface WardBannersProps {
   duplicatePatientGroups: DuplicatePatientGroup[];
@@ -11,6 +12,8 @@ interface WardBannersProps {
   isDischargedModalOpen: boolean;
   onOpenDischargedModal: () => void;
   onRestoreNov16Discharged: () => void;
+  activeBeforeNov10Count?: number;
+  onDischargeBeforeNov10?: () => void;
   isAutoSyncing: boolean;
   manualPushMessage: string | null;
   onClearManualPushMessage: () => void;
@@ -27,6 +30,8 @@ export const WardBanners: React.FC<WardBannersProps> = ({
   isDischargedModalOpen,
   onOpenDischargedModal,
   onRestoreNov16Discharged,
+  activeBeforeNov10Count = 0,
+  onDischargeBeforeNov10,
   isAutoSyncing,
   manualPushMessage,
   onClearManualPushMessage,
@@ -61,34 +66,54 @@ export const WardBanners: React.FC<WardBannersProps> = ({
         </div>
       )}
 
-      {/* CẢNH BÁO / KHÔI PHỤC CA BỊ CHO RA VIỆN */}
-      {dischargedPatients.length > 0 && !isDischargedModalOpen && (
-        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-[#0b4d8c] text-white px-3 sm:px-5 py-2.5 shadow-md flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm animate-in slide-in-from-top duration-200">
+      {/* THÔNG BÁO CHO RA VIỆN CA VÀO VIỆN TRƯỚC 10/11 */}
+      {Boolean(activeBeforeNov10Count && activeBeforeNov10Count > 0) && (
+        <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 text-white px-3 sm:px-5 py-2.5 shadow-md flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm animate-in slide-in-from-top duration-200">
           <div className="flex items-center gap-2 max-w-4xl truncate">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0" />
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-200 animate-ping shrink-0" />
             <span className="font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded text-[10.5px]">
-              Khôi phục ca ra viện
+              Ra Viện Theo Tiêu Chuẩn
             </span>
             <span className="font-extrabold truncate">
-              Phát hiện {dischargedPatients.length} bệnh nhân đang ở trạng thái ra viện!
+              Phát hiện {activeBeforeNov10Count} bệnh nhân vào viện trước ngày 10/11 cần làm thủ tục cho ra viện!
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {onDischargeBeforeNov10 && (
+              <button
+                type="button"
+                onClick={onDischargeBeforeNov10}
+                disabled={isAutoSyncing}
+                className="px-3.5 py-1.5 bg-white hover:bg-amber-50 text-slate-950 font-black rounded-xl text-xs shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-700" />
+                <span>🚪 Cho ra viện tất cả ({activeBeforeNov10Count} ca)</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* QUẢN LÝ HỒ SƠ BỆNH NHÂN ĐÃ RA VIỆN */}
+      {dischargedPatients.length > 0 && !isDischargedModalOpen && (
+        <div className="bg-gradient-to-r from-slate-800 via-blue-900 to-[#0b4d8c] text-white px-3 sm:px-5 py-2.5 shadow-md flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm animate-in slide-in-from-top duration-200">
+          <div className="flex items-center gap-2 max-w-4xl truncate">
+            <span className="w-2 h-2 rounded-full bg-blue-300 shrink-0" />
+            <span className="font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded text-[10.5px]">
+              Hồ sơ ra viện
+            </span>
+            <span className="font-semibold truncate">
+              Khoa hiện có <strong>{dischargedPatients.length}</strong> bệnh nhân đã cho ra viện ({dischargedPatients.filter(isAdmittedBeforeNov10).length} ca vào viện trước 10/11)
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={onRestoreNov16Discharged}
-              disabled={isAutoSyncing}
-              className="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-slate-950" />
-              <span>⚡ Khôi phục ngay tất cả ({dischargedPatients.length} ca)</span>
-            </button>
-            <button
-              type="button"
               onClick={onOpenDischargedModal}
-              className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              className="px-3.5 py-1 bg-white hover:bg-blue-50 text-slate-950 font-black rounded-xl text-xs shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
-              Xem danh sách ({dischargedPatients.length})
+              <DoorOpen className="w-3.5 h-3.5 text-[#0b4d8c]" />
+              <span>Xem danh sách ra viện ({dischargedPatients.length})</span>
             </button>
           </div>
         </div>
