@@ -29,7 +29,11 @@ export function getActiveFirebaseConfig() {
   const apiKey = import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey || "AIzaSyDMS-VQIRC9BL0aIjJPtqHfQFRO4sfSQ1E";
   const appId = import.meta.env.VITE_FIREBASE_APP_ID || appletConfig.appId || "1:936936305554:web:7d0283e9fbbaf37566c74b";
   const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain || `${projectId}.firebaseapp.com`;
-  const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || appletConfig.firestoreDatabaseId || "(default)";
+  let databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || appletConfig.firestoreDatabaseId || "(default)";
+  // If databaseId is legacy non-existent AI Studio database ID, normalize to standard (default)
+  if (databaseId.includes('ai-studio-khoanitnghpbvhng')) {
+    databaseId = '(default)';
+  }
 
   return {
     projectId,

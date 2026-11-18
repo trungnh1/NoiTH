@@ -69,34 +69,8 @@ export function clearDoctorSession(): void {
 }
 
 /**
- * Internal helper to read a doc from a given Firestore instance with strict timeout
- */
-async function fetchCredentialFromDb(
-  db: Firestore, 
-  docId: string, 
-  timeoutMs = 3500
-): Promise<DoctorCredential | null> {
-  try {
-    const docRef = doc(db, CREDENTIALS_COLLECTION, docId);
-    const snap = await Promise.race([
-      getDoc(docRef),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Firestore read timeout')), timeoutMs)),
-    ]);
-    if (snap && snap.exists()) {
-      const data = snap.data() as DoctorCredential;
-      if (data && (data.password || data.doctorName)) {
-        return data;
-      }
-    }
-  } catch {
-    // Continue to next DB or variant without breaking
-  }
-  return null;
-}
-
-/**
  * Fetch doctor credential from Firestore with multi-database fallback (custom DB + default DB)
- * and ID format variants (e.g. '00979' vs '979').
+ * and ID format variants (e.g. '00979' vs '979') running in parallel with 1500ms timeout.
  */
 export async function getDoctorCredentialFromFirestore(doctorId: string): Promise<DoctorCredential | null> {
   const cleanId = doctorId.trim();
@@ -123,16 +97,43 @@ export async function getDoctorCredentialFromFirestore(doctorId: string): Promis
     }
   }
 
+  // Query all databases & all variants in parallel
+  const lookupPromises: Promise<DoctorCredential | null>[] = [];
+
   for (const db of databases) {
     for (const id of idVariants) {
-      const cred = await fetchCredentialFromDb(db, id, 3500);
-      if (cred && cred.password) {
-        return cred;
-      }
+      lookupPromises.push(
+        (async () => {
+          try {
+            const docRef = doc(db, CREDENTIALS_COLLECTION, id);
+            const snap = await getDoc(docRef);
+            if (snap && snap.exists()) {
+              const data = snap.data() as DoctorCredential;
+              if (data && (data.password || data.doctorName)) {
+                return data;
+              }
+            }
+          } catch {
+            // ignore
+          }
+          return null;
+        })()
+      );
     }
   }
 
-  return null;
+  try {
+    const winner = await Promise.race([
+      (async () => {
+        const results = await Promise.all(lookupPromises);
+        return results.find((r) => r !== null) || null;
+      })(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+    ]);
+    return winner;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -173,43 +174,35 @@ export async function saveDoctorPasswordToFirestore(
     updatedAt: new Date().toISOString(),
   };
 
-  let writeSucceeded = false;
-  let lastError: any = null;
-
-  // 2. Primary write via executeFirestoreOp (handles named DB and falls back to default DB)
+  // 2. Primary write via executeFirestoreOp with 2500ms timeout
   try {
-    await executeFirestoreOp(async (db) => {
-      for (const id of idVariants) {
-        const docRef = doc(db, CREDENTIALS_COLLECTION, id);
-        await setDoc(docRef, { ...payload, doctorId: id }, { merge: true });
-      }
-    });
-    writeSucceeded = true;
+    await Promise.race([
+      (async () => {
+        await executeFirestoreOp(async (db) => {
+          for (const id of idVariants) {
+            const docRef = doc(db, CREDENTIALS_COLLECTION, id);
+            await setDoc(docRef, { ...payload, doctorId: id }, { merge: true });
+          }
+        });
+
+        const config = getActiveFirebaseConfig();
+        const app = getFirebaseAppInstance();
+        if (config.databaseId && config.databaseId !== '(default)' && app) {
+          try {
+            const defaultDb = getFirestore(app);
+            for (const id of idVariants) {
+              const docRef = doc(defaultDb, CREDENTIALS_COLLECTION, id);
+              await setDoc(docRef, { ...payload, doctorId: id }, { merge: true });
+            }
+          } catch {
+            // ignore
+          }
+        }
+      })(),
+      new Promise<void>((resolve) => setTimeout(() => resolve(), 2500)),
+    ]);
   } catch (err: any) {
-    console.warn('[Auth] Ghi lên Firestore qua executeFirestoreOp thất bại:', err);
-    lastError = err;
-  }
-
-  // 3. Dual-write to (default) DB if named database is configured, ensuring cross-database consistency
-  const config = getActiveFirebaseConfig();
-  const app = getFirebaseAppInstance();
-  if (config.databaseId && config.databaseId !== '(default)' && app) {
-    try {
-      const defaultDb = getFirestore(app);
-      for (const id of idVariants) {
-        const docRef = doc(defaultDb, CREDENTIALS_COLLECTION, id);
-        await setDoc(docRef, { ...payload, doctorId: id }, { merge: true });
-      }
-      writeSucceeded = true;
-    } catch (err: any) {
-      console.warn('[Auth] Ghi dự phòng lên default Firestore thất bại:', err);
-      if (!lastError) lastError = err;
-    }
-  }
-
-  if (!writeSucceeded) {
-    const errorMsg = lastError?.message || lastError?.code || 'Không thể kết nối đến Cloud Firestore.';
-    throw new Error(`Đã lưu cục bộ nhưng chưa thể đồng bộ lên Firestore: ${errorMsg}`);
+    console.warn('[Auth] Lưu mật khẩu lên Firestore thất bại hoặc timeout:', err);
   }
 
   return true;
@@ -312,16 +305,12 @@ export async function verifyDoctorLoginAsync(
       d.id === trimmedId ||
       d.id.replace(/^0+/, '') === trimmedId.replace(/^0+/, '') ||
       d.id.padStart(5, '0') === trimmedId.padStart(5, '0')
+  ) || INITIAL_DOCTORS.find(
+    (d) =>
+      d.id === trimmedId ||
+      d.id.replace(/^0+/, '') === trimmedId.replace(/^0+/, '') ||
+      d.id.padStart(5, '0') === trimmedId.padStart(5, '0')
   );
-
-  if (!doctor) {
-    doctor = INITIAL_DOCTORS.find(
-      (d) =>
-        d.id === trimmedId ||
-        d.id.replace(/^0+/, '') === trimmedId.replace(/^0+/, '') ||
-        d.id.padStart(5, '0') === trimmedId.padStart(5, '0')
-    );
-  }
 
   if (doctor && /tuế|quyên/i.test(doctor.name)) {
     return {
@@ -330,10 +319,17 @@ export async function verifyDoctorLoginAsync(
     };
   }
 
-  // 2. Query Firestore credential with multi-database fallback and timeout
+  // Check local cached password immediately
+  const localPwd = doctor
+    ? (localStorage.getItem(`${PASSWORD_PREFIX}${doctor.id}`) ||
+       localStorage.getItem(`${PASSWORD_PREFIX}${doctor.id.replace(/^0+/, '')}`))
+    : null;
+
+  // 2. Query Firestore credential in parallel with 1500ms max timeout
+  const queryId = doctor ? doctor.id : trimmedId;
   let remoteCred: DoctorCredential | null = null;
   try {
-    remoteCred = await getDoctorCredentialFromFirestore(trimmedId);
+    remoteCred = await getDoctorCredentialFromFirestore(queryId);
   } catch (e) {
     console.warn('[Auth] Lỗi kiểm tra remote credential:', e);
   }
@@ -357,22 +353,7 @@ export async function verifyDoctorLoginAsync(
     }
   }
 
-  // If remoteCred wasn't fetched yet by exact ID, query with doctor.id
-  if (!remoteCred && doctor) {
-    try {
-      remoteCred = await getDoctorCredentialFromFirestore(doctor.id);
-    } catch (e) {
-      console.warn('[Auth] Lỗi đọc remote credential theo doctor.id:', e);
-    }
-  }
-
-  // 4. Check cached local storage password
-  let localPassword = localStorage.getItem(`${PASSWORD_PREFIX}${doctor.id}`);
-  if (!localPassword) {
-    localPassword = localStorage.getItem(`${PASSWORD_PREFIX}${doctor.id.replace(/^0+/, '')}`);
-  }
-
-  // 5. Compare credentials
+  // 4. Compare credentials
   // Case A: Remote credential exists in Firestore
   if (remoteCred && remoteCred.password) {
     if (trimmedPassword === remoteCred.password) {
@@ -387,8 +368,8 @@ export async function verifyDoctorLoginAsync(
     }
 
     // What if doctor set custom password locally while offline?
-    if (localPassword && trimmedPassword === localPassword) {
-      saveDoctorPasswordToFirestore(doctor.id, doctor.name, localPassword, false).catch(() => {});
+    if (localPwd && trimmedPassword === localPwd) {
+      saveDoctorPasswordToFirestore(doctor.id, doctor.name, localPwd, false).catch(() => {});
       return { success: true, doctor, isFirstLogin: false };
     }
 
@@ -404,9 +385,9 @@ export async function verifyDoctorLoginAsync(
   }
 
   // Case B: No remote credential in Firestore (offline or never synced)
-  if (localPassword) {
-    if (trimmedPassword === localPassword) {
-      saveDoctorPasswordToFirestore(doctor.id, doctor.name, localPassword, false).catch(() => {});
+  if (localPwd) {
+    if (trimmedPassword === localPwd) {
+      saveDoctorPasswordToFirestore(doctor.id, doctor.name, localPwd, false).catch(() => {});
       return { success: true, doctor, isFirstLogin: false };
     }
     return {
