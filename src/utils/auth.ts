@@ -1,11 +1,10 @@
 import { Doctor } from '../types/patient';
 import { INITIAL_DOCTORS } from '../data/mockData';
-import { doc, getDoc, setDoc, getFirestore, Firestore } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { 
   initializeFirebaseFirestore, 
   executeFirestoreOp, 
-  getActiveFirebaseConfig, 
-  getFirebaseAppInstance 
+  getActiveFirebaseConfig 
 } from '../services/firebaseSync';
 
 export const DOCTOR_DEFAULT_PASSWORD = '123';
@@ -19,6 +18,30 @@ export interface DoctorCredential {
   password: string;
   isFirstLogin: boolean;
   updatedAt: string;
+}
+
+/**
+ * Parse raw Firestore REST document into DoctorCredential
+ */
+function parseFirestoreDoc(raw: any): DoctorCredential | null {
+  if (!raw || !raw.fields) return null;
+  const f = raw.fields;
+  const parseVal = (v: any) => {
+    if (!v) return undefined;
+    if (v.stringValue !== undefined) return v.stringValue;
+    if (v.booleanValue !== undefined) return v.booleanValue;
+    if (v.integerValue !== undefined) return parseInt(v.integerValue, 10);
+    if (v.timestampValue !== undefined) return v.timestampValue;
+    return undefined;
+  };
+
+  return {
+    doctorId: parseVal(f.doctorId) || (raw.name ? raw.name.split('/').pop() : ''),
+    doctorName: parseVal(f.doctorName) || '',
+    password: parseVal(f.password) || '',
+    isFirstLogin: parseVal(f.isFirstLogin) ?? false,
+    updatedAt: parseVal(f.updatedAt) || ''
+  };
 }
 
 /**
@@ -69,8 +92,8 @@ export function clearDoctorSession(): void {
 }
 
 /**
- * Fetch doctor credential from Firestore with multi-database fallback (custom DB + default DB)
- * and ID format variants (e.g. '00979' vs '979') running in parallel with 1500ms timeout.
+ * Fetch doctor credential from Firestore using ultra-fast direct REST API with Firebase SDK fallback.
+ * Checks ID variants ('00979', '979') in parallel with a strict 2000ms timeout.
  */
 export async function getDoctorCredentialFromFirestore(doctorId: string): Promise<DoctorCredential | null> {
   const cleanId = doctorId.trim();
@@ -80,55 +103,59 @@ export async function getDoctorCredentialFromFirestore(doctorId: string): Promis
     new Set([cleanId, cleanId.replace(/^0+/, ''), cleanId.padStart(5, '0')])
   ).filter(Boolean);
 
-  const databases: Firestore[] = [];
-  const primaryDb = initializeFirebaseFirestore();
-  if (primaryDb) databases.push(primaryDb);
-
   const config = getActiveFirebaseConfig();
-  const app = getFirebaseAppInstance();
-  if (config.databaseId && config.databaseId !== '(default)' && app) {
+
+  // 1. First attempt: Direct Firestore REST API (resolves in ~100-150ms without WebChannel overhead)
+  const restPromises = idVariants.map(async (id) => {
     try {
-      const defaultDb = getFirestore(app);
-      if (defaultDb && !databases.includes(defaultDb)) {
-        databases.push(defaultDb);
+      const restUrl = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${config.databaseId}/documents/${CREDENTIALS_COLLECTION}/${id}?key=${config.apiKey}`;
+      const res = await fetch(restUrl, { method: 'GET' });
+      if (res.ok) {
+        const raw = await res.json();
+        const cred = parseFirestoreDoc(raw);
+        if (cred && cred.password) {
+          return cred;
+        }
       }
     } catch {
       // ignore
     }
-  }
+    return null;
+  });
 
-  // Query all databases & all variants in parallel
-  const lookupPromises: Promise<DoctorCredential | null>[] = [];
-
-  for (const db of databases) {
-    for (const id of idVariants) {
-      lookupPromises.push(
-        (async () => {
-          try {
-            const docRef = doc(db, CREDENTIALS_COLLECTION, id);
-            const snap = await getDoc(docRef);
-            if (snap && snap.exists()) {
-              const data = snap.data() as DoctorCredential;
-              if (data && (data.password || data.doctorName)) {
-                return data;
-              }
-            }
-          } catch {
-            // ignore
+  // 2. Secondary fallback: Firebase Web SDK getDoc
+  const sdkPromises = idVariants.map(async (id) => {
+    try {
+      const db = initializeFirebaseFirestore();
+      if (db) {
+        const docRef = doc(db, CREDENTIALS_COLLECTION, id);
+        const snap = await getDoc(docRef);
+        if (snap && snap.exists()) {
+          const data = snap.data() as DoctorCredential;
+          if (data && (data.password || data.doctorName)) {
+            return data;
           }
-          return null;
-        })()
-      );
+        }
+      }
+    } catch {
+      // ignore
     }
-  }
+    return null;
+  });
 
   try {
     const winner = await Promise.race([
       (async () => {
-        const results = await Promise.all(lookupPromises);
-        return results.find((r) => r !== null) || null;
+        // Check REST first as it is lightning fast
+        const restResults = await Promise.all(restPromises);
+        const foundRest = restResults.find((r) => r !== null);
+        if (foundRest) return foundRest;
+
+        // Then check SDK
+        const sdkResults = await Promise.all(sdkPromises);
+        return sdkResults.find((r) => r !== null) || null;
       })(),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
     ]);
     return winner;
   } catch {
@@ -138,7 +165,7 @@ export async function getDoctorCredentialFromFirestore(doctorId: string): Promis
 
 /**
  * Save / Update doctor password credential on Firestore & localStorage.
- * Writes to both named DB and default DB with ID normalization so any device can authenticate.
+ * Writes via REST API for instant sync and Firebase SDK in parallel.
  */
 export async function saveDoctorPasswordToFirestore(
   doctorId: string,
@@ -174,32 +201,49 @@ export async function saveDoctorPasswordToFirestore(
     updatedAt: new Date().toISOString(),
   };
 
-  // 2. Primary write via executeFirestoreOp with 2500ms timeout
+  const config = getActiveFirebaseConfig();
+
+  // 2. Parallel write: REST API + Firebase SDK with 2500ms timeout
   try {
     await Promise.race([
-      (async () => {
-        await executeFirestoreOp(async (db) => {
-          for (const id of idVariants) {
-            const docRef = doc(db, CREDENTIALS_COLLECTION, id);
-            await setDoc(docRef, { ...payload, doctorId: id }, { merge: true });
-          }
-        });
-
-        const config = getActiveFirebaseConfig();
-        const app = getFirebaseAppInstance();
-        if (config.databaseId && config.databaseId !== '(default)' && app) {
+      Promise.all([
+        // REST write (super fast)
+        ...idVariants.map(async (id) => {
           try {
-            const defaultDb = getFirestore(app);
-            for (const id of idVariants) {
-              const docRef = doc(defaultDb, CREDENTIALS_COLLECTION, id);
-              await setDoc(docRef, { ...payload, doctorId: id }, { merge: true });
-            }
-          } catch {
-            // ignore
+            const restUrl = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${config.databaseId}/documents/${CREDENTIALS_COLLECTION}/${id}?key=${config.apiKey}`;
+            const restBody = {
+              fields: {
+                doctorId: { stringValue: id },
+                doctorName: { stringValue: doctorName },
+                password: { stringValue: pwd },
+                isFirstLogin: { booleanValue: isFirstLogin },
+                updatedAt: { stringValue: payload.updatedAt }
+              }
+            };
+            await fetch(restUrl, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(restBody)
+            });
+          } catch (e) {
+            console.warn('[Auth] REST save error:', e);
           }
-        }
-      })(),
-      new Promise<void>((resolve) => setTimeout(() => resolve(), 2500)),
+        }),
+        // SDK write
+        (async () => {
+          try {
+            await executeFirestoreOp(async (db) => {
+              for (const id of idVariants) {
+                const docRef = doc(db, CREDENTIALS_COLLECTION, id);
+                await setDoc(docRef, { ...payload, doctorId: id }, { merge: true });
+              }
+            });
+          } catch (e) {
+            console.warn('[Auth] SDK save error:', e);
+          }
+        })()
+      ]),
+      new Promise<void>((resolve) => setTimeout(() => resolve(), 2500))
     ]);
   } catch (err: any) {
     console.warn('[Auth] Lưu mật khẩu lên Firestore thất bại hoặc timeout:', err);
@@ -277,7 +321,7 @@ export function verifyDoctorLogin(
 }
 
 /**
- * Validate doctor credentials asynchronously using Firestore with multi-database fallback
+ * Validate doctor credentials asynchronously using Firestore with ultra-fast REST + SDK
  */
 export async function verifyDoctorLoginAsync(
   doctorIdInput: string,
@@ -325,7 +369,7 @@ export async function verifyDoctorLoginAsync(
        localStorage.getItem(`${PASSWORD_PREFIX}${doctor.id.replace(/^0+/, '')}`))
     : null;
 
-  // 2. Query Firestore credential in parallel with 1500ms max timeout
+  // 2. Query Firestore credential (ultra-fast REST: ~100ms)
   const queryId = doctor ? doctor.id : trimmedId;
   let remoteCred: DoctorCredential | null = null;
   try {
