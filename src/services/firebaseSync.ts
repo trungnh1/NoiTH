@@ -134,6 +134,16 @@ export function initializeFirebaseFirestore(forceReset = false): Firestore | nul
   }
 }
 
+/**
+ * Safely retrieves the underlying Firebase App instance, initializing if needed.
+ */
+export function getFirebaseAppInstance(): any {
+  if (!appInstance) {
+    initializeFirebaseFirestore();
+  }
+  return appInstance;
+}
+
 // Auto init on module load
 initializeFirebaseFirestore();
 
@@ -512,7 +522,7 @@ export function sanitizeObjectForFirestore<T>(obj: T): T {
  * Executes a Firestore operation with automatic fallback to standard (default) database
  * if a custom named database ID encounters connection or permission issues.
  */
-async function executeFirestoreOp<T>(op: (db: Firestore) => Promise<T>): Promise<T> {
+export async function executeFirestoreOp<T>(op: (db: Firestore) => Promise<T>): Promise<T> {
   let db = initializeFirebaseFirestore();
   if (!db) {
     throw new Error('Không thể khởi tạo Firebase Firestore SDK.');

@@ -1,6 +1,12 @@
 import { Doctor } from '../types/patient';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { initializeFirebaseFirestore } from '../services/firebaseSync';
+import { INITIAL_DOCTORS } from '../data/mockData';
+import { doc, getDoc, setDoc, getFirestore, Firestore } from 'firebase/firestore';
+import { 
+  initializeFirebaseFirestore, 
+  executeFirestoreOp, 
+  getActiveFirebaseConfig, 
+  getFirebaseAppInstance 
+} from '../services/firebaseSync';
 
 export const DOCTOR_DEFAULT_PASSWORD = '123';
 const SESSION_KEY = 'HVGL_CURRENT_DOCTOR_SESSION';
@@ -31,8 +37,8 @@ export function getSavedDoctorSession(doctors: Doctor[]): Doctor | null {
       return null;
     }
 
-    // Match with current registered doctor list
-    const matched = doctors.find((d) => d.id === parsed.id);
+    // Match with current registered doctor list or INITIAL_DOCTORS
+    const matched = doctors.find((d) => d.id === parsed.id) || INITIAL_DOCTORS.find((d) => d.id === parsed.id);
     return matched || parsed;
   } catch (e) {
     console.error('Error loading doctor session:', e);
@@ -63,26 +69,75 @@ export function clearDoctorSession(): void {
 }
 
 /**
- * Fetch doctor credential from Firestore with local caching
+ * Internal helper to read a doc from a given Firestore instance with strict timeout
  */
-export async function getDoctorCredentialFromFirestore(doctorId: string): Promise<DoctorCredential | null> {
+async function fetchCredentialFromDb(
+  db: Firestore, 
+  docId: string, 
+  timeoutMs = 3500
+): Promise<DoctorCredential | null> {
   try {
-    const db = initializeFirebaseFirestore();
-    if (!db) return null;
-
-    const docRef = doc(db, CREDENTIALS_COLLECTION, doctorId);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      return snap.data() as DoctorCredential;
+    const docRef = doc(db, CREDENTIALS_COLLECTION, docId);
+    const snap = await Promise.race([
+      getDoc(docRef),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Firestore read timeout')), timeoutMs)),
+    ]);
+    if (snap && snap.exists()) {
+      const data = snap.data() as DoctorCredential;
+      if (data && (data.password || data.doctorName)) {
+        return data;
+      }
     }
-  } catch (e) {
-    console.warn('Lỗi đọc doctor_credentials từ Firestore:', e);
+  } catch {
+    // Continue to next DB or variant without breaking
   }
   return null;
 }
 
 /**
- * Save / Update doctor password credential on Firestore & localStorage
+ * Fetch doctor credential from Firestore with multi-database fallback (custom DB + default DB)
+ * and ID format variants (e.g. '00979' vs '979').
+ */
+export async function getDoctorCredentialFromFirestore(doctorId: string): Promise<DoctorCredential | null> {
+  const cleanId = doctorId.trim();
+  if (!cleanId) return null;
+
+  const idVariants = Array.from(
+    new Set([cleanId, cleanId.replace(/^0+/, ''), cleanId.padStart(5, '0')])
+  ).filter(Boolean);
+
+  const databases: Firestore[] = [];
+  const primaryDb = initializeFirebaseFirestore();
+  if (primaryDb) databases.push(primaryDb);
+
+  const config = getActiveFirebaseConfig();
+  const app = getFirebaseAppInstance();
+  if (config.databaseId && config.databaseId !== '(default)' && app) {
+    try {
+      const defaultDb = getFirestore(app);
+      if (defaultDb && !databases.includes(defaultDb)) {
+        databases.push(defaultDb);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  for (const db of databases) {
+    for (const id of idVariants) {
+      const cred = await fetchCredentialFromDb(db, id, 3500);
+      if (cred && cred.password) {
+        return cred;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Save / Update doctor password credential on Firestore & localStorage.
+ * Writes to both named DB and default DB with ID normalization so any device can authenticate.
  */
 export async function saveDoctorPasswordToFirestore(
   doctorId: string,
@@ -90,30 +145,74 @@ export async function saveDoctorPasswordToFirestore(
   newPassword: string,
   isFirstLogin: boolean = false
 ): Promise<boolean> {
+  const cleanId = doctorId.trim();
   const pwd = newPassword.trim();
-  try {
-    // 1. Cache to localStorage
-    localStorage.setItem(`${PASSWORD_PREFIX}${doctorId}`, pwd);
-    localStorage.setItem(`HVGL_DOCTOR_FIRST_LOGIN_${doctorId}`, isFirstLogin ? 'true' : 'false');
-
-    // 2. Save to Firestore
-    const db = initializeFirebaseFirestore();
-    if (db) {
-      const docRef = doc(db, CREDENTIALS_COLLECTION, doctorId);
-      const payload: DoctorCredential = {
-        doctorId,
-        doctorName,
-        password: pwd,
-        isFirstLogin,
-        updatedAt: new Date().toISOString(),
-      };
-      await setDoc(docRef, payload, { merge: true });
-    }
-    return true;
-  } catch (e) {
-    console.warn('Lỗi lưu doctor_credentials lên Firestore:', e);
-    return false;
+  if (!cleanId || !pwd) {
+    throw new Error('Mã Bác sĩ và Mật khẩu không được để trống.');
   }
+
+  const idVariants = Array.from(
+    new Set([cleanId, cleanId.replace(/^0+/, ''), cleanId.padStart(5, '0')])
+  ).filter(Boolean);
+
+  // 1. Immediately cache to localStorage on this device
+  for (const id of idVariants) {
+    try {
+      localStorage.setItem(`${PASSWORD_PREFIX}${id}`, pwd);
+      localStorage.setItem(`HVGL_DOCTOR_FIRST_LOGIN_${id}`, isFirstLogin ? 'true' : 'false');
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
+  }
+
+  const payload: DoctorCredential = {
+    doctorId: cleanId,
+    doctorName,
+    password: pwd,
+    isFirstLogin,
+    updatedAt: new Date().toISOString(),
+  };
+
+  let writeSucceeded = false;
+  let lastError: any = null;
+
+  // 2. Primary write via executeFirestoreOp (handles named DB and falls back to default DB)
+  try {
+    await executeFirestoreOp(async (db) => {
+      for (const id of idVariants) {
+        const docRef = doc(db, CREDENTIALS_COLLECTION, id);
+        await setDoc(docRef, { ...payload, doctorId: id }, { merge: true });
+      }
+    });
+    writeSucceeded = true;
+  } catch (err: any) {
+    console.warn('[Auth] Ghi lên Firestore qua executeFirestoreOp thất bại:', err);
+    lastError = err;
+  }
+
+  // 3. Dual-write to (default) DB if named database is configured, ensuring cross-database consistency
+  const config = getActiveFirebaseConfig();
+  const app = getFirebaseAppInstance();
+  if (config.databaseId && config.databaseId !== '(default)' && app) {
+    try {
+      const defaultDb = getFirestore(app);
+      for (const id of idVariants) {
+        const docRef = doc(defaultDb, CREDENTIALS_COLLECTION, id);
+        await setDoc(docRef, { ...payload, doctorId: id }, { merge: true });
+      }
+      writeSucceeded = true;
+    } catch (err: any) {
+      console.warn('[Auth] Ghi dự phòng lên default Firestore thất bại:', err);
+      if (!lastError) lastError = err;
+    }
+  }
+
+  if (!writeSucceeded) {
+    const errorMsg = lastError?.message || lastError?.code || 'Không thể kết nối đến Cloud Firestore.';
+    throw new Error(`Đã lưu cục bộ nhưng chưa thể đồng bộ lên Firestore: ${errorMsg}`);
+  }
+
+  return true;
 }
 
 /**
@@ -140,12 +239,21 @@ export function verifyDoctorLogin(
     return { success: false, error: 'Tài khoản Bác sĩ không khả dụng hoặc đã chuyển công tác.' };
   }
 
-  const doctor = doctors.find(
+  let doctor = doctors.find(
     (d) =>
       d.id === trimmedId ||
       d.id.replace(/^0+/, '') === trimmedId.replace(/^0+/, '') ||
       d.id.padStart(5, '0') === trimmedId.padStart(5, '0')
   );
+
+  if (!doctor) {
+    doctor = INITIAL_DOCTORS.find(
+      (d) =>
+        d.id === trimmedId ||
+        d.id.replace(/^0+/, '') === trimmedId.replace(/^0+/, '') ||
+        d.id.padStart(5, '0') === trimmedId.padStart(5, '0')
+    );
+  }
 
   if (!doctor || /tuế|quyên/i.test(doctor.name)) {
     return {
@@ -156,7 +264,8 @@ export function verifyDoctorLogin(
 
   let correctPassword = DOCTOR_DEFAULT_PASSWORD;
   try {
-    const custom = localStorage.getItem(`${PASSWORD_PREFIX}${doctor.id}`);
+    const custom = localStorage.getItem(`${PASSWORD_PREFIX}${doctor.id}`) ||
+                   localStorage.getItem(`${PASSWORD_PREFIX}${doctor.id.replace(/^0+/, '')}`);
     if (custom) correctPassword = custom;
   } catch {
     // fallback
@@ -175,7 +284,7 @@ export function verifyDoctorLogin(
 }
 
 /**
- * Validate doctor credentials asynchronously using Firestore
+ * Validate doctor credentials asynchronously using Firestore with multi-database fallback
  */
 export async function verifyDoctorLoginAsync(
   doctorIdInput: string,
@@ -197,51 +306,124 @@ export async function verifyDoctorLoginAsync(
     return { success: false, error: 'Tài khoản Bác sĩ không khả dụng hoặc đã chuyển công tác.' };
   }
 
-  const doctor = doctors.find(
+  // 1. Match doctor against loaded doctors or INITIAL_DOCTORS
+  let doctor = doctors.find(
     (d) =>
       d.id === trimmedId ||
       d.id.replace(/^0+/, '') === trimmedId.replace(/^0+/, '') ||
       d.id.padStart(5, '0') === trimmedId.padStart(5, '0')
   );
 
-  if (!doctor || /tuế|quyên/i.test(doctor.name)) {
+  if (!doctor) {
+    doctor = INITIAL_DOCTORS.find(
+      (d) =>
+        d.id === trimmedId ||
+        d.id.replace(/^0+/, '') === trimmedId.replace(/^0+/, '') ||
+        d.id.padStart(5, '0') === trimmedId.padStart(5, '0')
+    );
+  }
+
+  if (doctor && /tuế|quyên/i.test(doctor.name)) {
     return {
       success: false,
-      error: `Không tìm thấy Bác sĩ với Mã "${trimmedId}". Vui lòng kiểm tra lại mã (VD: 00979 cho BS. Trung).`,
+      error: 'Tài khoản Bác sĩ không khả dụng hoặc đã chuyển công tác.',
     };
   }
 
-  let correctPassword = DOCTOR_DEFAULT_PASSWORD;
-  let isFirstLogin = true;
-
+  // 2. Query Firestore credential with multi-database fallback and timeout
+  let remoteCred: DoctorCredential | null = null;
   try {
-    const remoteCred = await getDoctorCredentialFromFirestore(doctor.id);
-    if (remoteCred && remoteCred.password) {
-      correctPassword = remoteCred.password;
-      isFirstLogin = remoteCred.isFirstLogin ?? (remoteCred.password === DOCTOR_DEFAULT_PASSWORD);
-    } else {
-      const customLocal = localStorage.getItem(`${PASSWORD_PREFIX}${doctor.id}`);
-      if (customLocal) {
-        correctPassword = customLocal;
-        isFirstLogin = customLocal === DOCTOR_DEFAULT_PASSWORD;
-      }
-    }
+    remoteCred = await getDoctorCredentialFromFirestore(trimmedId);
   } catch (e) {
-    console.warn(e);
+    console.warn('[Auth] Lỗi kiểm tra remote credential:', e);
   }
 
-  if (trimmedPassword !== correctPassword) {
+  // 3. If doctor was not found in static list, check if Firestore holds valid doctor credentials
+  if (!doctor) {
+    if (remoteCred && remoteCred.doctorName) {
+      doctor = {
+        id: trimmedId.padStart(5, '0'),
+        name: remoteCred.doctorName,
+        title: '',
+        role: '',
+        avatarColor: 'bg-[#0b4d8c]',
+        shiftStatus: 'Hành chính',
+      };
+    } else {
+      return {
+        success: false,
+        error: `Không tìm thấy Bác sĩ với Mã "${trimmedId}". Vui lòng kiểm tra lại mã (VD: 00979 cho BS. Trung).`,
+      };
+    }
+  }
+
+  // If remoteCred wasn't fetched yet by exact ID, query with doctor.id
+  if (!remoteCred && doctor) {
+    try {
+      remoteCred = await getDoctorCredentialFromFirestore(doctor.id);
+    } catch (e) {
+      console.warn('[Auth] Lỗi đọc remote credential theo doctor.id:', e);
+    }
+  }
+
+  // 4. Check cached local storage password
+  let localPassword = localStorage.getItem(`${PASSWORD_PREFIX}${doctor.id}`);
+  if (!localPassword) {
+    localPassword = localStorage.getItem(`${PASSWORD_PREFIX}${doctor.id.replace(/^0+/, '')}`);
+  }
+
+  // 5. Compare credentials
+  // Case A: Remote credential exists in Firestore
+  if (remoteCred && remoteCred.password) {
+    if (trimmedPassword === remoteCred.password) {
+      // Sync to local storage for subsequent instant logins
+      localStorage.setItem(`${PASSWORD_PREFIX}${doctor.id}`, remoteCred.password);
+      localStorage.setItem(`HVGL_DOCTOR_FIRST_LOGIN_${doctor.id}`, remoteCred.isFirstLogin ? 'true' : 'false');
+      return {
+        success: true,
+        doctor,
+        isFirstLogin: remoteCred.isFirstLogin ?? (remoteCred.password === DOCTOR_DEFAULT_PASSWORD),
+      };
+    }
+
+    // What if doctor set custom password locally while offline?
+    if (localPassword && trimmedPassword === localPassword) {
+      saveDoctorPasswordToFirestore(doctor.id, doctor.name, localPassword, false).catch(() => {});
+      return { success: true, doctor, isFirstLogin: false };
+    }
+
+    // What if remote credential is default '123'?
+    if (remoteCred.password === DOCTOR_DEFAULT_PASSWORD && trimmedPassword === DOCTOR_DEFAULT_PASSWORD) {
+      return { success: true, doctor, isFirstLogin: true };
+    }
+
     return {
       success: false,
-      error: 'Mật khẩu không chính xác! (Mật khẩu mặc định lần đầu là 123).',
+      error: 'Mật khẩu không chính xác! Vui lòng nhập mật khẩu bạn đã tạo (hoặc liên hệ quản trị viên).',
     };
   }
 
-  if (trimmedPassword === DOCTOR_DEFAULT_PASSWORD) {
-    isFirstLogin = true;
+  // Case B: No remote credential in Firestore (offline or never synced)
+  if (localPassword) {
+    if (trimmedPassword === localPassword) {
+      saveDoctorPasswordToFirestore(doctor.id, doctor.name, localPassword, false).catch(() => {});
+      return { success: true, doctor, isFirstLogin: false };
+    }
+    return {
+      success: false,
+      error: 'Mật khẩu không chính xác! Vui lòng thử lại.',
+    };
   }
 
-  return { success: true, doctor, isFirstLogin };
+  // Case C: Brand new first-time login with default password '123'
+  if (trimmedPassword === DOCTOR_DEFAULT_PASSWORD) {
+    return { success: true, doctor, isFirstLogin: true };
+  }
+
+  return {
+    success: false,
+    error: 'Mật khẩu không chính xác! (Mật khẩu mặc định lần đầu là 123).',
+  };
 }
 
 /**

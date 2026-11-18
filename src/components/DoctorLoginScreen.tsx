@@ -14,6 +14,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { Doctor } from '../types/patient';
+import { INITIAL_DOCTORS } from '../data/mockData';
 import { verifyDoctorLoginAsync, saveDoctorPasswordToFirestore } from '../utils/auth';
 
 interface DoctorLoginScreenProps {
@@ -40,8 +41,12 @@ export const DoctorLoginScreen: React.FC<DoctorLoginScreenProps> = ({
   const [changeError, setChangeError] = useState<string | null>(null);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
 
-  // Exclude any obsolete doctors (Tuế, Quyên)
-  const validDoctors = doctors.filter(
+  // Exclude any obsolete doctors (Tuế, Quyên) and ensure all official doctors are available
+  const allAvailableDoctors = [
+    ...doctors,
+    ...INITIAL_DOCTORS.filter(initD => !doctors.some(d => d.id === initD.id))
+  ];
+  const validDoctors = allAvailableDoctors.filter(
     (d) => !['00101', '00199'].includes(d.id) && !/tuế|quyên/i.test(d.name)
   );
 
@@ -278,7 +283,9 @@ export const DoctorLoginScreen: React.FC<DoctorLoginScreenProps> = ({
                       setErrorMessage(null);
                       const trimmed = val.trim();
                       const matched = validDoctors.find(
-                        d => d.id === trimmed || d.id.replace(/^0+/, '') === trimmed
+                        d => d.id === trimmed || 
+                             d.id.replace(/^0+/, '') === trimmed.replace(/^0+/, '') ||
+                             d.id.padStart(5, '0') === trimmed.padStart(5, '0')
                       );
                       setSelectedDoctorPreview(matched || null);
                     }}
