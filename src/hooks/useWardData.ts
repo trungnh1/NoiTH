@@ -10,12 +10,7 @@ import {
 import { isRealAllergy } from '../utils/clinicalTextParser';
 import { isSameClinicalPatient, extractCleanRoomNumber } from '../utils/excelParser';
 import { normalizeSearchText } from '../utils/searchUtils';
-import { 
-  isDischargedOnNov16, 
-  restoreDischargedPatient, 
-  isAdmittedBeforeNov10, 
-  dischargePatientRecord 
-} from '../utils/dischargeUtils';
+import { isAdmittedBeforeNov10 } from '../utils/dischargeUtils';
 import { 
   subscribeToClinicalRecords, 
   checkSatelliteRecordCompleteness, 
@@ -58,20 +53,24 @@ export function useWardData({
   const [patients, setPatients] = useState<Patient[]>(() => {
     let list = loadPatients();
 
-    // Tự động cho ra viện tất cả bệnh nhân vào viện trước ngày 10/11 theo yêu cầu
-    const beforeNov10Pats = list.filter((p) => p.status !== 'DISCHARGED' && isAdmittedBeforeNov10(p));
+    // Lọc bỏ toàn bộ hồ sơ đã ra viện (không lưu trữ hoặc theo dõi hồ sơ ra viện)
+    const dischargedPats = list.filter((p) => p.status === 'DISCHARGED');
+    if (dischargedPats.length > 0) {
+      list = list.filter((p) => p.status !== 'DISCHARGED');
+      savePatients(list);
+      dischargedPats.forEach((p) => {
+        deletePatientFromCloud(p.id).catch(() => {});
+      });
+    }
+
+    // Tự động dọn dẹp các bệnh nhân vào viện trước ngày 10/11 khỏi danh sách điều trị & Cloud
+    const beforeNov10Pats = list.filter((p) => isAdmittedBeforeNov10(p));
     if (beforeNov10Pats.length > 0) {
       const dischargeIds = new Set(beforeNov10Pats.map((p) => p.id));
-      const nowIso = new Date().toISOString();
-      list = list.map((p) => {
-        if (dischargeIds.has(p.id)) {
-          return dischargePatientRecord(p, nowIso);
-        }
-        return p;
-      });
+      list = list.filter((p) => !dischargeIds.has(p.id));
       savePatients(list);
       beforeNov10Pats.forEach((p) => {
-        syncPatientToCloud(dischargePatientRecord(p, nowIso)).catch(() => {});
+        deletePatientFromCloud(p.id).catch(() => {});
       });
     }
 
@@ -101,22 +100,10 @@ export function useWardData({
     }
   });
 
-  // 2. Computed Discharged Patients
-  const dischargedPatients = useMemo(() => {
-    return patients.filter((p) => p.status === 'DISCHARGED');
-  }, [patients]);
-
-  const beforeNov10DischargedCount = useMemo(() => {
-    return dischargedPatients.filter(isAdmittedBeforeNov10).length;
-  }, [dischargedPatients]);
-
+  // 2. Computed Active Patients Before Nov 10
   const activeBeforeNov10Count = useMemo(() => {
-    return patients.filter((p) => p.status !== 'DISCHARGED' && isAdmittedBeforeNov10(p)).length;
+    return patients.filter((p) => isAdmittedBeforeNov10(p)).length;
   }, [patients]);
-
-  const nov16DischargedCount = useMemo(() => {
-    return dischargedPatients.filter(isDischargedOnNov16).length;
-  }, [dischargedPatients]);
 
   // 3. Cleanup Old Firestore Data (older than 15 days)
   const handleCleanupOldFirestoreData = useCallback(async () => {
@@ -164,10 +151,21 @@ export function useWardData({
           setPatients([]);
           return;
         }
+
+        // 1. Quét và dọn sạch các hồ sơ đã ra viện (DISCHARGED) khỏi Cloud Firestore
+        const dischargedInCloud = cloudPatients.filter((p) => p.status === 'DISCHARGED');
+        if (dischargedInCloud.length > 0) {
+          dischargedInCloud.forEach((p) => {
+            deletePatientFromCloud(p.id).catch(() => {});
+          });
+        }
+
+        let activeCloudPatients = cloudPatients.filter((p) => p.status !== 'DISCHARGED');
+
         const now = new Date();
         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         
-        let normalized = cloudPatients.map((p) => {
+        let normalized = activeCloudPatients.map((p) => {
           if (p.admissionStatus === 'DISCHARGE_TOMORROW' && p.dischargeTomorrowSetDate && p.dischargeTomorrowSetDate < todayStr) {
             const updated: Patient = {
               ...p,
@@ -180,25 +178,14 @@ export function useWardData({
           return p;
         });
 
-        // Tự động cho ra viện tất cả bệnh nhân vào viện trước ngày 10/11 theo yêu cầu
-        const beforeNov10Cloud = normalized.filter((p) => p.status !== 'DISCHARGED' && isAdmittedBeforeNov10(p));
+        // 2. Tự động cho ra viện và dọn sạch tất cả bệnh nhân vào viện trước ngày 10/11 khỏi Cloud Firestore
+        const beforeNov10Cloud = normalized.filter((p) => isAdmittedBeforeNov10(p));
         if (beforeNov10Cloud.length > 0) {
-          console.info(`[Auto-Discharge] Phát hiện ${beforeNov10Cloud.length} ca vào viện trước ngày 10/11. Đang cho ra viện...`);
           const dischargeIds = new Set(beforeNov10Cloud.map((p) => p.id));
-          const nowIso = new Date().toISOString();
-          normalized = normalized.map((p) => {
-            if (dischargeIds.has(p.id)) {
-              return dischargePatientRecord(p, nowIso);
-            }
-            return p;
-          });
+          normalized = normalized.filter((p) => !dischargeIds.has(p.id));
           beforeNov10Cloud.forEach((p) => {
-            syncPatientToCloud(dischargePatientRecord(p, nowIso)).catch(() => {});
+            deletePatientFromCloud(p.id).catch(() => {});
           });
-          const names = beforeNov10Cloud.slice(0, 3).map((p) => p.fullName).join(', ') + 
-            (beforeNov10Cloud.length > 3 ? ` và ${beforeNov10Cloud.length - 3} BN khác` : '');
-          setManualPushMessage(`🚪 Đã cho ra viện ${beforeNov10Cloud.length} bệnh nhân vào viện trước ngày 10/11 (${names})!`);
-          setTimeout(() => setManualPushMessage(null), 8000);
         }
 
         setPatients(normalized);
@@ -591,100 +578,33 @@ export function useWardData({
   const handleAutoDischargePatients = useCallback(async (dischargedPats: Patient[]) => {
     if (!dischargedPats || dischargedPats.length === 0) return;
     const dischargeIds = new Set(dischargedPats.map((p) => p.id));
-    const nowIso = new Date().toISOString();
 
-    const updatedList = patients.map((p) => {
-      if (dischargeIds.has(p.id)) {
-        return {
-          ...p,
-          status: 'DISCHARGED' as const,
-          admissionStatus: 'DISCHARGE_TODAY' as const,
-          dischargeDate: nowIso,
-        };
-      }
-      return p;
+    setPatients((prev) => {
+      const updatedList = prev.filter((p) => !dischargeIds.has(p.id));
+      savePatients(updatedList);
+      return updatedList;
     });
-
-    setPatients(updatedList);
-    savePatients(updatedList);
 
     const names = dischargedPats.slice(0, 3).map((p) => p.fullName).join(', ') + 
       (dischargedPats.length > 3 ? ` và ${dischargedPats.length - 3} BN khác` : '');
-    setManualPushMessage(`🚪 Đã tự động cho ra viện ${dischargedPats.length} bệnh nhân không có trong file Excel (${names})!`);
+    setManualPushMessage(`🚪 Đã cho ra viện ${dischargedPats.length} bệnh nhân không có trong file Excel (${names})!`);
     setTimeout(() => setManualPushMessage(null), 7000);
 
     setIsAutoSyncing(true);
     try {
       for (const pat of dischargedPats) {
-        const updatedPat: Patient = {
-          ...pat,
-          status: 'DISCHARGED' as const,
-          admissionStatus: 'DISCHARGE_TODAY' as const,
-          dischargeDate: nowIso,
-        };
-        await syncPatientToCloud(updatedPat);
+        await deletePatientFromCloud(pat.id);
       }
       setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
     } catch (err) {
-      console.warn('Lỗi sync cloud khi tự động cho ra viện:', err);
+      console.warn('Lỗi xóa cloud khi cho ra viện:', err);
     } finally {
       setIsAutoSyncing(false);
     }
-  }, [patients]);
-
-  const handleRestoreSinglePatient = useCallback(async (patient: Patient, targetRoom?: string) => {
-    const restored = restoreDischargedPatient(patient, targetRoom);
-    const updated = patients.map((p) => (p.id === patient.id ? restored : p));
-    setPatients(updated);
-    savePatients(updated);
-
-    setManualPushMessage(`🎉 Đã khôi phục BN "${formatPatientDisplayName(patient.fullName)}" trở lại buồng P.${restored.roomNumber}!`);
-    setTimeout(() => setManualPushMessage(null), 6000);
-
-    try {
-      await syncPatientToCloud(restored);
-      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
-    } catch (e) {
-      console.warn('Lỗi sync cloud khi khôi phục BN:', e);
-    }
-  }, [patients]);
-
-  const handleRestoreNov16Discharged = useCallback(async (patientsToRestore?: Patient[]) => {
-    const targetList = patientsToRestore || dischargedPatients.filter(isDischargedOnNov16);
-    if (!targetList || targetList.length === 0) return;
-
-    const targetIds = new Set(targetList.map((p) => p.id));
-    const updated = patients.map((p) => {
-      if (targetIds.has(p.id)) {
-        return restoreDischargedPatient(p);
-      }
-      return p;
-    });
-
-    setPatients(updated);
-    savePatients(updated);
-
-    const names = targetList.slice(0, 3).map((p) => p.fullName).join(', ') + 
-      (targetList.length > 3 ? ` và ${targetList.length - 3} BN khác` : '');
-    setManualPushMessage(`🎉 Đã khôi phục thành công ${targetList.length} ca ngày 16/11/2026 (${names}) trở lại buồng phòng!`);
-    setTimeout(() => setManualPushMessage(null), 8000);
-
-    setIsAutoSyncing(true);
-    try {
-      for (const pat of targetList) {
-        const restored = restoreDischargedPatient(pat);
-        await syncPatientToCloud(restored);
-      }
-      setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
-    } catch (err) {
-      console.warn('Lỗi sync cloud khi khôi phục ca ngày 16/11:', err);
-    } finally {
-      setIsAutoSyncing(false);
-    }
-  }, [patients, dischargedPatients]);
+  }, []);
 
   const handleDischargeBeforeNov10 = useCallback(async () => {
-    const targetList = patients.filter((p) => p.status !== 'DISCHARGED' && isAdmittedBeforeNov10(p));
+    const targetList = patients.filter((p) => isAdmittedBeforeNov10(p));
     if (!targetList || targetList.length === 0) {
       setManualPushMessage('✅ Không có bệnh nhân nào vào viện trước ngày 10/11 cần cho ra viện.');
       setTimeout(() => setManualPushMessage(null), 4000);
@@ -692,16 +612,11 @@ export function useWardData({
     }
 
     const dischargeIds = new Set(targetList.map((p) => p.id));
-    const nowIso = new Date().toISOString();
-    const updated = patients.map((p) => {
-      if (dischargeIds.has(p.id)) {
-        return dischargePatientRecord(p, nowIso);
-      }
-      return p;
+    setPatients((prev) => {
+      const updated = prev.filter((p) => !dischargeIds.has(p.id));
+      savePatients(updated);
+      return updated;
     });
-
-    setPatients(updated);
-    savePatients(updated);
 
     const names = targetList.slice(0, 3).map((p) => p.fullName).join(', ') + 
       (targetList.length > 3 ? ` và ${targetList.length - 3} BN khác` : '');
@@ -711,11 +626,11 @@ export function useWardData({
     setIsAutoSyncing(true);
     try {
       for (const pat of targetList) {
-        await syncPatientToCloud(dischargePatientRecord(pat, nowIso));
+        await deletePatientFromCloud(pat.id);
       }
       setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
     } catch (err) {
-      console.warn('Lỗi sync cloud khi cho ra viện ca trước 10/11:', err);
+      console.warn('Lỗi xóa cloud khi cho ra viện ca trước 10/11:', err);
     } finally {
       setIsAutoSyncing(false);
     }
@@ -751,29 +666,23 @@ export function useWardData({
     const pId = patient.id;
     const pName = patient.fullName;
 
-    const updatedPat: Patient = {
-      ...patient,
-      status: 'DISCHARGED' as const,
-      admissionStatus: 'DISCHARGE_TODAY' as const,
-    };
-
-    const updatedList = patients.map((p) => (p.id === pId ? updatedPat : p));
+    const updatedList = patients.filter((p) => p.id !== pId);
     setPatients(updatedList);
     savePatients(updatedList);
     if (onPatientRemoved) onPatientRemoved(pId);
 
-    setManualPushMessage(`✅ Bệnh nhân ${pName} đã ra viện (rời khỏi danh sách buồng phòng hiện tại)!`);
+    setManualPushMessage(`✅ Bệnh nhân ${pName} đã ra viện!`);
     setTimeout(() => setManualPushMessage(null), 5000);
 
     setIsAutoSyncing(true);
     try {
-      const res = await syncPatientToCloud(updatedPat);
+      const res = await deletePatientFromCloud(pId);
       if (!res.success) {
-        console.warn('Lỗi sync discharge cloud:', res.error);
+        console.warn('Lỗi xóa bệnh nhân ra viện khỏi cloud:', res.error);
       }
       setLastAutoSyncTime(new Date().toLocaleTimeString('vi-VN'));
     } catch (err) {
-      console.warn('Lỗi sync discharge cloud:', err);
+      console.warn('Lỗi xóa patient cloud:', err);
     } finally {
       setIsAutoSyncing(false);
     }
@@ -965,17 +874,12 @@ export function useWardData({
     setPendingSatelliteRecords,
     manualPushMessage,
     setManualPushMessage,
-    dischargedPatients,
-    nov16DischargedCount,
-    beforeNov10DischargedCount,
     activeBeforeNov10Count,
     updatePatientsList,
     handleUpdatePatient,
     handleAddPatient,
     handleImportMultiplePatients,
     handleAutoDischargePatients,
-    handleRestoreSinglePatient,
-    handleRestoreNov16Discharged,
     handleDischargeBeforeNov10,
     confirmDeletePatient,
     confirmDischargePatient,

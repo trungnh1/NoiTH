@@ -45,7 +45,12 @@ export function loadPatients(): Patient[] {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          list = parsed;
+          // Lọc bỏ toàn bộ hồ sơ đã ra viện (không lưu trữ hồ sơ ra viện)
+          const activeOnly = parsed.filter((p: any) => p && p.status !== 'DISCHARGED');
+          if (activeOnly.length !== parsed.length) {
+            localStorage.setItem(PATIENTS_KEY, JSON.stringify(activeOnly));
+          }
+          list = activeOnly;
         }
       } catch (e) {
         console.error("Error parsing saved patients", e);
@@ -53,7 +58,7 @@ export function loadPatients(): Patient[] {
     }
 
     // Ensure all required fields exist for every patient
-    return list.map((p) => {
+    return list.filter((p) => p.status !== 'DISCHARGED').map((p) => {
       const pCode = p.patientCode || (p.medicalRecordNumber ? p.medicalRecordNumber.replace('HS-', 'BN-') : `BN-${p.id}`);
       const dept = p.department || 'Khoa Nội Tổng Hợp';
       const notes = p.importantNotes || (
@@ -116,7 +121,8 @@ export function loadPatients(): Patient[] {
 
 export function savePatients(patients: Patient[]): void {
   try {
-    localStorage.setItem(PATIENTS_KEY, JSON.stringify(patients));
+    const activePatients = (patients || []).filter((p) => p && p.status !== 'DISCHARGED');
+    localStorage.setItem(PATIENTS_KEY, JSON.stringify(activePatients));
   } catch (e) {
     console.error('Error saving patients to storage:', e);
   }

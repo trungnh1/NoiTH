@@ -921,11 +921,12 @@ export async function cleanupOldFirestoreData(daysThreshold = 15): Promise<Fires
         const isProbeTest = data.testCheck === true || docId.startsWith('PAT-TEST-') || (data.fullName && data.fullName.includes('BN Kiểm Tra'));
         const isOlderThanLimit = latestActivityTime > 0 && latestActivityTime < cutoffTime;
 
-        // Nếu bệnh nhân đã ra viện và cũ hơn 15 ngày -> XÓA KHỎI FIRESTORE
+        // Nếu bệnh nhân đã ra viện -> XÓA NGAY KHỎI FIRESTORE
         // Nếu là bản ghi probe/test thử nghiệm cũ hơn 15 ngày -> XÓA
         // Nếu không ở trạng thái ACTIVE và toàn bộ hoạt động cũ hơn 15 ngày -> XÓA
         // Nếu không có phòng buồng và toàn bộ hoạt động cũ hơn 15 ngày -> XÓA
         if (
+          data.status === 'DISCHARGED' ||
           (isDischarged && isOlderThanLimit) ||
           (isProbeTest && isOlderThanLimit) ||
           (data.status !== 'ACTIVE' && isOlderThanLimit) ||

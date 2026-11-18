@@ -51,7 +51,6 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [isDischargedModalOpen, setIsDischargedModalOpen] = useState(false);
 
   // Legacy modals preserved
   const [transferringPatient, setTransferringPatient] = useState<Patient | null>(null);
@@ -82,16 +81,11 @@ export default function App() {
     setPendingSatelliteRecords,
     manualPushMessage,
     setManualPushMessage,
-    dischargedPatients,
-    nov16DischargedCount,
-    beforeNov10DischargedCount,
     activeBeforeNov10Count,
     handleUpdatePatient,
     handleAddPatient,
     handleImportMultiplePatients,
     handleAutoDischargePatients,
-    handleRestoreSinglePatient,
-    handleRestoreNov16Discharged,
     handleDischargeBeforeNov10,
     confirmDeletePatient,
     confirmDischargePatient,
@@ -213,9 +207,6 @@ export default function App() {
         onOpenChangePassword={() => setIsChangePasswordOpen(true)}
         duplicateGroupCount={duplicatePatientGroups.length}
         onOpenDuplicateModal={() => setIsDuplicateModalOpen(true)}
-        dischargedCount={dischargedPatients.length}
-        nov16DischargedCount={nov16DischargedCount}
-        onOpenDischargedModal={() => setIsDischargedModalOpen(true)}
         pendingSatelliteCount={pendingSatelliteRecords.length}
         isAutoSyncing={isAutoSyncing}
         lastAutoSyncTime={lastAutoSyncTime}
@@ -226,10 +217,6 @@ export default function App() {
         duplicatePatientGroups={duplicatePatientGroups}
         isDuplicateModalOpen={isDuplicateModalOpen}
         onOpenDuplicateModal={() => setIsDuplicateModalOpen(true)}
-        dischargedPatients={dischargedPatients}
-        isDischargedModalOpen={isDischargedModalOpen}
-        onOpenDischargedModal={() => setIsDischargedModalOpen(true)}
-        onRestoreNov16Discharged={handleRestoreNov16Discharged}
         activeBeforeNov10Count={activeBeforeNov10Count}
         onDischargeBeforeNov10={handleDischargeBeforeNov10}
         isAutoSyncing={isAutoSyncing}
@@ -396,8 +383,6 @@ export default function App() {
         isDuplicateModalOpen={isDuplicateModalOpen}
         setIsDuplicateModalOpen={setIsDuplicateModalOpen}
         duplicatePatientGroups={duplicatePatientGroups}
-        isDischargedModalOpen={isDischargedModalOpen}
-        setIsDischargedModalOpen={setIsDischargedModalOpen}
         activeBeforeNov10Count={activeBeforeNov10Count}
         onDischargeBeforeNov10={handleDischargeBeforeNov10}
         transferringPatient={transferringPatient}
@@ -424,8 +409,6 @@ export default function App() {
         onTransferPatient={handleTransferPatient}
         onImportMultiplePatients={handleImportMultiplePatients}
         onAutoDischargePatients={handleAutoDischargePatients}
-        onRestorePatient={handleRestoreSinglePatient}
-        onRestoreMultiplePatients={handleRestoreNov16Discharged}
         onMergePatients={handleMergePatients}
         onDismissDuplicatePair={handleDismissDuplicatePair}
         onDismissPendingSatellite={handleDismissPendingSatellite}

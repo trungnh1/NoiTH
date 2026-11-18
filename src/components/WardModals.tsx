@@ -20,7 +20,6 @@ const ShiftHandoverModal = React.lazy(() => import('./ShiftHandoverModal').then(
 const ClinicalWatchlistModal = React.lazy(() => import('./ClinicalWatchlistModal').then(m => ({ default: m.ClinicalWatchlistModal })));
 const DutyRosterModal = React.lazy(() => import('./DutyRosterModal').then(m => ({ default: m.DutyRosterModal })));
 const DuplicatePatientsModal = React.lazy(() => import('./DuplicatePatientsModal').then(m => ({ default: m.DuplicatePatientsModal })));
-const DischargedPatientsModal = React.lazy(() => import('./DischargedPatientsModal').then(m => ({ default: m.DischargedPatientsModal })));
 
 export interface WardModalsProps {
   patients: Patient[];
@@ -56,8 +55,6 @@ export interface WardModalsProps {
   isDuplicateModalOpen: boolean;
   setIsDuplicateModalOpen: (open: boolean) => void;
   duplicatePatientGroups: DuplicatePatientGroup[];
-  isDischargedModalOpen: boolean;
-  setIsDischargedModalOpen: (open: boolean) => void;
   activeBeforeNov10Count?: number;
   onDischargeBeforeNov10?: () => Promise<void> | void;
 
@@ -92,8 +89,6 @@ export interface WardModalsProps {
   onTransferPatient: (patientId: string, newRoom: string, newBed: string) => void;
   onImportMultiplePatients: (patients: Patient[]) => Promise<void>;
   onAutoDischargePatients: (patients: Patient[]) => Promise<void>;
-  onRestorePatient: (patient: Patient, targetRoom?: string) => Promise<void>;
-  onRestoreMultiplePatients: (patients?: Patient[]) => Promise<void>;
   onMergePatients: (primary: Patient, duplicate: Patient) => Promise<void>;
   onDismissDuplicatePair: (idA: string, idB: string) => void;
   onDismissPendingSatellite: (recordId: string) => void;
@@ -133,8 +128,6 @@ export const WardModals: React.FC<WardModalsProps> = ({
   isDuplicateModalOpen,
   setIsDuplicateModalOpen,
   duplicatePatientGroups,
-  isDischargedModalOpen,
-  setIsDischargedModalOpen,
   activeBeforeNov10Count = 0,
   onDischargeBeforeNov10,
   transferringPatient,
@@ -161,8 +154,6 @@ export const WardModals: React.FC<WardModalsProps> = ({
   onTransferPatient,
   onImportMultiplePatients,
   onAutoDischargePatients,
-  onRestorePatient,
-  onRestoreMultiplePatients,
   onMergePatients,
   onDismissDuplicatePair,
   onDismissPendingSatellite,
@@ -448,21 +439,6 @@ export const WardModals: React.FC<WardModalsProps> = ({
               onMergePatients={onMergePatients}
               onDismissPair={onDismissDuplicatePair}
               onSelectPatient={(patient) => setSelectedPatient(patient)}
-            />
-          </Suspense>
-        )}
-
-        {/* 12. Discharged Patients & Restoration Modal */}
-        {isDischargedModalOpen && (
-          <Suspense fallback={null}>
-            <DischargedPatientsModal
-              patients={patients}
-              rooms={rooms}
-              onClose={() => setIsDischargedModalOpen(false)}
-              onRestorePatient={onRestorePatient}
-              onRestoreMultiplePatients={onRestoreMultiplePatients}
-              onDischargeBeforeNov10={onDischargeBeforeNov10}
-              activeBeforeNov10Count={activeBeforeNov10Count}
             />
           </Suspense>
         )}

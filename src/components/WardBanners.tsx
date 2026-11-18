@@ -1,17 +1,12 @@
 import React from 'react';
-import { AlertTriangle, RotateCcw, DoorOpen, LogOut } from 'lucide-react';
+import { AlertTriangle, LogOut } from 'lucide-react';
 import { Patient } from '../types/patient';
 import { DuplicatePatientGroup } from '../utils/excelParser';
-import { isAdmittedBeforeNov10 } from '../utils/dischargeUtils';
 
 interface WardBannersProps {
   duplicatePatientGroups: DuplicatePatientGroup[];
   isDuplicateModalOpen: boolean;
   onOpenDuplicateModal: () => void;
-  dischargedPatients: Patient[];
-  isDischargedModalOpen: boolean;
-  onOpenDischargedModal: () => void;
-  onRestoreNov16Discharged: () => void;
   activeBeforeNov10Count?: number;
   onDischargeBeforeNov10?: () => void;
   isAutoSyncing: boolean;
@@ -26,10 +21,6 @@ export const WardBanners: React.FC<WardBannersProps> = ({
   duplicatePatientGroups,
   isDuplicateModalOpen,
   onOpenDuplicateModal,
-  dischargedPatients,
-  isDischargedModalOpen,
-  onOpenDischargedModal,
-  onRestoreNov16Discharged,
   activeBeforeNov10Count = 0,
   onDischargeBeforeNov10,
   isAutoSyncing,
@@ -90,31 +81,6 @@ export const WardBanners: React.FC<WardBannersProps> = ({
                 <span>🚪 Cho ra viện tất cả ({activeBeforeNov10Count} ca)</span>
               </button>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* QUẢN LÝ HỒ SƠ BỆNH NHÂN ĐÃ RA VIỆN */}
-      {dischargedPatients.length > 0 && !isDischargedModalOpen && (
-        <div className="bg-gradient-to-r from-slate-800 via-blue-900 to-[#0b4d8c] text-white px-3 sm:px-5 py-2.5 shadow-md flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm animate-in slide-in-from-top duration-200">
-          <div className="flex items-center gap-2 max-w-4xl truncate">
-            <span className="w-2 h-2 rounded-full bg-blue-300 shrink-0" />
-            <span className="font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded text-[10.5px]">
-              Hồ sơ ra viện
-            </span>
-            <span className="font-semibold truncate">
-              Khoa hiện có <strong>{dischargedPatients.length}</strong> bệnh nhân đã cho ra viện ({dischargedPatients.filter(isAdmittedBeforeNov10).length} ca vào viện trước 10/11)
-            </span>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={onOpenDischargedModal}
-              className="px-3.5 py-1 bg-white hover:bg-blue-50 text-slate-950 font-black rounded-xl text-xs shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
-            >
-              <DoorOpen className="w-3.5 h-3.5 text-[#0b4d8c]" />
-              <span>Xem danh sách ra viện ({dischargedPatients.length})</span>
-            </button>
           </div>
         </div>
       )}
