@@ -518,48 +518,52 @@ export function useWardData({
   const handleImportMultiplePatients = useCallback(async (newPatients: Patient[]) => {
     if (newPatients.length === 0) return;
     
-    let currentList = [...patients];
     const affectedToSync: Patient[] = [];
 
-    newPatients.forEach((newP) => {
-      const duplicateIdx = currentList.findIndex((p) => isSameClinicalPatient(p, newP));
-      if (duplicateIdx !== -1) {
-        const dup = currentList[duplicateIdx];
-        if (dup.status === 'DISCHARGED') {
-          const reactivated: Patient = {
-            ...dup,
-            ...newP,
-            id: dup.id,
-            status: 'ACTIVE',
-            admissionStatus: newP.admissionStatus || 'ADMITTED_TODAY',
-            roomNumber: extractCleanRoomNumber(newP.roomNumber) || dup.roomNumber,
-            bedNumber: newP.bedNumber || dup.bedNumber,
-            dischargeDate: undefined,
-            dischargeTomorrowSetDate: undefined,
-          };
-          currentList[duplicateIdx] = reactivated;
-          affectedToSync.push(reactivated);
-        } else {
-          const newRoomClean = extractCleanRoomNumber(newP.roomNumber);
-          const oldRoomClean = extractCleanRoomNumber(dup.roomNumber);
-          if (newRoomClean && oldRoomClean && newRoomClean !== oldRoomClean) {
-            const moved: Patient = {
+    setPatients((prev) => {
+      let currentList = [...prev];
+
+      newPatients.forEach((newP) => {
+        const duplicateIdx = currentList.findIndex((p) => isSameClinicalPatient(p, newP));
+        if (duplicateIdx !== -1) {
+          const dup = currentList[duplicateIdx];
+          if (dup.status === 'DISCHARGED') {
+            const reactivated: Patient = {
               ...dup,
-              roomNumber: newRoomClean,
+              ...newP,
+              id: dup.id,
+              status: 'ACTIVE',
+              admissionStatus: newP.admissionStatus || 'ADMITTED_TODAY',
+              roomNumber: extractCleanRoomNumber(newP.roomNumber) || dup.roomNumber,
               bedNumber: newP.bedNumber || dup.bedNumber,
+              dischargeDate: undefined,
+              dischargeTomorrowSetDate: undefined,
             };
-            currentList[duplicateIdx] = moved;
-            affectedToSync.push(moved);
+            currentList[duplicateIdx] = reactivated;
+            affectedToSync.push(reactivated);
+          } else {
+            const newRoomClean = extractCleanRoomNumber(newP.roomNumber);
+            const oldRoomClean = extractCleanRoomNumber(dup.roomNumber);
+            if (newRoomClean && oldRoomClean && newRoomClean !== oldRoomClean) {
+              const moved: Patient = {
+                ...dup,
+                roomNumber: newRoomClean,
+                bedNumber: newP.bedNumber || dup.bedNumber,
+              };
+              currentList[duplicateIdx] = moved;
+              affectedToSync.push(moved);
+            }
           }
+        } else {
+          currentList = [newP, ...currentList];
+          affectedToSync.push(newP);
         }
-      } else {
-        currentList = [newP, ...currentList];
-        affectedToSync.push(newP);
-      }
+      });
+
+      savePatients(currentList);
+      return currentList;
     });
 
-    setPatients(currentList);
-    savePatients(currentList);
     if (affectedToSync.length > 0) {
       setIsAutoSyncing(true);
       try {
@@ -573,7 +577,7 @@ export function useWardData({
         setIsAutoSyncing(false);
       }
     }
-  }, [patients]);
+  }, []);
 
   const handleAutoDischargePatients = useCallback(async (dischargedPats: Patient[]) => {
     if (!dischargedPats || dischargedPats.length === 0) return;

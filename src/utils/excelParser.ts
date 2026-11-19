@@ -295,6 +295,11 @@ export function isPatientDuplicateWithExisting(
     return { isDuplicate: true, reason: `Trùng Họ tên và Phòng bệnh (P.${pRoomNorm})` };
   }
 
+  // Nếu cùng họ tên và cùng tuổi (kể cả khi đã đổi buồng phòng hoặc ngày vào viện chưa ghi)
+  if (isSameAge) {
+    return { isDuplicate: true, reason: `Trùng Họ tên và Tuổi (${pAge}T)` };
+  }
+
   return { isDuplicate: false };
 }
 
