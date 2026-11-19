@@ -865,7 +865,8 @@ export const ExcelDataSyncModal: React.FC<ExcelDataSyncModalProps> = ({
                   <tbody className="divide-y divide-slate-100">
                     {excelRows.map((row, idx) => {
                       const isImported = importedIds.has(`excel-${idx}`);
-                      const { exists: alreadyInDept, existingRecord, reason: dupReason } = checkPatientAlreadyExists(row);
+                      const dupCheck = checkPatientAlreadyExists(row);
+                      const { exists: alreadyInDept, existingRecord, reason: dupReason } = dupCheck;
 
                       return (
                         <tr 
